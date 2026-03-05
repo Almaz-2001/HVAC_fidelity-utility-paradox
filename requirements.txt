@@ -1,0 +1,13 @@
+# RL core (совместимо с sinergym 2.5.2)
+stable-baselines3==2.1.0
+pyyaml>=6.0
+
+# Numerical stack
+numpy<2.0.0
+pandas
+matplotlib
+torch
+
+# Logging (по желанию, но можно)
+tensorboard
+wandb

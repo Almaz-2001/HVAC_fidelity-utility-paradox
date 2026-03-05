@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Outputs — большие файлы, не коммитим
+outputs/
+
+# Модели и данные
+*.zip
+*.csv
+*.png
+*.fmu
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+docker/volumes/
+boptest_rte/data/
+
+# Логи
+*.log
+boptest_rte/

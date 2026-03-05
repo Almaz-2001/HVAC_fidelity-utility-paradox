@@ -1,0 +1,10 @@
+services:
+  web:
+    image: ibpsa/project1-boptest:latest
+    ports:
+      - "8000:8000"
+
+networks:
+  default:
+    name: morl_net
+    external: true

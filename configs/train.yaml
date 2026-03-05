@@ -1,0 +1,13 @@
+total_timesteps: 100
+seed: 42
+
+
+
+
+morl_csv: true
+output_dir: /app/outputs
+morl_csv_name: morl_log.csv
+
+# Сохранение модели
+save_model: true
+save_path: /app/outputs/models
