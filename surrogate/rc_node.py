@@ -124,8 +124,9 @@ class RCNeuralODE(nn.Module):
         self,
         hidden_dim:  int   = 64,
         n_layers:    int   = 3,
-        # Начальные значения физических параметров
-        c_zon_init:  float = 1e7,   # [J/K] — типичная тепловая ёмкость зоны
+        # Физически правильное значение:
+        # C_zon = Δt * P_mean / dT_mean = 3600 * 265 / 1.8 ≈ 530,000 J/K
+        c_zon_init:  float = 5.3e5,
         # Нормализация температуры (будет обновлена из данных)
         t_mean:      float = 20.0,
         t_std:       float = 5.0,
@@ -133,9 +134,11 @@ class RCNeuralODE(nn.Module):
         super().__init__()
 
         # Обучаемый параметр C_zon (log для гарантии > 0)
-        self.log_c_zon = nn.Parameter(
-            torch.tensor(np.log(c_zon_init), dtype=torch.float32)
-        )
+        # Физический расчёт из данных:
+        # C_zon = Δt * P_mean / dT_mean = 3600 * 265 / 1.8 ≈ 530,000 J/K
+        # C_zon фиксирован — register_buffer не обучается
+        self.register_buffer('c_zon_val',
+            torch.tensor(float(c_zon_init), dtype=torch.float32))
 
         # Нейросети
         self.heat_net  = HeatFlowNet(hidden_dim=hidden_dim, n_layers=n_layers)
@@ -147,8 +150,8 @@ class RCNeuralODE(nn.Module):
 
     @property
     def c_zon(self) -> torch.Tensor:
-        """Тепловая ёмкость зоны [J/K], всегда > 0."""
-        return torch.exp(self.log_c_zon)
+        """Тепловая ёмкость зоны [J/K] — фиксированная константа."""
+        return self.c_zon_val
 
     def _normalize_temp(self, t: torch.Tensor) -> torch.Tensor:
         return (t - self.t_mean) / self.t_std
@@ -187,18 +190,11 @@ class RCNeuralODE(nn.Module):
         # Вход нейросети: [T_norm, a0, a1]
         x = torch.stack([t_norm, a0, a1], dim=-1)   # [batch, 3]
 
-        # Тепловые потоки
-        q_hvac = self._q_hvac(a0, a1)                   # [batch]
-        dq_nn  = self.heat_net(x).squeeze(-1)            # [batch]
+        # Data-driven: нейросеть предсказывает dT напрямую
+        # dT в диапазоне [-10, +10] °C/шаг (масштаб из данных)
+        dT = self.heat_net(x).squeeze(-1) * 10.0    # [batch]
 
-        # Нормализуем dq_nn к масштабу мощности
-        dq_total = q_hvac + dq_nn * self.P_MAX           # [batch]
-
-        # RC динамика: Euler шаг
-        dt_over_c = self.DT / self.c_zon                 # скаляр
-        t_next = t_zone + dt_over_c * dq_total           # [batch]
-
-        # Ограничиваем физически допустимым диапазоном
+        t_next = t_zone + dT                         # [batch]
         t_next = torch.clamp(t_next, self.T_LOW, self.T_HIGH)
 
         # Предсказание мощности

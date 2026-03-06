@@ -13,11 +13,11 @@ class EnvFactory:
         if backend == "boptest":
             return BOPTESTBackend(config)
 
-        # Sinergym оставлен как заглушка — раскомментируй когда понадобится
-        # if backend == "sinergym":
-        #     from envs.backends.sinergym_backend import SinergymBackend
-        #     return SinergymBackend(config)
+        if backend == "surrogate":
+            from envs.backends.surrogate_backend import SurrogateBackend
+            return SurrogateBackend(config)
 
         raise ValueError(
-            f"Unknown backend: {backend}. Currently implemented: boptest"
+            f"Unknown backend: {backend}."
+            f"Available: boptest, surrogate"
         )
