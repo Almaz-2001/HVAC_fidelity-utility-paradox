@@ -195,7 +195,7 @@ def _plot_pareto_front(df: pd.DataFrame, output_dir: str) -> None:
             kwargs["yerr"] = y_e
         ax.errorbar(x_m, y_m, **kwargs)
 
-    # соединяем точки
+    
     xs = [df[df["run_name"] == r["name"]]["mean_comfort"].abs().mean()
           for r in PARETO_RUNS if not df[df["run_name"] == r["name"]].empty]
     ys = [df[df["run_name"] == r["name"]]["total_energy_kwh"].mean()
@@ -208,12 +208,12 @@ def _plot_pareto_front(df: pd.DataFrame, output_dir: str) -> None:
     ax.legend(fontsize=8)
     ax.grid(True, alpha=0.3)
 
-    # --- Safety metric ---
+    
     ax2 = axes[1]
     names   = [r["name"] for r in PARETO_RUNS
                if not df[df["run_name"] == r["name"]].empty]
     ms_m    = [df[df["run_name"] == n]["m_s"].mean() for n in names]
-    # ddof=0 чтобы не было NaN при одном seed
+    
     ms_e    = [df[df["run_name"] == n]["m_s"].std(ddof=0) for n in names]
     valid_c = [colors[i] for i, r in enumerate(PARETO_RUNS)
                if not df[df["run_name"] == r["name"]].empty]
