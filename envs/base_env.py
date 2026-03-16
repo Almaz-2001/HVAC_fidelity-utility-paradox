@@ -4,12 +4,7 @@ import gymnasium as gym
 
 class HVACBaseEnv(gym.Env):
     """
-    Базовый класс для HVAC сред, совместимый с Gymnasium и Stable-Baselines3.
-
-    Важно:
-    - наследуемся от gym.Env -> появляются стандартные атрибуты типа `unwrapped`
-    - reset возвращает (obs, info)
-    - step возвращает (obs, reward, terminated, truncated, info)
+    
     """
 
     metadata = {"render_modes": []}

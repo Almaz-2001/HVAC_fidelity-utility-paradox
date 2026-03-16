@@ -1,27 +1,5 @@
-"""
-surrogate/inverse_problem.py
 
-Фаза 2: Inverse Problem — калибровка surrogate под реальное здание.
 
-Два режима:
-  1. linear  (default): обучаем только CalibrationLayer (4 параметра)
-  2. finetune:          размораживаем нейросеть + CalibrationLayer
-
-Задача:
-    Дано:   измерения реального здания [T_real(t), P_real(t), a(t)]
-    Найти:  параметры θ* такие что surrogate(θ*) минимизирует
-            ||T_surrogate(θ) - T_real||²
-
-Запуск:
-  python surrogate/inverse_problem.py \
-    --data /app/data/surrogate/synthetic_real_500_noise_bias.csv \
-    --model /app/outputs/surrogate/rc_node_best.pt \
-    --finetune
-
-  python surrogate/inverse_problem.py \
-    --data /app/data/surrogate/synthetic_real_500_noise_bias.csv \
-    --model /app/outputs/surrogate/rc_node_best.pt
-"""
 
 from __future__ import annotations
 
@@ -38,16 +16,11 @@ from typing import Dict, Tuple
 from surrogate.rc_node import RCNeuralODE
 
 
-# -----------------------------------------------------------------------
-# CalibrationLayer — линейный адаптационный слой
-# -----------------------------------------------------------------------
+
 
 class CalibrationLayer(nn.Module):
     """
-    Тонкий адаптационный слой поверх surrogate.
-
-    T_calib = T_curr + scale_dT * (T_surr - T_curr) + bias_T
-    P_calib = scale_P * P_surr + bias_P
+    
     """
     def __init__(self):
         super().__init__()
@@ -69,9 +42,7 @@ class CalibrationLayer(nn.Module):
         print(f"    bias_P   = {self.bias_P.item():.2f} W")
 
 
-# -----------------------------------------------------------------------
-# CalibratedSurrogate
-# -----------------------------------------------------------------------
+
 
 class CalibratedSurrogate(nn.Module):
     def __init__(self, surrogate: RCNeuralODE, finetune: bool = False):
@@ -110,17 +81,11 @@ class CalibratedSurrogate(nn.Module):
             return [{"params": self.calibration.parameters(), "lr": 1e-2}]
 
 
-# -----------------------------------------------------------------------
-# Функция потерь
-# -----------------------------------------------------------------------
+
 
 class CalibrationLoss(nn.Module):
     """
-    L = lambda_mse * MSE(T_pred, T_true)
-      + lambda_reg * ||calib_params - identity||²
-
-    Регуляризация удерживает калибровочный слой близко к
-    единичному преобразованию — не даёт уйти в вырожденное решение.
+    
     """
     def __init__(self, lambda_mse=1.0, lambda_reg=0.05):
         super().__init__()
@@ -144,9 +109,7 @@ class CalibrationLoss(nn.Module):
         }
 
 
-# -----------------------------------------------------------------------
-# Основная функция калибровки
-# -----------------------------------------------------------------------
+
 
 def calibrate(
     data_path:  str,
@@ -293,9 +256,7 @@ def calibrate(
     return save_path
 
 
-# -----------------------------------------------------------------------
-# Точка входа
-# -----------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser()

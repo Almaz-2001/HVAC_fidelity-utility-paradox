@@ -1,26 +1,5 @@
 """
-surrogate/rc_node.py
 
-RC Neural ODE — physics-informed surrogate модель здания.
-
-Физическая основа (RC thermal model):
-
-    C_zon * dT/dt = Q_hvac(u) + f_theta(T_amb, T_zone, u_fan, I_solar)
-
-где:
-    C_zon        — тепловая ёмкость зоны [J/K]  (обучаемый параметр)
-    Q_hvac(u)    — тепловая мощность HVAC [W]    (из управляющего сигнала)
-    f_theta(...)  — нейросеть для остаточных теплопотоков
-
-Для дискретного шага Δt = 3600 с (1 час):
-
-    T_zone(t+1) = T_zone(t) + Δt/C_zon * [Q_hvac + f_theta(...)]
-
-Входы модели:
-    x = [T_zone, a0_raw, a1_raw]     (состояние + действие)
-
-Выходы:
-    y = [T_zone_next, P_total_pred]   (следующее состояние + мощность)
 """
 
 from __future__ import annotations
@@ -31,16 +10,11 @@ import numpy as np
 from typing import Tuple, Optional
 
 
-# -----------------------------------------------------------------------
-# Нейросеть для остаточных теплопотоков f_theta
-# -----------------------------------------------------------------------
+
 
 class HeatFlowNet(nn.Module):
     """
-    Нейросеть моделирует суммарный тепловой поток:
-        f_theta(T_zone, a0, a1) → dQ [W]
-
-    Архитектура: MLP с residual connection.
+    
     """
 
     def __init__(self, hidden_dim: int = 64, n_layers: int = 3):
@@ -60,22 +34,16 @@ class HeatFlowNet(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Args:
-            x: [batch, 3] — [T_zone_norm, a0, a1]
-        Returns:
-            dQ: [batch, 1] — тепловой поток [нормализованный]
+        
         """
         return self.net(x)
 
 
-# -----------------------------------------------------------------------
-# Нейросеть для предсказания мощности HVAC
-# -----------------------------------------------------------------------
+
 
 class PowerNet(nn.Module):
     """
-    Предсказывает потребляемую мощность:
-        P_total = g_phi(T_zone, a0, a1) [W]
+    
     """
 
     def __init__(self, hidden_dim: int = 32):
@@ -93,28 +61,13 @@ class PowerNet(nn.Module):
         return self.net(x)
 
 
-# -----------------------------------------------------------------------
-# Основная RC Neural ODE модель
-# -----------------------------------------------------------------------
 
 class RCNeuralODE(nn.Module):
     """
-    Physics-informed surrogate модель здания.
-
-    Уравнение одного шага (Euler дискретизация):
-
-        T_next = T_curr + (Δt / C_zon) * [Q_hvac + f_theta(T_curr, a0, a1)]
-
-    Обучаемые параметры:
-        - C_zon:    тепловая ёмкость зоны (log-параметризация для > 0)
-        - f_theta:  HeatFlowNet
-        - g_phi:    PowerNet
-
-    Нормализация:
-        T_norm = (T - T_mean) / T_std    (zscore внутри модели)
+    
     """
 
-    # Физические константы
+    
     DT = 3600.0         # шаг времени [с]
     T_LOW  = 15.0       # мин. температура [°C]
     T_HIGH = 35.0       # макс. температура [°C]
@@ -124,19 +77,16 @@ class RCNeuralODE(nn.Module):
         self,
         hidden_dim:  int   = 64,
         n_layers:    int   = 3,
-        # Физически правильное значение:
-        # C_zon = Δt * P_mean / dT_mean = 3600 * 265 / 1.8 ≈ 530,000 J/K
+        
         c_zon_init:  float = 5.3e5,
-        # Нормализация температуры (будет обновлена из данных)
+        
         t_mean:      float = 20.0,
         t_std:       float = 5.0,
     ):
         super().__init__()
 
-        # Обучаемый параметр C_zon (log для гарантии > 0)
-        # Физический расчёт из данных:
-        # C_zon = Δt * P_mean / dT_mean = 3600 * 265 / 1.8 ≈ 530,000 J/K
-        # C_zon фиксирован — register_buffer не обучается
+        
+        
         self.register_buffer('c_zon_val',
             torch.tensor(float(c_zon_init), dtype=torch.float32))
 
@@ -150,7 +100,7 @@ class RCNeuralODE(nn.Module):
 
     @property
     def c_zon(self) -> torch.Tensor:
-        """Тепловая ёмкость зоны [J/K] — фиксированная константа."""
+        
         return self.c_zon_val
 
     def _normalize_temp(self, t: torch.Tensor) -> torch.Tensor:
@@ -158,9 +108,7 @@ class RCNeuralODE(nn.Module):
 
     def _q_hvac(self, a0: torch.Tensor, a1: torch.Tensor) -> torch.Tensor:
         """
-        Тепловая мощность от HVAC [W].
-        Простая линейная модель: Q = P_max * fan_signal * setpoint_factor
-        где fan_signal = clip((a1+1)/2, 0, 1)
+        
         """
         fan = torch.clamp((a1 + 1.0) / 2.0, 0.0, 1.0)
         setpoint_factor = torch.clamp((a0 + 1.0) / 2.0, 0.0, 1.0)
@@ -168,55 +116,38 @@ class RCNeuralODE(nn.Module):
 
     def forward(
         self,
-        t_zone: torch.Tensor,   # [batch] — текущая температура [°C]
-        a0:     torch.Tensor,   # [batch] — уставка [-1, 1]
-        a1:     torch.Tensor,   # [batch] — вентилятор [-1, 1]
+        t_zone: torch.Tensor,   
+        a0:     torch.Tensor,   
+        a1:     torch.Tensor,   
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Один шаг RC Neural ODE.
-
-        Args:
-            t_zone: текущая температура зоны [°C], shape [batch]
-            a0:     уставка (нормализованная), shape [batch]
-            a1:     сигнал вентилятора, shape [batch]
-
-        Returns:
-            t_next:  предсказанная температура [°C], shape [batch]
-            p_total: предсказанная мощность [W],     shape [batch]
+        
         """
-        # Нормализуем температуру для нейросети
-        t_norm = self._normalize_temp(t_zone)   # [batch]
+        
+        t_norm = self._normalize_temp(t_zone)   
 
-        # Вход нейросети: [T_norm, a0, a1]
-        x = torch.stack([t_norm, a0, a1], dim=-1)   # [batch, 3]
+        
+        x = torch.stack([t_norm, a0, a1], dim=-1)   
 
-        # Data-driven: нейросеть предсказывает dT напрямую
-        # dT в диапазоне [-10, +10] °C/шаг (масштаб из данных)
-        dT = self.heat_net(x).squeeze(-1) * 10.0    # [batch]
+        
+        
+        dT = self.heat_net(x).squeeze(-1) * 10.0    
 
-        t_next = t_zone + dT                         # [batch]
+        t_next = t_zone + dT                         
         t_next = torch.clamp(t_next, self.T_LOW, self.T_HIGH)
 
-        # Предсказание мощности
-        p_total = self.power_net(x).squeeze(-1) * self.P_MAX  # [batch]
+        
+        p_total = self.power_net(x).squeeze(-1) * self.P_MAX  
 
         return t_next, p_total
 
     def rollout(
         self,
-        t_zone_0: torch.Tensor,  # [batch] — начальная температура
-        actions:  torch.Tensor,  # [batch, horizon, 2] — последовательность действий
+        t_zone_0: torch.Tensor,  
+        actions:  torch.Tensor,  
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Многошаговый прогноз (для MPC safety filter в Фазе 3).
-
-        Args:
-            t_zone_0: начальная температура [batch]
-            actions:  последовательность действий [batch, horizon, 2]
-
-        Returns:
-            temps:   траектория температур [batch, horizon]
-            powers:  траектория мощностей  [batch, horizon]
+    
         """
         batch, horizon, _ = actions.shape
         t = t_zone_0
@@ -251,20 +182,11 @@ class RCNeuralODE(nn.Module):
         print(f"  Δt/C_zon = {self.DT / self.c_zon.item():.3e} K/J")
 
 
-# -----------------------------------------------------------------------
-# Функция потерь
-# -----------------------------------------------------------------------
+
 
 class SurrogateLoss(nn.Module):
     """
-    Комбинированная функция потерь:
-
-        L = λ_T * L_temp + λ_P * L_power + λ_phys * L_physics
-
-    где:
-        L_temp   — MSE по температуре
-        L_power  — MSE по мощности (нормализованной)
-        L_physics — штраф за нефизичные предсказания
+    
     """
 
     def __init__(
@@ -281,10 +203,10 @@ class SurrogateLoss(nn.Module):
 
     def forward(
         self,
-        t_pred:   torch.Tensor,    # [batch] предсказанная T_next
-        t_true:   torch.Tensor,    # [batch] реальная T_next
-        p_pred:   torch.Tensor,    # [batch] предсказанная P_total
-        p_true:   torch.Tensor,    # [batch] реальная P_total
+        t_pred:   torch.Tensor,    
+        t_true:   torch.Tensor,    
+        p_pred:   torch.Tensor,    
+        p_true:   torch.Tensor,    
         p_max:    float = 5500.0,
     ) -> Tuple[torch.Tensor, dict]:
 

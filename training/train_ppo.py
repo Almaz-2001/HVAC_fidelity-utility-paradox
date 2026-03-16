@@ -13,20 +13,18 @@ from training.morl_logger import MORLCSVLogger
 
 class MORLLogCallback(BaseCallback):
     """
-    Логирует info['reward_vector'] в CSV на каждом step.
-    Работает с DummyVecEnv: infos = list[dict], берём infos[0].
+    
     """
 
     def __init__(self, out_dir: str = "outputs", filename: str = "morl_log.csv", verbose: int = 0):
         super().__init__(verbose)
-        Path(out_dir).mkdir(parents=True, exist_ok=True)  # ✅ чтобы файл точно мог создаться
+        Path(out_dir).mkdir(parents=True, exist_ok=True)  
         self.csv = MORLCSVLogger(out_dir=out_dir, filename=filename)
         self.step_id = 0
 
     def _extract_scalar_reward(self) -> float:
         """
-        Пытаемся достать reward из SB3 callback locals.
-        Возвращаем float или np.nan.
+        
         """
         rewards = self.locals.get("rewards", None)
         if rewards is None:
@@ -50,7 +48,7 @@ class MORLLogCallback(BaseCallback):
             rv = info0.get("reward_vector", None) if isinstance(info0, dict) else None
 
             if isinstance(rv, dict):
-                # fallback: если reward_scalar не получился, считаем сами из MORL-вектора
+                
                 if np.isnan(reward_scalar):
                     c = rv.get("comfort")
                     e = rv.get("energy")
@@ -64,7 +62,7 @@ class MORLLogCallback(BaseCallback):
 
                 self.csv.log({
                     "step": self.step_id,
-                    "reward_scalar": reward_scalar,  # ✅ всегда число (float или nan)
+                    "reward_scalar": reward_scalar,  
                     "comfort": rv.get("comfort"),
                     "energy": rv.get("energy"),
                     "zone_temp": rv.get("zone_temp"),
@@ -79,8 +77,7 @@ class MORLLogCallback(BaseCallback):
     def _on_training_end(self) -> None:
         self.csv.close()
     """
-    Логирует info['reward_vector'] в CSV на каждом step.
-    Работает с DummyVecEnv: infos = list[dict], берём infos[0].
+    
     """
 
     def __init__(self, out_dir: str = "outputs", filename: str = "morl_log.csv", verbose: int = 0):
@@ -187,7 +184,7 @@ def maybe_save_model(model: PPO, train_cfg: Dict[str, Any]) -> Optional[str]:
     if not bool(train_cfg.get("save_model", False)):
         return None
 
-    # если save_path не задан — сохраняем рядом с логами
+    
     output_dir = str(train_cfg.get("output_dir", "/app/outputs"))
     default_path = str(Path(output_dir) / "models")
     save_path = str(train_cfg.get("save_path", default_path))

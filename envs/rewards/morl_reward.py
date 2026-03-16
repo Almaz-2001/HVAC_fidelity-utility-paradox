@@ -11,12 +11,7 @@ class MORLWeights:
 
 class MORLReward:
     """
-    MORL v1:
-      - scalar_reward = w_c * r_comfort + w_e * r_energy   (для PPO)
-      - reward_vector = (r_comfort, r_energy)             (для логов/аналитики)
-
-    r_comfort: штраф за выход температуры из диапазона
-    r_energy : штраф за потребление (мощность HVAC), масштабируется energy_scale
+    
     """
 
     def __init__(

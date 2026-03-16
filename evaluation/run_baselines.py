@@ -34,9 +34,7 @@ def run_baseline(
     seed: Optional[int] = 42,
 ) -> str:
     """
-    Прогон baseline-политики и сохранение CSV.
-    Если fixed_action задан — используем его на каждом шаге.
-    Иначе — random action из action_space.
+    
     """
     _ensure_dir(out_dir)
 
@@ -57,7 +55,7 @@ def run_baseline(
         obs, rew, terminated, truncated, info = _unwrap_step(env.step(action))
 
         rv = info.get("reward_vector", {})
-        # action_final мы уже кладём в info в sinergym_backend.py
+        
         a_final = info.get("action_final", action)
 
         rows.append(

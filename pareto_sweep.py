@@ -1,9 +1,6 @@
 """
 
-Запускает 5 конфигураций w_comfort/w_energy * N seeds.
-Результат: pareto_results.csv + графики.
 
-Вызывается из main.py при MODE=pareto.
 """
 
 from __future__ import annotations

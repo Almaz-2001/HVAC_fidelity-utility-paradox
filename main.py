@@ -178,19 +178,11 @@ def run_eval(seed: int, cfg: dict) -> None:
         pass
 
 
-# -----------------------------------------------------------------------
-# PARETO MODE — новый режим Фазы 0
-# -----------------------------------------------------------------------
+
 
 def run_pareto(cfg: dict) -> None:
     """
-    Запускает Pareto sweep: 5 конфигураций весов × N seeds.
-    Результат: Pareto-фронт комфорт vs энергия + safety metric.
-
-    Переменные окружения:
-        SEEDS       — через запятую, default "42,43,44"
-        STEPS       — шагов обучения, default 500000
-        EVAL_STEPS  — шагов оценки, default 2000
+    
     """
     from pareto_sweep import run_pareto_sweep
     seeds      = _parse_seeds(os.environ.get("SEEDS", "42,43,44"))
@@ -199,9 +191,7 @@ def run_pareto(cfg: dict) -> None:
     run_pareto_sweep(cfg, seeds=seeds, total_timesteps=steps, eval_steps=eval_steps)
 
 
-# -----------------------------------------------------------------------
-# MAIN
-# -----------------------------------------------------------------------
+
 
 def main():
     print("--- Запуск HVAC_DRL_MORL ---")

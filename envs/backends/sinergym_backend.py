@@ -25,30 +25,30 @@ class SinergymBackend(HVACBaseEnv):
 
         self.env_id = config.get("env_id", "Eplus-5Zone-hot-continuous-v1")
 
-        # 🔧 фикс hostname для BCVTB / Docker
+        
         pysocket.gethostname = lambda: "127.0.0.1"
 
-        # --- базовый sinergym env ---
+        
         env = gym.make(self.env_id, disable_env_checker=True)
 
-        # снимаем gymnasium wrappers (OrderEnforcing/EnvChecker и т.п.)
+        
         while hasattr(env, "env"):
             env = env.env
 
-        # ---------- ACTION PIPELINE ----------
+        
         normalize_action = bool(config.get("normalize_action", True))
         rate_limit = bool(config.get("rate_limit", True))
         max_delta = float(config.get("max_delta", 0.15))
-        deadband = float(config.get("deadband", 0.5))  # интерпретируем как "в градусах" (см. wrapper)
+        deadband = float(config.get("deadband", 0.5))  
 
-        # 1️⃣ Safety (жёсткие физические границы / deadband)
+       
         env = ActionSafetyWrapper(env, deadband=deadband)
 
-        # 2️⃣ Normalize (если включено)
+       
         if normalize_action:
             env = ActionNormalizeWrapper(env)
 
-        # 3️⃣ Rate limit (если включено)
+        
         if rate_limit:
             env = ActionRateLimitWrapper(env, max_delta=max_delta)
 
@@ -73,7 +73,7 @@ class SinergymBackend(HVACBaseEnv):
             ),
         )
 
-        # счётчик для отладочных принтов (если захочешь включить)
+        
         self._dbg_steps = 0
 
     @property
@@ -86,7 +86,7 @@ class SinergymBackend(HVACBaseEnv):
 
     @property
     def unwrapped(self):
-        # важно SB3: вернуть "нижний" env
+        
         return self.env
 
     def reset(self, **kwargs):
@@ -94,8 +94,8 @@ class SinergymBackend(HVACBaseEnv):
 
     def step(self, action: Any):
         """
-        action сюда приходит уже "после" всех wrappers (так как wrappers обёрнуты вокруг base env).
-        Мы логируем action_final, чтобы писать его в CSV через callback.
+        
+        
         """
         obs, _reward, terminated, truncated, info = self.env.step(action)
 
@@ -104,14 +104,14 @@ class SinergymBackend(HVACBaseEnv):
         else:
             info = dict(info)
 
-        # ✅ действие, которое реально ушло в симулятор (после safety/normalize/rate-limit)
+        
         info["action_final"] = action
 
-        # индексы наблюдений (ты их уже проверял debug-ом)
+        
         zone_temp = float(obs[self.temp_index])
         hvac_power = float(obs[self.energy_index])
 
-        # защита на случай странных значений
+        
         if zone_temp < -40 or zone_temp > 80:
             fb = info.get("zone_temp") or info.get("temperature")
             if fb is not None:

@@ -1,21 +1,4 @@
-"""
-surrogate/data_collector.py
 
-Сбор данных из BOPTEST для обучения RC Neural ODE surrogate.
-
-Политики сбора данных:
-  - random:  случайные действия (широкое покрытие пространства состояний)
-  - ppo:     обученный PPO агент (реалистичные траектории)
-  - mixed:   50% random + 50% ppo (рекомендуется)
-
-Выходной формат CSV:
-  step, t_zone, co2, p_cool, p_fan, t_amb, solar_rad,
-  a0_setpoint, a1_fan, t_zone_next, p_total
-
-Запуск:
-  python surrogate/data_collector.py --policy mixed --steps 10000
-  python surrogate/data_collector.py --policy random --steps 5000
-"""
 
 from __future__ import annotations
 
@@ -30,9 +13,7 @@ from configs.loader import load_all_configs
 from envs.factory import EnvFactory
 
 
-# -----------------------------------------------------------------------
-# Утилиты
-# -----------------------------------------------------------------------
+
 
 def _load_ppo(model_path: str):
     """Загружает PPO модель если путь существует."""
@@ -59,9 +40,7 @@ def _best_ppo_path() -> str:
     )
 
 
-# -----------------------------------------------------------------------
-# Основной коллектор
-# -----------------------------------------------------------------------
+
 
 def collect(
     policy:     str   = "mixed",
@@ -71,17 +50,7 @@ def collect(
     output_dir: str   = "/app/data/surrogate",
 ) -> str:
     """
-    Собирает данные и сохраняет в CSV.
-
-    Args:
-        policy:     "random" | "ppo" | "mixed"
-        n_steps:    количество шагов симуляции
-        seed:       seed для воспроизводимости
-        model_path: путь к PPO модели (auto-detect если None)
-        output_dir: куда сохранять CSV
-
-    Returns:
-        Путь к сохранённому CSV файлу.
+    
     """
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     np.random.seed(seed)
@@ -123,7 +92,7 @@ def collect(
         else:
             raise ValueError(f"Unknown policy: {policy}")
 
-        # Добавляем исследовательский шум к уставке
+        
         if policy != "random":
             noise = np.random.normal(0, 0.05, size=action.shape)
             action = np.clip(action + noise, -1.0, 1.0)
@@ -133,9 +102,7 @@ def collect(
 
         rv = info.get("reward_vector", {}) if isinstance(info, dict) else {}
 
-        # Денормализуем наблюдения для сохранения физических значений
-        # obs_prev: [t_zone_norm, co2_norm, p_cool_norm, p_fan_norm]
-        # Физические границы:
+        
         OBS_LOW  = np.array([15.0,  400.0,    0.0,   0.0])
         OBS_HIGH = np.array([35.0, 2000.0, 5000.0, 500.0])
         raw_prev = (obs_prev + 1.0) / 2.0 * (OBS_HIGH - OBS_LOW) + OBS_LOW
@@ -149,7 +116,7 @@ def collect(
 
         p_total = float(rv.get("hvac_power", p_cool_prev + p_fan_prev))
 
-        # Физические действия
+        
         a0 = float(action[0])
         a1 = float(action[1]) if len(action) > 1 else 0.0
         t_setpoint = 21.0 + (a0 + 1.0) / 2.0 * 4.0    # [21, 25] °C
@@ -157,21 +124,21 @@ def collect(
 
         rows.append({
             "step":        step,
-            # Текущее состояние (вход в surrogate)
+            
             "t_zone":      round(t_zone_prev, 4),
             "co2":         round(co2_prev,    2),
             "p_cool":      round(p_cool_prev, 2),
             "p_fan":       round(p_fan_prev,  2),
-            # Управляющие сигналы
+            
             "a0_raw":      round(a0, 5),
             "a1_raw":      round(a1, 5),
             "t_setpoint":  round(t_setpoint, 3),
             "fan_signal":  round(fan_signal,  4),
-            # Следующее состояние (цель для surrogate)
+            
             "t_zone_next": round(t_zone_next, 4),
-            # Итоговая мощность (для energy surrogate)
+            
             "p_total":     round(p_total,     2),
-            # Скалярная награда для справки
+            
             "reward":      round(float(reward), 5),
         })
 
@@ -189,7 +156,7 @@ def collect(
     except Exception:
         pass
 
-    # Сохраняем
+    
     df = pd.DataFrame(rows)
     out_path = os.path.join(output_dir, f"boptest_{policy}_{n_steps}.csv")
     df.to_csv(out_path, index=False)
@@ -205,9 +172,7 @@ def collect(
     return out_path
 
 
-# -----------------------------------------------------------------------
-# Утилита: статистика датасета
-# -----------------------------------------------------------------------
+
 
 def describe_dataset(csv_path: str) -> None:
     df = pd.read_csv(csv_path)
@@ -229,7 +194,7 @@ def describe_dataset(csv_path: str) -> None:
                   f"{df[col].max():.3f}]  "
                   f"mean={df[col].mean():.3f}")
 
-    # Проверяем динамику температуры
+    
     dT = df["t_zone_next"] - df["t_zone"]
     print(f"\n  Temperature dynamics (dT = T_next - T_curr):")
     print(f"    mean dT = {dT.mean():.4f} °C/step")
@@ -237,9 +202,7 @@ def describe_dataset(csv_path: str) -> None:
     print(f"    max |dT| = {dT.abs().max():.4f} °C/step")
 
 
-# -----------------------------------------------------------------------
-# Точка входа
-# -----------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(

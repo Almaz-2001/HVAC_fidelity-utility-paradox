@@ -1,21 +1,5 @@
 """
-surrogate/synthetic_data_gen.py
 
-Генератор синтетических данных "реального" здания для Фазы 2.
-
-Три реалистичных артефакта телеметрии:
-  1. Gaussian Noise:     sigma = 0.3 C  (случайный шум датчика PT100)
-  2. Telemetry Latency:  задержка наблюдения 1-3 шага (1-3 часа)
-  3. Sensor Bias:        постоянное смещение +0.5 C (дрейф калибровки)
-
-"Реальное" здание отличается от surrogate:
-  - C_zon_real = 4.2e5 J/K  (surrogate знает 5.3e5, разница 21%)
-  - теплопотери через стены  (surrogate не моделирует)
-  - нелинейный КПД HVAC
-
-Запуск:
-  python surrogate/synthetic_data_gen.py --steps 500 --seed 42
-  python surrogate/synthetic_data_gen.py --steps 500 --no_latency --no_bias
 """
 
 from __future__ import annotations
@@ -62,13 +46,7 @@ def _real_step(t_zone, a0, a1, t_amb, q_int, p):
 
 class TelemetrySimulator:
     """
-    Имитирует BMS с тремя слоями артефактов:
-
-    t_true
-      → [Bias: +0.5 C]       систематическая ошибка калибровки
-      → [Noise: N(0, 0.3)]   случайный шум датчика PT100
-      → [Buffer: delay=1-3]  задержка передачи данных
-      → t_observed
+    
     """
 
     def __init__(self, params, rng, use_noise, use_latency, use_bias, latency=None):

@@ -1,4 +1,4 @@
-total_timesteps: 100
+total_timesteps: 500000
 seed: 42
 
 

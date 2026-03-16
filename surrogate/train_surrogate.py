@@ -1,11 +1,5 @@
 """
-surrogate/train_surrogate.py
 
-Обучение RC Neural ODE surrogate на данных из BOPTEST.
-
-Запуск:
-  python surrogate/train_surrogate.py --data /app/data/surrogate/boptest_mixed_10000.csv
-  python surrogate/train_surrogate.py --data /app/data/surrogate/boptest_random_5000.csv --epochs 200
 """
 
 from __future__ import annotations
@@ -24,14 +18,11 @@ from typing import Tuple, Dict
 from surrogate.rc_node import RCNeuralODE, SurrogateLoss
 
 
-# -----------------------------------------------------------------------
-# Dataset
-# -----------------------------------------------------------------------
+
 
 class BOPTESTDataset(Dataset):
     """
-    Датасет одношаговых переходов:
-        (t_zone, a0, a1) → (t_zone_next, p_total)
+    
     """
 
     def __init__(self, csv_path: str):
@@ -76,9 +67,7 @@ class BOPTESTDataset(Dataset):
         )
 
 
-# -----------------------------------------------------------------------
-# Metrics
-# -----------------------------------------------------------------------
+
 
 def compute_metrics(
     t_pred: torch.Tensor,
@@ -109,9 +98,7 @@ def compute_metrics(
     }
 
 
-# -----------------------------------------------------------------------
-# Training loop
-# -----------------------------------------------------------------------
+
 
 def train(
     data_path:   str,
@@ -272,9 +259,7 @@ def train(
     return model_path
 
 
-# -----------------------------------------------------------------------
-# Benchmark: скорость surrogate vs BOPTEST
-# -----------------------------------------------------------------------
+
 
 def benchmark_speed(model_path: str, n_steps: int = 10_000) -> None:
     """Сравнивает скорость surrogate и BOPTEST."""
@@ -287,17 +272,17 @@ def benchmark_speed(model_path: str, n_steps: int = 10_000) -> None:
     model.update_normalization(checkpoint["t_mean"], checkpoint["t_std"])
     model.eval()
 
-    # Батч из n_steps случайных состояний
+    
     t_zone = torch.FloatTensor(n_steps).uniform_(15, 35)
     a0     = torch.FloatTensor(n_steps).uniform_(-1, 1)
     a1     = torch.FloatTensor(n_steps).uniform_(-1, 1)
 
-    # Прогрев
+    
     with torch.no_grad():
         for _ in range(100):
             model(t_zone[:64], a0[:64], a1[:64])
 
-    # Замер
+    
     t0 = time.perf_counter()
     with torch.no_grad():
         _ = model(t_zone, a0, a1)
@@ -309,9 +294,7 @@ def benchmark_speed(model_path: str, n_steps: int = 10_000) -> None:
     print(f"[BENCH] Speedup:         ~{steps_per_sec:,.0f}x")
 
 
-# -----------------------------------------------------------------------
-# Точка входа
-# -----------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser()

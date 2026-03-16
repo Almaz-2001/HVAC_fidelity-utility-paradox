@@ -15,18 +15,18 @@ def c_to_k(c: float) -> float:
     return float(c) + 273.15
 
 
-# Physical borders for normalization observation in [-1,1]
-#We use  it only in the _make_obs (dont changing thec reward logic)
+
 _OBS_LOW = np.array([15.0, 400.0, 0.0, 0.0], dtype=np.float32)
 _OBS_HIGH = np.array([35.0, 2000.0, 5000.0, 500.0], dtype=np.float32)
 
 
 class BOPTESTBackend(HVACBaseEnv):
-    # Measurement keys (as in your setup)
+    
     KEY_T_ROOM = "zon_reaTRooAir_y"
     KEY_CO2 = "zon_reaCO2RooAir_y"
     KEY_P_COO = "fcu_reaPCoo_y"
     KEY_P_FAN = "fcu_reaPFan_y"
+    KEY_T_AMB = "zon_weaSta_reaWeaTDryBul_y"    
 
     def __init__(self, config: Dict[str, Any]):
         self._action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
@@ -34,20 +34,20 @@ class BOPTESTBackend(HVACBaseEnv):
 
         super().__init__(config)
 
+        self.config = config    
 
-
-        # --- BOPTEST connection/config ---
+        
         self.base_url = config.get("boptest_url", "http://web:8000").rstrip("/")
         self.testcase_id = config.get("testcase_id", "bestest_air")
         self.step_sec = int(config.get("step_sec", 3600))
 
-        # timeouts/retries (support both boptest_* and http_* keys)
+        
         self.timeout = float(config.get("boptest_timeout", config.get("http_timeout", 120.0)))
         self.max_retries = int(config.get("boptest_retries", config.get("http_retries", 5)))
         self.backoff_base = float(config.get("boptest_backoff", config.get("http_backoff_base", 0.5)))
         self.recover_on_fail = bool(config.get("recover_on_fail", True))
 
-        # select can be slow
+        
         self.select_timeout = float(
             config.get(
                 "boptest_select_timeout",
@@ -55,7 +55,7 @@ class BOPTESTBackend(HVACBaseEnv):
             )
         )
 
-        # --- MORL/reward params ---
+        
         morl = config.get("morl", {})
         self.temp_low = float(morl.get("temp_low", 20.0))
         self.temp_high = float(morl.get("temp_high", 26.0))
@@ -70,7 +70,7 @@ class BOPTESTBackend(HVACBaseEnv):
         self._max_overshoot = 0.0
         self._max_undershoot = 0.0
 
-        # --- runtime state ---
+        
         self.testid: Optional[str] = None
         self.t = 0.0
 
@@ -85,16 +85,16 @@ class BOPTESTBackend(HVACBaseEnv):
     def observation_space(self):
         return self._observation_space
 
-    # -------------------------
-    # HTTP helpers
-    # -------------------------
+    
+    
+    
     def _sleep_backoff(self, attempt: int) -> None:
         delay = self.backoff_base * (2 ** attempt)
         time.sleep(min(delay, 8.0))
 
     def _request_json(self, method: str, url: str, payload: Optional[dict] = None, timeout: Optional[float] = None) -> dict:
         """
-        Generic request with retry/backoff on transient errors.
+        
         """
         timeout = float(timeout if timeout is not None else self.timeout)
         last_err: Optional[Exception] = None
@@ -110,7 +110,7 @@ class BOPTESTBackend(HVACBaseEnv):
                 else:
                     raise ValueError(f"Unsupported HTTP method: {method}")
 
-                # retry on transient server errors
+                
                 if res.status_code in (500, 502, 503, 504):
                     self._sleep_backoff(attempt)
                     continue
@@ -126,9 +126,9 @@ class BOPTESTBackend(HVACBaseEnv):
             raise last_err
         raise RuntimeError("HTTP request failed without exception (unexpected)")
 
-    # -------------------------
-    # BOPTEST session lifecycle
-    # -------------------------
+    
+    
+    
     def _select_and_warmup(self) -> None:
         """
         Creates/selects a testcase and stores testid.
@@ -141,20 +141,32 @@ class BOPTESTBackend(HVACBaseEnv):
         if not self.testid:
             raise RuntimeError(f"Failed to obtain testid from select response: {data}")
 
-        # Set control step if endpoint exists (your routes show PUT /step/:testid)
+        
         try:
             self._request_json("PUT", f"{self.base_url}/step/{self.testid}", payload={"step": self.step_sec})
         except Exception:
-            # Not fatal; proceed
+            
             pass
 
-        self.t = 0.0
-        print(f"[BOPTEST] Selected testid: {self.testid}")
+        
+        start_time = self.config.get("start_time", 0)
+        warmup = self.config.get("warmup_period", 7 * 24 * 3600)
+        try:
+            self._request_json(
+                "PUT",
+                f"{self.base_url}/initialize/{self.testid}",
+                payload={"start_time": start_time, "warmup_period": warmup}
+            )
+        except Exception:
+            pass
+
+        self.t = float(start_time)
+        print(f"[BOPTEST] Selected testid: {self.testid}, start_time={start_time}")
 
     def _stop_current(self) -> None:
         """
-        Stops current test session if possible.
-        Your web routes show PUT /stop/:testid.
+        
+        
         """
         if not self.testid:
             return
@@ -170,9 +182,9 @@ class BOPTESTBackend(HVACBaseEnv):
         self.testid = None
         self._select_and_warmup()
 
-    # -------------------------
-    # Gym API
-    # -------------------------
+    
+    
+    
     def reset(self, *, seed=None, options=None) -> Tuple[np.ndarray, Dict[str, Any]]:
         if seed is not None:
             np.random.seed(seed)
@@ -193,7 +205,7 @@ class BOPTESTBackend(HVACBaseEnv):
         return obs, {"testid": self.testid, "time": self.t}
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
-        # map normalized action to setpoint + fan
+        
         t_target = self.temp_low + (float(action[0]) + 1.0) * 0.5 * (self.temp_high - self.temp_low)
         fan_u = float(np.clip((float(action[1]) + 1.0) * 0.5, 0.0, 1.0))
 
@@ -217,17 +229,22 @@ class BOPTESTBackend(HVACBaseEnv):
 
         self._update_safety(rv["zone_temp"])
 
-        info = {
+        
+        t_amb_k = self._get_val(payload, self.KEY_T_AMB)
+        t_amb_c = t_amb_k - 273.15 if t_amb_k > 200 else t_amb_k
+
+        return obs, float(reward), False, False, {
             "reward_vector": rv,
             "time": self.t,
             "safety": self.get_safety_metric(),
+            "t_amb": t_amb_c,
+            "hour": (self.t / 3600.0) % 24.0,
+            "day": (self.t / 86400.0) % 365.0,
         }
 
-        return obs, float(reward), False, False, {"reward_vector": rv, "time": self.t}
-
-    # -------------------------
-    # BOPTEST calls
-    # -------------------------
+    
+    
+    
     def advance(self, actions: Dict[str, Any]) -> dict:
         if not self.testid:
             self._recover()
@@ -242,9 +259,9 @@ class BOPTESTBackend(HVACBaseEnv):
 
         return data.get("payload", data)
 
-    # -------------------------
-    # Observation 
-    # -------------------------
+    
+    
+    
     def _get_val(self, values: dict, key: str) -> float:
         v = values.get(key, 0.0)
         return float(v.get("value", v) if isinstance(v, dict) else v)
@@ -310,9 +327,6 @@ class BOPTESTBackend(HVACBaseEnv):
             "violation_steps": self._violation_steps,
             "total_steps":     self._total_steps,
         }
-
-    
-        
 
     def close(self):
         self._stop_current()
