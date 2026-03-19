@@ -16,8 +16,8 @@ def c_to_k(c: float) -> float:
 
 
 
-_OBS_LOW = np.array([15.0, 400.0, 0.0, 0.0], dtype=np.float32)
-_OBS_HIGH = np.array([35.0, 2000.0, 5000.0, 500.0], dtype=np.float32)
+_OBS_LOW = np.array([5.0, 400.0, 0.0, 0.0], dtype=np.float32)
+_OBS_HIGH = np.array([40.0, 2000.0, 5000.0, 500.0], dtype=np.float32)
 
 
 class BOPTESTBackend(HVACBaseEnv):
@@ -141,27 +141,28 @@ class BOPTESTBackend(HVACBaseEnv):
         if not self.testid:
             raise RuntimeError(f"Failed to obtain testid from select response: {data}")
 
-        
         try:
             self._request_json("PUT", f"{self.base_url}/step/{self.testid}", payload={"step": self.step_sec})
-        except Exception:
-            
-            pass
+        except Exception as e:
+            print(f"[BOPTEST] Предупреждение (step): {e}")
 
         
-        start_time = self.config.get("start_time", 0)
-        warmup = self.config.get("warmup_period", 7 * 24 * 3600)
-        try:
-            self._request_json(
-                "PUT",
-                f"{self.base_url}/initialize/{self.testid}",
-                payload={"start_time": start_time, "warmup_period": warmup}
-            )
-        except Exception:
-            pass
+        start_time = float(self.config.get("boptest_start_time", 0.0))
+        warmup = float(self.config.get("boptest_warmup_sec", 604800.0))
+        
+        print(f"[BOPTEST] Запускаем прогрев здания (Warmup: {warmup} сек). Это может занять 1-2 минуты...")
+        
+        
+        
+        self._request_json(
+            "PUT",
+            f"{self.base_url}/initialize/{self.testid}",
+            payload={"start_time": start_time, "warmup_period": warmup},
+            timeout=self.select_timeout 
+        )
 
-        self.t = float(start_time)
-        print(f"[BOPTEST] Selected testid: {self.testid}, start_time={start_time}")
+        self.t = start_time
+        print(f"[BOPTEST] Успешно инициализировано: testid={self.testid}")
 
     def _stop_current(self) -> None:
         """
@@ -249,7 +250,7 @@ class BOPTESTBackend(HVACBaseEnv):
         if not self.testid:
             self._recover()
 
-        url = f"{self.base_url}/advance/{self.testid}"
+        url = f"{self.base_url}/advance/{self.testid}"  
         try:
             data = self._request_json("POST", url, payload=actions)
         except Exception:
@@ -258,6 +259,8 @@ class BOPTESTBackend(HVACBaseEnv):
             data = self._request_json("POST", url, payload=actions)
 
         return data.get("payload", data)
+    
+    
 
     
     
@@ -272,6 +275,8 @@ class BOPTESTBackend(HVACBaseEnv):
         p_cool = self._get_val(values, self.KEY_P_COO)
         p_fan = self._get_val(values, self.KEY_P_FAN)
         return np.array([t_c, co2, p_cool, p_fan], dtype=np.float32)
+    
+        
 
     def _make_obs(self, values: dict) -> np.ndarray:
         raw = self._make_obs_raw(values)

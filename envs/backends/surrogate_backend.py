@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import os
@@ -11,8 +9,8 @@ from typing import Any, Dict, Optional, Tuple
 from envs.base_env import HVACBaseEnv
 
 
-_OBS_LOW  = np.array([15.0,  400.0,    0.0,   0.0], dtype=np.float32)
-_OBS_HIGH = np.array([35.0, 2000.0, 5000.0, 500.0], dtype=np.float32)
+_OBS_LOW  = np.array([5.0,   400.0,    0.0,   0.0], dtype=np.float32)
+_OBS_HIGH = np.array([40.0, 2000.0, 5000.0, 500.0], dtype=np.float32)
 
 _T_LOW  = 21.0
 _T_HIGH = 25.0
@@ -39,10 +37,10 @@ class SurrogateBackend(HVACBaseEnv):
         # Domain randomization settings
         dr = config.get("domain_randomization", {})
         self.dr_enabled     = bool(dr.get("enabled", True))
-        self.dr_t_init_low  = float(dr.get("t_init_low", 15.0))
-        self.dr_t_init_high = float(dr.get("t_init_high", 28.0))
-        self.dr_t_amb_base_range  = (float(dr.get("t_amb_base_low", 4.0)),
-                                     float(dr.get("t_amb_base_high", 14.0)))
+        self.dr_t_init_low  = float(dr.get("t_init_low", 10.0))
+        self.dr_t_init_high = float(dr.get("t_init_high", 30.0))
+        self.dr_t_amb_base_range  = (float(dr.get("t_amb_base_low", -10.0)),
+                                     float(dr.get("t_amb_base_high", 25.0)))
         self.dr_t_amb_amp_range   = (float(dr.get("t_amb_amp_low", 5.0)),
                                      float(dr.get("t_amb_amp_high", 15.0)))
         self.dr_t_amb_diurnal_range = (float(dr.get("diurnal_low", 2.0)),
@@ -80,7 +78,7 @@ class SurrogateBackend(HVACBaseEnv):
         self._dr_t_amb_diurnal = 4.0
         self._dr_t_amb_noise = 1.0
 
-        
+        # Safety
         self._total_steps     = 0
         self._violation_steps = 0
         self._max_overshoot   = 0.0
@@ -108,12 +106,7 @@ class SurrogateBackend(HVACBaseEnv):
     def action_space(self) -> spaces.Box:
         return self._action_space
 
-    
-
     def _get_t_amb(self, hour: float, day: float) -> float:
-        """
-        
-        """
         seasonal = self._dr_t_amb_base + self._dr_t_amb_amp * np.sin(
             2 * np.pi * (day - 80) / 365.0
         )
@@ -124,7 +117,6 @@ class SurrogateBackend(HVACBaseEnv):
         return float(np.clip(seasonal + diurnal + noise, -25.0, 40.0))
 
     def _randomize_domain(self) -> None:
-        """Sample new domain parameters for this episode."""
         if not self.dr_enabled:
             self._dr_t_amb_base = 8.0
             self._dr_t_amb_amp = 10.0
@@ -137,18 +129,12 @@ class SurrogateBackend(HVACBaseEnv):
         self._dr_t_amb_diurnal = np.random.uniform(*self.dr_t_amb_diurnal_range)
         self._dr_t_amb_noise = np.random.uniform(*self.dr_t_amb_noise_range)
 
-    # -----------------------------------------------------------------------
-    # Gymnasium interface
-    # -----------------------------------------------------------------------
-
     def reset(self, seed=None, options=None) -> Tuple[np.ndarray, dict]:
         if seed is not None:
             np.random.seed(seed)
 
-        # Domain randomization — new weather params each episode
         self._randomize_domain()
 
-        # Random initial conditions
         if self.dr_enabled:
             self._t_zone = float(np.random.uniform(self.dr_t_init_low, self.dr_t_init_high))
         else:
@@ -158,7 +144,6 @@ class SurrogateBackend(HVACBaseEnv):
         self._p_cool = 0.0
         self._p_fan  = 0.0
 
-        # Random start day
         self._start_day = np.random.uniform(0, 365)
         self._time = self._start_day * 86400.0
         self._t_amb = self._get_t_amb(self._hour, self._day)
