@@ -1,17 +1,7 @@
-"""
-evaluation/visualize_results.py
 
-Визуализация результатов Phases 0-3.
-Генерирует 6 графиков и сохраняет в PNG + показывает в VS Code.
-
-Запуск:
-    PYTHONPATH=/app python evaluation/visualize_results.py
-
-Или в VS Code: Run Python File
-"""
 
 import matplotlib
-matplotlib.use('Agg')  # для серверов без дисплея; уберите если в VS Code с дисплеем
+matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
@@ -19,11 +9,9 @@ import os
 from pathlib import Path
 
 
-# -----------------------------------------------------------------------
-# Данные (все результаты из Phases 0-3)
-# -----------------------------------------------------------------------
 
-# Phase 0: Pareto sweep
+
+
 PARETO = {
     'comfort_only':     {'energy_kwh': 192.3, 'ms': 1.284, 'viol': 78.7},
     'comfort_dominant': {'energy_kwh': 190.2, 'ms': 1.289, 'viol': 78.7},
@@ -32,13 +20,13 @@ PARETO = {
     'energy_only':      {'energy_kwh': 138.7, 'ms': 1.389, 'viol': 79.7},
 }
 
-# Surrogate comparison
+
 SURROGATE = {
     'Phase 1 (v1)': {'rmse': 1.128, 'r2': 0.884, 'data_k': 10, 'params': 4800, 'inputs': 3},
     'Phase 3 (v2)': {'rmse': 0.163, 'r2': 0.991, 'data_k': 51.2, 'params': 8482, 'inputs': 8},
 }
 
-# Rollout validation
+
 ROLLOUT = {
     1: {'rmse': 0.303, 'bias': 0.030, 'false_safe': 1.7, 'margin_95': 0.63},
     2: {'rmse': 0.413, 'bias': 0.052, 'false_safe': 2.2, 'margin_95': 0.82},
@@ -46,20 +34,20 @@ ROLLOUT = {
     6: {'rmse': 0.710, 'bias': 0.109, 'false_safe': 3.2, 'margin_95': 1.31},
 }
 
-# Multi-seed evaluation (BOPTEST)
+
 MULTI_SEED = {
     'no_sf':   {'viol': [81.8, 75.8, 77.2], 'energy': [336, 198, 207]},
     'with_sf': {'viol': [66.9, 67.2, 67.9], 'energy': [264, 269, 267]},
 }
 
-# Phase 2: Calibration
+
 CALIBRATION = {
     'Before (uncalibrated)': 9.12,
     'Linear calibration':    8.65,
     'Finetune calibration':  1.91,
 }
 
-# m_s comparison across all
+
 MS_COMPARISON = {
     'Phase 0\n(PPO 5k)':       1.284,
     'Phase 1\n(PPO 100k\nsurrogate)': 0.510,
@@ -68,11 +56,11 @@ MS_COMPARISON = {
     'Wang\nSafe DRL':           0.000,
 }
 
-# Output directory
+
 OUT_DIR = "/app/outputs/figures"
 Path(OUT_DIR).mkdir(parents=True, exist_ok=True)
 
-# Style
+
 plt.rcParams.update({
     'font.size': 11,
     'axes.titlesize': 13,
@@ -90,9 +78,7 @@ RED = '#E24B4A'
 BLUE = '#3266ad'
 
 
-# -----------------------------------------------------------------------
-# Figure 1: m_s across phases + Wang comparison
-# -----------------------------------------------------------------------
+
 def plot_ms_comparison():
     fig, ax = plt.subplots(figsize=(10, 5))
 
@@ -102,12 +88,12 @@ def plot_ms_comparison():
 
     bars = ax.bar(labels, values, color=colors, width=0.6, edgecolor='white', linewidth=0.5)
 
-    # Аннотации
+    
     for bar, val in zip(bars, values):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.03,
                 f'{val:.3f}', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
-    # Линия target
+    
     ax.axhline(y=0.1, color=RED, linestyle='--', linewidth=1.2, alpha=0.7, label='Target m_s < 0.1')
 
     ax.set_ylabel('Safety metric $m_s$ (lower is better)')
@@ -115,7 +101,7 @@ def plot_ms_comparison():
     ax.legend(loc='upper right')
     ax.set_ylim(0, 1.7)
 
-    # Легенда цветов
+    
     handles = [
         mpatches.Patch(color=PURPLE, label='Our PPO'),
         mpatches.Patch(color=TEAL, label='Our PPO + Safety Filter'),
@@ -130,13 +116,11 @@ def plot_ms_comparison():
     print(f'Saved: {path}')
 
 
-# -----------------------------------------------------------------------
-# Figure 2: Surrogate v1 vs v2
-# -----------------------------------------------------------------------
+
 def plot_surrogate_comparison():
     fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 
-    # RMSE
+    
     ax = axes[0]
     ax.bar(['Phase 1\n(3 inputs)', 'Phase 3\n(8 inputs)'],
            [1.128, 0.163], color=[GRAY, PURPLE], width=0.5)
@@ -146,7 +130,7 @@ def plot_surrogate_comparison():
                 ha='center', va='bottom', xytext=(1, 0.35),
                 arrowprops=dict(arrowstyle='->', color=TEAL))
 
-    # R²
+    
     ax = axes[1]
     ax.bar(['Phase 1', 'Phase 3'], [0.884, 0.991], color=[GRAY, PURPLE], width=0.5)
     ax.set_ylabel('R²')
@@ -170,9 +154,7 @@ def plot_surrogate_comparison():
     print(f'Saved: {path}')
 
 
-# -----------------------------------------------------------------------
-# Figure 3: Rollout validation (dual axis)
-# -----------------------------------------------------------------------
+
 def plot_rollout_validation():
     fig, ax1 = plt.subplots(figsize=(8, 5))
 
@@ -181,7 +163,7 @@ def plot_rollout_validation():
     false_safe = [ROLLOUT[h]['false_safe'] for h in horizons]
     margins = [ROLLOUT[h]['margin_95'] for h in horizons]
 
-    # RMSE line
+    
     ln1 = ax1.plot(horizons, rmse, 'o-', color=PURPLE, linewidth=2, markersize=8,
                    label='Rollout RMSE (°C)')
     ax1.fill_between(horizons, rmse, alpha=0.1, color=PURPLE)
@@ -190,11 +172,11 @@ def plot_rollout_validation():
     ax1.tick_params(axis='y', labelcolor=PURPLE)
     ax1.set_ylim(0, 1.0)
 
-    # Safety margin
+    
     ln2 = ax1.plot(horizons, margins, 's--', color=BLUE, linewidth=1.5, markersize=7,
                    label='Safety margin 95% (°C)')
 
-    # False-safe rate (right axis)
+    
     ax2 = ax1.twinx()
     ln3 = ax2.plot(horizons, false_safe, '^-', color=RED, linewidth=2, markersize=8,
                    label='False-safe rate (%)')
@@ -202,13 +184,13 @@ def plot_rollout_validation():
     ax2.tick_params(axis='y', labelcolor=RED)
     ax2.set_ylim(0, 5)
 
-    # Зона выбора (horizon=2)
+    
     ax1.axvspan(1.7, 2.3, alpha=0.15, color=TEAL, label='Selected horizon')
     ax1.annotate('Chosen:\nhorizon=2\nmargin=0.82°C', xy=(2, 0.413), fontsize=9,
                  xytext=(3.5, 0.2), arrowprops=dict(arrowstyle='->', color=TEAL),
                  color=TEAL, fontweight='bold')
 
-    # Combined legend
+    
     lines = ln1 + ln2 + ln3
     labels = [l.get_label() for l in lines]
     ax1.legend(lines, labels, loc='upper left', fontsize=9)
@@ -223,9 +205,7 @@ def plot_rollout_validation():
     print(f'Saved: {path}')
 
 
-# -----------------------------------------------------------------------
-# Figure 4: Multi-seed evaluation
-# -----------------------------------------------------------------------
+
 def plot_multi_seed():
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 
@@ -233,7 +213,7 @@ def plot_multi_seed():
     x = np.arange(len(seeds))
     w = 0.35
 
-    # Violation %
+    
     ax = axes[0]
     b1 = ax.bar(x - w/2, MULTI_SEED['no_sf']['viol'], w, color=GRAY, label='PPO alone')
     b2 = ax.bar(x + w/2, MULTI_SEED['with_sf']['viol'], w, color=PURPLE, label='PPO + SF')
@@ -244,7 +224,7 @@ def plot_multi_seed():
     ax.legend()
     ax.set_ylim(0, 100)
 
-    # Means
+    
     no_mean = np.mean(MULTI_SEED['no_sf']['viol'])
     sf_mean = np.mean(MULTI_SEED['with_sf']['viol'])
     ax.axhline(no_mean, color=GRAY, linestyle=':', alpha=0.6)
@@ -252,7 +232,7 @@ def plot_multi_seed():
     ax.annotate(f'mean={no_mean:.1f}%', xy=(2.3, no_mean), fontsize=9, color=GRAY)
     ax.annotate(f'mean={sf_mean:.1f}%', xy=(2.3, sf_mean), fontsize=9, color=PURPLE)
 
-    # Energy
+    
     ax = axes[1]
     b1 = ax.bar(x - w/2, MULTI_SEED['no_sf']['energy'], w, color=GRAY, label='PPO alone')
     b2 = ax.bar(x + w/2, MULTI_SEED['with_sf']['energy'], w, color=PURPLE, label='PPO + SF')
@@ -262,7 +242,7 @@ def plot_multi_seed():
     ax.set_xticklabels(seeds)
     ax.legend()
 
-    # std annotation
+    
     no_std = np.std(MULTI_SEED['no_sf']['energy'])
     sf_std = np.std(MULTI_SEED['with_sf']['energy'])
     ax.annotate(f'std={no_std:.0f}', xy=(2.3, np.mean(MULTI_SEED['no_sf']['energy'])),
@@ -278,9 +258,7 @@ def plot_multi_seed():
     print(f'Saved: {path}')
 
 
-# -----------------------------------------------------------------------
-# Figure 5: Phase 2 Calibration
-# -----------------------------------------------------------------------
+
 def plot_calibration():
     fig, ax = plt.subplots(figsize=(7, 4.5))
 
@@ -294,7 +272,7 @@ def plot_calibration():
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.15,
                 f'{val:.2f}°C', ha='center', va='bottom', fontsize=11, fontweight='bold')
 
-    # Improvement arrow
+    
     ax.annotate('79% improvement', xy=(2, 1.91), xytext=(1, 5),
                 fontsize=11, color=TEAL, fontweight='bold',
                 arrowprops=dict(arrowstyle='->', color=TEAL, lw=2))
@@ -309,9 +287,7 @@ def plot_calibration():
     print(f'Saved: {path}')
 
 
-# -----------------------------------------------------------------------
-# Figure 6: Phase 0 Pareto front
-# -----------------------------------------------------------------------
+
 def plot_pareto():
     fig, ax = plt.subplots(figsize=(8, 5))
 
@@ -319,10 +295,10 @@ def plot_pareto():
     energies = [PARETO[n]['energy_kwh'] for n in names]
     ms_vals = [PARETO[n]['ms'] for n in names]
 
-    # Plot Pareto front
+    
     ax.plot(energies, ms_vals, 'o-', color=PURPLE, linewidth=2, markersize=10, zorder=3)
 
-    # Annotate points
+    
     for i, name in enumerate(names):
         short = name.replace('_', '\n')
         offset = (8, 8) if i % 2 == 0 else (-8, -15)
@@ -330,7 +306,7 @@ def plot_pareto():
                     xytext=offset, textcoords='offset points',
                     fontsize=8, ha='left', color=PURPLE)
 
-    # Arrow showing Pareto direction
+    
     ax.annotate('', xy=(135, 1.26), xytext=(195, 1.41),
                 arrowprops=dict(arrowstyle='->', color=TEAL, lw=2.5))
     ax.text(155, 1.35, '28% energy\nreduction', fontsize=10, color=TEAL,
@@ -347,9 +323,7 @@ def plot_pareto():
     print(f'Saved: {path}')
 
 
-# -----------------------------------------------------------------------
-# Main
-# -----------------------------------------------------------------------
+
 def main():
     print(f"Generating figures → {OUT_DIR}/\n")
 

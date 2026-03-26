@@ -57,8 +57,8 @@ def eval_model(model_path: str, out_csv: str, n_steps: int = 2000, seed: int | N
 
 
 if __name__ == "__main__":
-    # пример:
-    # python /app/evaluation/eval_policy.py /app/outputs/seed42/models/ppo_model.zip /app/outputs/seed42/eval/eval_morl.csv 2000
+    
+    
     import sys
     mp = sys.argv[1]
     out = sys.argv[2]

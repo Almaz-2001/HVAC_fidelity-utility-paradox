@@ -1,12 +1,4 @@
-"""
-evaluation/eval_safe_morl.py
 
-Phase 3 / Step 4: Evaluation of PPO + Surrogate Safety Filter on BOPTEST.
-
-Updates:
-  - Warmup exclusion: first N steps excluded from m_s (cold start, as in Wang et al.)
-  - Warmup period logged separately for transparency
-"""
 
 from __future__ import annotations
 
@@ -62,13 +54,13 @@ def eval_safe_morl(
     obs, info = env.reset(seed=seed)
     rows = []
 
-    # Tracking — separate warmup and post-warmup
+    
     total_steps = 0
-    # Post-warmup counters (for m_s)
+    # Post-warmup counters 
     pw_violation_steps = 0
     pw_max_overshoot = 0.0
     pw_max_undershoot = 0.0
-    # Full counters (including warmup, for reference)
+    # Full counters 
     full_violation_steps = 0
     full_max_overshoot = 0.0
     full_max_undershoot = 0.0
@@ -111,7 +103,7 @@ def eval_safe_morl(
         total_steps += 1
         total_energy += p_total
 
-        # Full tracking (including warmup)
+        # Full tracking 
         is_violation = (t_zone > t_high) or (t_zone < t_low)
         if is_violation:
             full_violation_steps += 1
@@ -120,7 +112,7 @@ def eval_safe_morl(
         elif t_zone < t_low:
             full_max_undershoot = max(full_max_undershoot, (t_low - t_zone) / t_low)
 
-        # Post-warmup tracking (for m_s, as in Wang et al.)
+        # Post-warmup tracking 
         if step >= warmup_steps:
             total_comfort_penalty += abs(comfort)
             if t_zone > t_high:
@@ -166,14 +158,14 @@ def eval_safe_morl(
     except Exception:
         pass
 
-    # Final metrics — POST-WARMUP (primary)
+    #Final metricsPOST-WARMUP 
     effective_steps = total_steps - warmup_steps
     pw_r_time = pw_violation_steps / max(effective_steps, 1)
     pw_r_sev = max(pw_max_overshoot, pw_max_undershoot)
     pw_m_s = pw_r_time + pw_r_sev
     pw_viol_pct = pw_violation_steps / max(effective_steps, 1) * 100
 
-    # Full metrics (including warmup, for reference)
+    # Full metrics
     full_r_time = full_violation_steps / total_steps
     full_r_sev = max(full_max_overshoot, full_max_undershoot)
     full_m_s = full_r_time + full_r_sev

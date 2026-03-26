@@ -1,18 +1,18 @@
 import subprocess
 import time
 
-# 10 сценариев, охватывающих разные сезоны (время в секундах от начала года)
+
 scenarios = {
-    "Jan_Winter": 0,           # 1 января
-    "Feb_Winter": 2678400,     # 1 февраля
-    "Mar_Spring": 5097600,     # 1 марта
-    "Apr_Spring": 7776000,     # 1 апреля
-    "May_Spring": 10368000,    # 1 мая
-    "Jun_Summer": 13132800,    # 1 июня
-    "Jul_Summer": 15552000,    # 1 июля
-    "Aug_Summer": 18144000,    # 1 августа
-    "Oct_Autumn": 23328000,    # 1 октября
-    "Nov_Autumn": 25920000     # 1 ноября
+    "Jan_Winter": 0,           
+    "Feb_Winter": 2678400,     
+    "Mar_Spring": 5097600,     
+    "Apr_Spring": 7776000,    
+    "May_Spring": 10368000,   
+    "Jun_Summer": 13132800,    
+    "Jul_Summer": 15552000,    
+    "Aug_Summer": 18144000,    
+    "Oct_Autumn": 23328000,    
+    "Nov_Autumn": 25920000     
 }
 
 def main():

@@ -4,12 +4,12 @@ sys.modules['numpy._core'] = np.core
 sys.modules['numpy._core.multiarray'] = np.core.multiarray
 sys.modules['numpy._core.numeric'] = np.core.numeric
 
-# 2. Патч генератора случайных чисел (Перехватчик)
+
 import numpy.random._pickle as npr_pickle
 _original_ctor = npr_pickle.__bit_generator_ctor
 
 def _patched_ctor(bit_generator_name="PCG64"):
-    # Если получаем объект класса из нового numpy, принудительно превращаем его в строку для старого
+    
     if not isinstance(bit_generator_name, str) or "<class" in str(bit_generator_name):
         bit_generator_name = "PCG64"
     return _original_ctor(bit_generator_name)
@@ -36,16 +36,16 @@ def run_evaluation(seed, start_time, scenario_name):
     
     config["backend"] = "boptest"
     
-    # ПЕРЕОПРЕДЕЛЯЕМ время старта, если оно передано
+    
     if start_time is not None:
         config["boptest_start_time"] = start_time
         print(f"[{scenario_name}] Установлено время старта: {start_time} сек.")
 
-    # 2. Воспроизводимость
+    
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    # 3. Загрузка модели
+    
     if not os.path.exists(model_path):
         print(f"Ошибка: Модель {model_path} не найдена")
         return
@@ -63,7 +63,7 @@ def run_evaluation(seed, start_time, scenario_name):
     history = {"temp": [], "power": [], "m_s": []}
     obs, _ = env.reset(seed=seed)
     
-    steps = 336 # 14 дней
+    steps = 336 
     print(f"\n--- Старт сценария: {scenario_name} ---")
     
     try:
@@ -81,7 +81,7 @@ def run_evaluation(seed, start_time, scenario_name):
             if step % 48 == 0:
                 print(f"{scenario_name} | Шаг {step:3d} | T: {history['temp'][-1]:.2f}°C | Power: {history['power'][-1]:.1f}W")
 
-        # Сохранение с именем сценария
+        
         df = pd.DataFrame(history)
         csv_path = os.path.join(output_dir, f"metrics_scenario_{scenario_name}.csv")
         df.to_csv(csv_path, index=False)
