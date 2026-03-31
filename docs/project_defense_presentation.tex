@@ -1,0 +1,589 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{ragged2e}
+
+\title{HVAC Building Energy Management\\Multi-Objective Deep Reinforcement Learning}
+\subtitle{Project Defense Presentation: Phases 0--3 and Current Phase 3 Continuation}
+\author{Almaz Sapargali}
+\date{March 30, 2026}
+
+\newcommand{\degc}{\ensuremath{^\circ\mathrm{C}}}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Agenda}
+  \tableofcontents
+\end{frame}
+
+\section{Problem and Roadmap}
+
+\begin{frame}{Problem Statement}
+  \begin{itemize}
+    \item HVAC control is inherently multi-objective: comfort, energy, and safety must be balanced at the same time.
+    \item Purely model-based methods are often accurate but slow or difficult to deploy online.
+    \item Purely model-free RL is flexible, but BOPTEST training is expensive and sample-inefficient.
+    \item The central question of this project is therefore:
+    \item Can we build a fast and physically informed RL pipeline that is accurate enough for control, scalable enough for experimentation, and structured enough for safe deployment?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Research Roadmap}
+  \begin{itemize}
+    \item Phase 0: establish PPO-based energy-management baseline and identify reward-scaling and observation-space issues.
+    \item Phase 1: build a physics-informed RC Neural ODE surrogate to replace slow BOPTEST rollouts.
+    \item Phase 2: calibrate the thermal model through an inverse problem to improve physical consistency.
+    \item Phase 3: test increasingly structured control architectures, culminating in HDRL, real weather, emergency logic, and now the current direct-$T_{\mathrm{Sup}}$ continuation.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Phase 0: Initial MORL Baseline}
+  \begin{itemize}
+    \item Initial PPO-based baseline established the first Pareto trade-off between comfort and energy.
+    \item Two critical issues were discovered:
+    \begin{itemize}
+      \item scale dominance in the scalarized reward,
+      \item observation-space mismatch between code and environment.
+    \end{itemize}
+    \item After fixing these, the early baseline achieved a reported 28\% energy reduction and produced the first usable Pareto front.
+    \item Phase 0 was important because it revealed that most early instability was not algorithmic, but representational.
+  \end{itemize}
+\end{frame}
+
+\section{Phases 1 and 2}
+
+\begin{frame}{Phase 1: Why Neural ODE?}
+  \begin{itemize}
+    \item BOPTEST is accurate but slow; large RL sweeps directly on the simulator are impractical.
+    \item The solution was to learn a surrogate with a physically interpretable thermal update.
+    \item The implemented model is an RC Neural ODE with two heads:
+    \begin{itemize}
+      \item a thermal head predicting $\Delta T$,
+      \item a power head predicting total HVAC power.
+    \end{itemize}
+    \item This preserves the physical meaning of the state transition while remaining fast enough for massive batched rollouts.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Neural ODE Formulation}
+  The current surrogate implementation in \texttt{surrogate/rc\_node\_v2.py} uses the feature vector
+  \[
+    x_t = [\tilde T_{\mathrm{zone}}, \tilde T_{\mathrm{amb}}, \sin h, \cos h, \sin d, \cos d, a_0, a_1].
+  \]
+
+  \vspace{0.5em}
+  It predicts:
+  \[
+    \Delta T_t = f_\theta(x_t), \qquad P_t = g_\phi(x_t),
+  \]
+  and updates temperature as
+  \[
+    T_{t+1} = \mathrm{clip}(T_t + \Delta T_t).
+  \]
+
+  \vspace{0.5em}
+  Key design choices:
+  \begin{itemize}
+    \item residual connection in the heat network,
+    \item cyclic encodings for hour and day,
+    \item explicit power positivity via Softplus,
+    \item multi-step training loss with physical regularization.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Phase 1 Results}
+  \begin{itemize}
+    \item Reported speed:
+    \begin{itemize}
+      \item BOPTEST: 37.6 steps/s,
+      \item surrogate batch rollout: 1,215,752 steps/s,
+      \item speedup: 32,313$\times$.
+    \end{itemize}
+    \item The Phase 3 surrogate-v2 report further improved one-step RMSE from 1.128 to 0.163 \degc{} with $R^2 = 0.991$.
+    \item This surrogate became the computational foundation for the later PPO, HDRL, and safety-filter pipelines.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Phase 2: Inverse-Problem Calibration}
+  \begin{itemize}
+    \item The inverse problem stage addressed parameter mismatch between the nominal thermal model and the observed building response.
+    \item Two key issues were solved:
+    \begin{itemize}
+      \item latency and ill-posed preprocessing,
+      \item weak linear calibration.
+    \end{itemize}
+    \item Reported improvement:
+    \begin{itemize}
+      \item RMSE reduced from 9.12 to 1.91 \degc{},
+      \item 79\% error reduction,
+      \item thermal capacitance error reduced to 7.9\%.
+    \end{itemize}
+    \item This phase made the surrogate more physically trustworthy, which matters later for safety and for control transfer.
+  \end{itemize}
+\end{frame}
+
+\section{Reported Phase 3}
+
+\begin{frame}{Phase 3 in the Final Report}
+  According to \texttt{MorlProjectFinalv3.pdf}, Phase 3 consisted of ten systematic experiments.
+
+  \vspace{0.5em}
+  Main reported findings:
+  \begin{itemize}
+    \item HDRL specialization improved over flat PPO.
+    \item Real weather integration removed a major simulator-to-controller mismatch.
+    \item Emergency heating solved many extreme cold failures.
+    \item Reward shaping alone amplified the gap instead of closing it.
+    \item BOPTEST fine-tuning did not solve the remaining issue, indicating a structural mismatch rather than a pure distribution shift.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Best Reported Legacy Phase 3 Configuration}
+  \small
+  \begin{tabular}{lccc}
+    \toprule
+    Method & $m_s$ & Viol.\% & Main Finding \\
+    \midrule
+    HDRL + RW + Emerg + 5F + [18,30] & 0.704 & 46.8 & Final config in report \\
+    HDRL + RW + Emerg (4F, [21,25]) & 0.697 & 45.8 & Best $m_s$ in report \\
+    PPO baseline (synthetic) & 0.798 & 51.9 & Strong baseline \\
+    GRU (Gao) & 0.893 & 57.4 & Forecast gap \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.75em}
+  Legacy final controller:
+  \begin{itemize}
+    \item 5-feature observation,
+    \item hierarchical winter/summer agents,
+    \item emergency rule for severe cold,
+    \item action mapped to a setpoint-like control in the range [18,30] \degc{}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Why Phase 3 Had to Continue}
+  The final report itself documented that the remaining performance gap was structural.
+
+  \vspace{0.5em}
+  The root-cause analysis highlighted three facts:
+  \begin{itemize}
+    \item weather mismatch was solved,
+    \item extreme cold events were partly solved,
+    \item the remaining gap came from action-response mismatch.
+  \end{itemize}
+
+  \vspace{0.5em}
+  This directly motivated the current continuation:
+  \begin{itemize}
+    \item move from indirect thermostat-style control to direct supply-air control,
+    \item unify surrogate training, PPO training, and BOPTEST evaluation under the same action semantics,
+    \item re-establish strong baselines before re-launching MORL.
+  \end{itemize}
+\end{frame}
+
+\section{Current Phase 3 Continuation}
+
+\begin{frame}{Current Redesign: Direct Supply-Air Control}
+  The current continuation changes the control interface fundamentally.
+
+  \vspace{0.5em}
+  Previous logic:
+  \begin{itemize}
+    \item indirect thermostat/setpoint control,
+    \item fixed or semi-fixed supply-air behavior,
+    \item higher risk of mismatch between surrogate and BOPTEST.
+  \end{itemize}
+
+  New logic:
+  \begin{itemize}
+    \item direct control of $T_{\mathrm{Sup}}$ in the range [18,35] \degc{},
+    \item direct fan command,
+    \item wide heating/cooling setpoints in BOPTEST to keep the RL controller in charge,
+    \item identical action semantics in surrogate and BOPTEST backends.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Current End-to-End Pipeline}
+  \begin{itemize}
+    \item Data collection: \texttt{data/collect\_tsupply\_data.py}
+    \begin{itemize}
+      \item 4 seasons $\times$ 4 policies $\times$ 3200 steps = 51,200 samples.
+    \end{itemize}
+    \item Surrogate training: \texttt{surrogate/train\_surrogate\_v2.py}
+    \begin{itemize}
+      \item multi-step loss, physics regularization, and power prediction.
+    \end{itemize}
+    \item Thermostatic comfort-first PPO: \texttt{training/train\_thermostatic.py}
+    \item Seasonal HDRL experts: \texttt{training/train\_hdrl.py}
+    \item Standard PI reference: \texttt{evaluation/standard\_controller\_baseline.py}
+    \item Ongoing MORL and safety layer:
+    \begin{itemize}
+      \item \texttt{main.py},
+      \item \texttt{evaluation/eval\_safe\_morl.py},
+      \item \texttt{layers/safety/action\_filter.py}.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Standard PI Controller as the Energy Reference}
+  The built-in BOPTEST controller is now evaluated explicitly without any override signals.
+
+  \vspace{0.5em}
+  Two comfort views are reported:
+  \begin{itemize}
+    \item fixed-target metrics against 22 \degc{} for direct comparison with PPO-based baselines,
+    \item schedule-aware metrics using the testcase schedule from \texttt{internal\_setpoints\_occupancy.csv}.
+  \end{itemize}
+
+  \vspace{0.5em}
+  Mean results over 12 benchmark windows:
+  \begin{itemize}
+    \item $\mathrm{RMSE}_{22} = 3.41$ \degc{},
+    \item fixed-band violation = 43.8\%,
+    \item schedule-aware violation = 27.0\%,
+    \item schedule-aware $m_s = 0.503$,
+    \item total energy = 1230.2 kWh = 25.63 kWh/m$^2$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Why the PI Baseline Matters}
+  \begin{itemize}
+    \item The standard controller is not the best comfort controller for a strict 22 \degc{} target.
+    \item However, it is the most energy-efficient reference available in the current benchmark.
+    \item Therefore, it should be interpreted as:
+    \begin{itemize}
+      \item the low-energy reference,
+      \item not the main apples-to-apples comfort baseline.
+    \end{itemize}
+    \item This gives the project a more honest evaluation frame:
+    \begin{itemize}
+      \item PI baseline = energy reference,
+      \item thermostatic PPO = comfort reference,
+      \item HDRL/MORL = trade-off controllers.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Current Thermostatic PPO Baseline}
+  The current comfort-first baseline is implemented in \texttt{training/train\_thermostatic.py}.
+
+  \vspace{0.5em}
+  Main design choices:
+  \begin{itemize}
+    \item training on the direct-$T_{\mathrm{Sup}}$ surrogate \texttt{rc\_node\_v3\_tsupply.pt},
+    \item 17-dimensional observation,
+    \item direct ambient-aware reward centered on the exact target 22 \degc{},
+    \item weak energy penalty only near the target,
+    \item 10 million PPO timesteps with 32 parallel environments.
+  \end{itemize}
+
+  This controller is intentionally optimized for comfort, not for energy minimization.
+\end{frame}
+
+\begin{frame}{Thermostatic PPO: Current Validated Results}
+  \small
+  \begin{tabular}{lcc}
+    \toprule
+    Metric & Value & Interpretation \\
+    \midrule
+    Mean RMSE & 0.97 \degc{} & strong annual comfort \\
+    Mean MAE & 0.81 \degc{} & stable tracking \\
+    Within $\pm 1$ \degc{} & 65.9\% & close to target most of the time \\
+    Within $\pm 0.5$ \degc{} & 35.1\% & reasonably tight control \\
+    Total energy & 3037.8 kWh & comfort-first cost \\
+    Normalized energy & 63.29 kWh/m$^2$ & much higher than PI \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.75em}
+  Seasonal RMSE:
+  \begin{itemize}
+    \item winter: 0.92 \degc{},
+    \item spring: 0.89 \degc{},
+    \item summer: 1.20 \degc{},
+    \item autumn: 0.87 \degc{}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Interpretation of the Thermostatic Result}
+  \begin{itemize}
+    \item This is the strongest comfort result currently validated in the repository.
+    \item The previous winter failure mode of the thermostat-style pipeline is largely removed.
+    \item The remaining weakness has shifted toward cooling-season performance, not heating collapse.
+    \item This controller now serves as the main comfort benchmark for all later trade-off methods.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Current HDRL Design}
+  The current HDRL implementation in \texttt{training/train\_hdrl.py} uses:
+  \begin{itemize}
+    \item two PPO experts trained on the direct-$T_{\mathrm{Sup}}$ surrogate,
+    \item a compact 5-feature observation:
+    \[
+      [T_{\mathrm{zone}}, CO_2, P_{\mathrm{total}}, T_{\mathrm{Sup,prev}}, T_{\mathrm{amb}}],
+    \]
+    \item winter and summer specialization,
+    \item real weather-based domain randomization,
+    \item emergency heating in evaluation when $T_{\mathrm{amb}} < 5$ \degc{} and $T_{\mathrm{zone}} < 20$ \degc{}.
+  \end{itemize}
+
+  The meta-controller currently switches by a simple ambient threshold:
+  \[
+    T_{\mathrm{amb}} < 12 \degc{} \Rightarrow \pi_{\mathrm{winter}}, \quad \text{otherwise } \pi_{\mathrm{summer}}.
+  \]
+\end{frame}
+
+\begin{frame}{HDRL: Current Validated Results}
+  \small
+  \begin{tabular}{lcc}
+    \toprule
+    Metric & Value & Interpretation \\
+    \midrule
+    Mean violation rate & 12.7\% & reasonable but not comfort-optimal \\
+    Mean $m_s$ & 0.307 & better than old reported HDRL \\
+    Total energy & 3070.2 kWh & slightly above thermostatic baseline \\
+    Normalized energy & 63.96 kWh/m$^2$ & far above PI baseline \\
+    Winter mean violation & 20.6\% & main weakness \\
+    Summer mean violation & 16.1\% & overcooling still visible \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.75em}
+  Summer-only energy:
+  \begin{itemize}
+    \item thermostatic PPO: 422.7 kWh,
+    \item HDRL: 404.6 kWh,
+    \item summer saving of HDRL vs thermostatic: 4.3\%.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Controller Comparison}
+  \small
+  \begin{tabular}{lccc}
+    \toprule
+    Controller & Comfort View & Energy & Role \\
+    \midrule
+    Standard PI & RMSE$_{22}$ = 3.41 \degc{} & 1230.2 kWh & energy reference \\
+    Thermostatic PPO & RMSE = 0.97 \degc{} & 3037.8 kWh & comfort reference \\
+    HDRL & $m_s = 0.307$, viol = 12.7\% & 3070.2 kWh & trade-off prototype \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.75em}
+  Relative energy versus PI baseline:
+  \begin{itemize}
+    \item Thermostatic PPO: +146.9\%
+    \item HDRL: +149.6\%
+  \end{itemize}
+
+  \vspace{0.5em}
+  Relative energy versus thermostatic PPO:
+  \begin{itemize}
+    \item HDRL annual difference: +1.1\%
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Why HDRL Is Still Worse than the Thermostatic Baseline}
+  \begin{itemize}
+    \item Different objective:
+    \begin{itemize}
+      \item thermostatic PPO is comfort-first and tracks a fixed target of 22 \degc{},
+      \item HDRL optimizes comfort + energy over the broader band [21,25] \degc{}.
+    \end{itemize}
+    \item Different information budget:
+    \begin{itemize}
+      \item thermostatic PPO uses 17 features including forecasts and history,
+      \item HDRL uses only 5 current-state features.
+    \end{itemize}
+    \item Different control logic:
+    \begin{itemize}
+      \item HDRL relies on a hard seasonal switch at 12 \degc{},
+      \item this is too crude for shoulder seasons and mixed thermal regimes.
+    \end{itemize}
+    \item Result:
+    \begin{itemize}
+      \item HDRL may be acceptable as a structured controller,
+      \item but it is not yet better than the comfort-only baseline.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\section{MORL and Safety Layer}
+
+\begin{frame}{MORL Design in the Current Repository}
+  The MORL entry point is \texttt{main.py}.
+
+  \vspace{0.5em}
+  Current scalarization settings in \texttt{configs/env.yaml}:
+  \begin{itemize}
+    \item $w_{\mathrm{comfort}} = 0.8$,
+    \item $w_{\mathrm{energy}} = 0.2$,
+    \item energy scale = $2 \times 10^{-4}$,
+    \item comfort band = [21,25] \degc{}.
+  \end{itemize}
+
+  Important current status:
+  \begin{itemize}
+    \item MORL is implemented,
+    \item but by default it still trains directly on the BOPTEST backend,
+    \item and it has not yet been fully re-evaluated after the direct-$T_{\mathrm{Sup}}$ redesign.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Safety Filter Layer}
+  The repository also contains a surrogate-based safety filter in \texttt{layers/safety/action\_filter.py}.
+
+  \vspace{0.5em}
+  Logic:
+  \begin{itemize}
+    \item take PPO action,
+    \item rollout the Neural ODE surrogate for a short horizon,
+    \item check whether predicted temperatures stay inside a shrunk safe band,
+    \item if unsafe, replace the action with a fallback controller.
+  \end{itemize}
+
+  \vspace{0.5em}
+  In the current code:
+  \begin{itemize}
+    \item the horizon is typically 2--4 steps,
+    \item a safety margin is used to compensate surrogate uncertainty,
+    \item evaluation script: \texttt{evaluation/eval\_safe\_morl.py}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Honest Status of MORL and Safe MORL}
+  \begin{itemize}
+    \item The MORL stack and the safety layer are already implemented in code.
+    \item However, after the direct-$T_{\mathrm{Sup}}$ redesign, the main validated results are still:
+    \begin{itemize}
+      \item standard PI baseline,
+      \item thermostatic PPO baseline,
+      \item HDRL.
+    \end{itemize}
+    \item Therefore, for this defense the MORL part should be presented as:
+    \begin{itemize}
+      \item the next-stage objective,
+      \item architecturally ready,
+      \item not yet the final quantitative headline of the project.
+    \end{itemize}
+    \item This is scientifically stronger than overclaiming incomplete results.
+  \end{itemize}
+\end{frame}
+
+\section{Contributions, Limits, and Next Steps}
+
+\begin{frame}{Main Contributions Across All Phases}
+  \begin{itemize}
+    \item A full research pipeline from slow BOPTEST RL to fast surrogate-assisted control.
+    \item A physics-informed RC Neural ODE surrogate with large speedup and strong predictive accuracy.
+    \item An inverse-calibration stage that materially improved physical fidelity.
+    \item A structured Phase 3 experimental program that identified weather mismatch, seasonal mismatch, and action-response mismatch.
+    \item A current direct-$T_{\mathrm{Sup}}$ redesign that produced a strong comfort baseline and a more honest benchmark structure.
+    \item A codebase that already contains the next deployment layers: HDRL, MORL, and surrogate-based safety filtering.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Current Limitations}
+  \begin{itemize}
+    \item The current HDRL controller does not yet beat the thermostatic PPO baseline on the annual comfort-energy trade-off.
+    \item The PI baseline remains far more energy-efficient because it solves a softer scheduled-comfort problem.
+    \item MORL has not yet been fully re-trained and re-evaluated on the direct-$T_{\mathrm{Sup}}$ pipeline.
+    \item The current HDRL gate is threshold-based rather than learned.
+    \item The current annual benchmark uses 12 representative windows of 336 hours each rather than a full continuous-year rollout.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Next Steps}
+  \begin{itemize}
+    \item Retrain MORL first on the direct-$T_{\mathrm{Sup}}$ surrogate, then fine-tune on BOPTEST.
+    \item Replace hard seasonal switching with a learned gate or hysteresis-based meta-controller.
+    \item Give HDRL and MORL the same richer temporal context as the thermostatic PPO baseline.
+    \item Move from flat band-based comfort toward a target-aware comfort metric around 22 \degc{}.
+    \item Extend evaluation toward PMV/PPD and ASHRAE 55 style comfort metrics.
+    \item Prepare edge deployment and real-building sensor integration after final controller stabilization.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Final Takeaways}
+  \begin{itemize}
+    \item Phase 0 established the MORL baseline and exposed representation problems.
+    \item Phase 1 delivered the key computational breakthrough: a fast and accurate Neural ODE surrogate.
+    \item Phase 2 improved physical fidelity through inverse calibration.
+    \item Phase 3 established that hierarchical structure, weather realism, and emergency logic matter, but also revealed a structural action mismatch.
+    \item The current continuation solved that mismatch by moving to direct supply-air control.
+    \item Today, the strongest validated result is the direct-$T_{\mathrm{Sup}}$ thermostatic PPO baseline, while HDRL is an operational but not yet dominant trade-off controller.
+    \item The repository is now technically ready for the final MORL step.
+  \end{itemize}
+\end{frame}
+
+\appendix
+
+\begin{frame}{Reproducibility: Key Files}
+  \small
+  \begin{itemize}
+    \item Report basis: \texttt{docs/\_tmp\_morl\_project\_final\_v3.txt} extracted from \texttt{MorlProjectFinalv3.pdf}
+    \item Surrogate model: \texttt{surrogate/rc\_node\_v2.py}
+    \item Surrogate training: \texttt{surrogate/train\_surrogate\_v2.py}
+    \item Direct-$T_{\mathrm{Sup}}$ data collection: \texttt{data/collect\_tsupply\_data.py}
+    \item Thermostatic baseline: \texttt{training/train\_thermostatic.py}
+    \item HDRL training: \texttt{training/train\_hdrl.py}
+    \item Standard PI evaluation: \texttt{evaluation/standard\_controller\_baseline.py}
+    \item Safety evaluation: \texttt{evaluation/eval\_safe\_morl.py}
+    \item Current validated outputs:
+    \begin{itemize}
+      \item \texttt{outputs/thermostatic\_yearly\_summary.csv}
+      \item \texttt{outputs/hdrl\_yearly\_summary.csv}
+      \item \texttt{outputs/standard\_controller\_yearly\_summary.csv}
+      \item \texttt{outputs/standard\_controller\_energy\_comparison.csv}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Reproducibility: Main Commands}
+  \small
+  \begin{itemize}
+    \item Thermostatic PPO:
+    \begin{itemize}
+      \item \texttt{python training/train\_thermostatic.py}
+      \item \texttt{PYTHONPATH=/app python3 evaluation/eval\_thermostatic.py}
+    \end{itemize}
+    \item HDRL:
+    \begin{itemize}
+      \item \texttt{python training/train\_hdrl.py}
+      \item \texttt{PYTHONPATH=/app python3 evaluation/yearly\_validation\_hdrl.py}
+    \end{itemize}
+    \item Standard PI baseline:
+    \begin{itemize}
+      \item \texttt{PYTHONPATH=/app python3 evaluation/standard\_controller\_baseline.py}
+    \end{itemize}
+    \item MORL and safe MORL:
+    \begin{itemize}
+      \item \texttt{SEED=42 python main.py}
+      \item \texttt{MODE=eval SEED=42 python main.py}
+      \item \texttt{PYTHONPATH=/app python3 evaluation/eval\_safe\_morl.py --model ...}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \centering
+  \Large Thank you
+
+  \vspace{1em}
+  \normalsize Questions?
+\end{frame}
+
+\end{document}

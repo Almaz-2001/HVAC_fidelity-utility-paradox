@@ -57,6 +57,7 @@ def collect(
 
     cfg = load_all_configs("configs")
     env_cfg = cfg["env"]
+    env_cfg["control_mode"] = "thermostat"
 
     # Для сбора данных отключаем логи
     env_cfg["output_dir"] = output_dir

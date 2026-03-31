@@ -1,0 +1,637 @@
+                HVAC Building Energy Management via
+              Multi-Objective Deep Reinforcement Learning
+                         Complete Research Report: Phases 0–3
+                 All Experiments, Problems, Solutions, and Breakthroughs
+
+                                      Almaz Sapargali
+                             DigitAlem LLP, Almaty, Kazakhstan
+                                  Project IRN AP23488794
+
+                                            March 2026
+
+
+                                              Abstract
+          This report documents the complete research trajectory toward deploying a Multi-Objective
+      Reinforcement Learning (MORL) system for HVAC building energy management, spanning
+      four phases and over fifteen experiments. Phase 0 establishes a PPO baseline with vector
+      rewards (28% energy reduction). Phase 1 develops a physics-informed RC Neural ODE sur-
+      rogate achieving 32,313× measured speedup with RMSE = 0.163°C (R2 = 0.991). Phase 2
+      solves an inverse problem for building calibration (79% RMSE improvement, Czon recovery
+      with 7.9% error). Phase 3 conducts eleven MORL experiments—including reward shaping,
+      GRU weather forecasting (Gao et al.), Runtime Shielding (Xu et al.), SAC, HDRL (Liao
+      et al.), real weather integration, Emergency Heating Mode, expanded action spaces, and
+      BOPTEST fine-tuning—culminating in ms = 0.697 ± 0.368 across 12 monthly scenarios
+      with summer ms = 0.140–0.187.
+          A thermostatic ablation study (Gao et al. comparison) reveals that the compact 9-feature
+      architecture (RMSE = 0.73°C in July) outperforms richer 17-feature variants on BOPTEST,
+      confirming the sim-to-real gap as the bottleneck. The final breakthrough—direct Tsupply
+      control trained on a dedicated surrogate v3—reduces mean RMSE from 4.70°C to 0.84°C
+      and winter RMSE from 8.89°C to 0.78°C (11× improvement), proving that the “structural
+      gap” was caused by BOPTEST’s PI controller, not building physics. In total, 15 technical
+      problems are documented with root causes and solutions. All code, models, and data are
+      reproducible.
+
+
+Contents
+1 Introduction and Motivation                                                                         3
+
+2 Phase 0: MORL-PPO Stabilization                                                                     3
+  2.1 Objective . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .       3
+  2.2 Problem P0.1: Scale Dominance . . . . . . . . . . . . . . . . . . . . . . . . . . . .           3
+  2.3 Problem P0.2: Observation Space Mismatch . . . . . . . . . . . . . . . . . . . . .              3
+  2.4 Result . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      3
+
+3 Phase 1: RC Neural ODE Surrogate                                                                    3
+  3.1 Objective . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .       3
+  3.2 Architecture . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      4
+  3.3 Problem P1.1: Thermal Capacitance Too Large . . . . . . . . . . . . . . . . . . .               4
+  3.4 Problem P1.2: Parameter Drift . . . . . . . . . . . . . . . . . . . . . . . . . . . .           4
+  3.5 Problem P1.3: Neural Network Cancels HVAC Signal . . . . . . . . . . . . . . . .                4
+
+                                                   1
+   3.6   Speed Benchmark . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .       4
+   3.7   Result . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .    4
+
+4 Phase 2: Inverse Problem — Surrogate Calibration                                                     4
+  4.1 Objective . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        4
+  4.2 Problem P2.1: Latency Collapses Signal . . . . . . . . . . . . . . . . . . . . . . .             5
+  4.3 Problem P2.2: Linear Calibration Insufficient . . . . . . . . . . . . . . . . . . . .            5
+  4.4 Result . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .       5
+
+5 Phase 3: Safe MORL — Surrogate v2 and Training                                                       5
+  5.1 Surrogate v2 Development . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .           5
+  5.2 Safety Filter . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      5
+
+6 Phase 3: Eleven MORL Experiments                                                                     5
+  6.1 Experiment 1: PPO Baseline (Synthetic Weather) . . . . . . . . . . . . . . . . . .               5
+  6.2 Experiment 2: Reward Shaping (P3.7 — Failed) . . . . . . . . . . . . . . . . . . .               5
+  6.3 Experiment 3: GRU Weather Forecast — Gao et al. (P3.8 — Partial) . . . . . .                     6
+  6.4 Experiment 4: Runtime Shielding — Xu et al. (P3.9 — Failed) . . . . . . . . . .                  6
+  6.5 Experiment 5: SAC Algorithm (P3.11 — Failed) . . . . . . . . . . . . . . . . . .                 6
+  6.6 Experiment 6: HDRL with Synthetic Weather — Liao et al. (P3.12) . . . . . . .                    6
+  6.7 Experiment 7: Real Weather Integration . . . . . . . . . . . . . . . . . . . . . . .             6
+  6.8 Experiment 8: Emergency Heating Mode . . . . . . . . . . . . . . . . . . . . . . .               7
+  6.9 Experiment 9: 5-Feature Obs + Expanded Action Space [18,30]°C . . . . . . . . .                  7
+  6.10 Experiment 10: BOPTEST Fine-tuning (Two Rounds) . . . . . . . . . . . . . . .                   7
+  6.11 Experiment 11: Direct Tsupply Control . . . . . . . . . . . . . . . . . . . . . . . .           7
+  6.12 Best MORL Configuration (Experiments 1–10) . . . . . . . . . . . . . . . . . . .                7
+  6.13 All MORL Experiments Ranked . . . . . . . . . . . . . . . . . . . . . . . . . . . .             7
+
+7 Thermostatic Ablation Study (Gao et al. Comparison)                                                  7
+  7.1 Variant 1: Compact (9 features) . . . . . . . . . . . . . . . . . . . . . . . . . . . .          8
+  7.2 Variant 2: Extended forecast (12 features) . . . . . . . . . . . . . . . . . . . . . .           8
+  7.3 Variant 3: Rich temporal (17 features) . . . . . . . . . . . . . . . . . . . . . . . .           8
+  7.4 Variant 4: Direct Tsupply (17 features, v3 surrogate) . . . . . . . . . . . . . . . .            8
+  7.5 Results Comparison . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .           9
+  7.6 The Breakthrough: v4 Direct Tsupply . . . . . . . . . . . . . . . . . . . . . . . . .            9
+  7.7 Comparison with Gao et al. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .          10
+
+8 Comparison with Wang et al.                                                                         10
+
+9 Root Cause Analysis: Three Components of the Sim-to-Real Gap                                        10
+
+10 Complete Problem Log (15 Problems)                                                                 11
+
+11 Progress Summary                                                                                   11
+
+12 Proposed Next Steps                                                                                11
+
+13 Conclusion                                                                                         12
+
+
+
+
+                                                   2
+1     Introduction and Motivation
+Building HVAC systems account for approximately 40% of global primary energy consumption
+[1, 5]. Traditional controllers—PI, rule-based, and MPC—face fundamental limitations: PI
+controllers cannot optimize competing objectives, rule-based systems lack adaptability, and MPC
+requires accurate building models and is computationally expensive at deployment (2.67 s per
+step in [1]).
+    Deep Reinforcement Learning (DRL) offers a data-driven alternative that can learn complex
+control policies from interaction. However, three critical challenges remain:
+
+    1. Training speed: High-fidelity simulators like BOPTEST [9] run at ∼37 steps/second,
+       requiring 73.9 hours for 10M training steps.
+
+    2. Sim-to-real transfer: Policies trained on surrogate models fail when deployed on the
+       target environment.
+
+    3. Seasonal robustness: Most studies validate on a single scenario (e.g., peak heat week
+       [1]), hiding poor performance in other seasons.
+
+   Our research program addresses all three challenges through four phases, documented below
+with every problem encountered, every solution attempted, and every result obtained.
+
+
+2     Phase 0: MORL-PPO Stabilization
+2.1    Objective
+Establish a working multi-objective PPO agent on BOPTEST with vector rewards r = [rcomfort , renergy ]
+and scalarized objective R = ωc rc + ωe re .
+
+2.2    Problem P0.1: Scale Dominance
+Root cause: Initial energy scaling α = 10−7 made renergy approximately 105 × smaller than
+rcomfort . The agent ignored energy entirely.
+    Solution: Set α = 1/Pmax = 2×10−4 , equalizing the magnitude of both reward components.
+
+2.3    Problem P0.2: Observation Space Mismatch
+Root cause: Observation space defined as Box[−106 , 106 ] but actual observations normalized
+to [−1, 1]. PPO’s value function could not learn meaningful estimates.
+    Solution: Observation space set to Box[−1, 1].
+
+2.4    Result
+After fixes, a Pareto sweep across 5 weight configurations (ωc ∈ {0.2, 0.5, 0.8, 0.9, 1.0}) demon-
+strated 28% energy reduction (192.3 → 138.7 kWh) with a monotonic Pareto front. This validated
+the MORL formulation.
+
+
+3     Phase 1: RC Neural ODE Surrogate
+3.1    Objective
+Replace the slow BOPTEST simulator (37.6 steps/s) with a fast, differentiable surrogate for
+DRL training. Inspired by [1]’s linear RC model but extended to a nonlinear Neural ODE.
+
+
+
+                                                3
+3.2   Architecture
+Physics-informed residual structure mirrors thermal inertia:
+
+                       T (t + 1) = T (t) + 10 · fθ (Tzone , Tamb , h, d, a0 , a1 )             (1)
+
+                                 Ptotal = Softplus(gϕ (x)) · Pmax                              (2)
+   The residual form in Eq. (1) constrains the network to predict ∆T (small corrections), not
+absolute temperature. The Softplus in Eq. (2) enforces P ≥ 0. Total: 8,482 trainable parameters.
+
+3.3   Problem P1.1: Thermal Capacitance Too Large
+Root cause: Initial Czon = 107 J/K was 20× too large, causing extremely slow temperature
+dynamics.
+   Solution: Data-driven estimate from BOPTEST step responses: Czon = 5.3 × 105 J/K.
+
+3.4   Problem P1.2: Parameter Drift
+Root cause: Czon was a trainable parameter that drifted during optimization, destabilizing the
+model.
+   Solution: PyTorch register_buffer — Czon participates in forward pass but is not updated
+by the optimizer.
+
+3.5   Problem P1.3: Neural Network Cancels HVAC Signal
+Root cause: The NN learned fθ ≈ −QHVAC , effectively canceling the heating/cooling input.
+The model predicted constant temperature regardless of action.
+    Solution: Predict ∆T directly via the residual structure (Eq. (1)), removing the opportunity
+for the NN to “undo” the physics.
+
+3.6   Speed Benchmark
+
+
+       Table 1: Measured speed comparison (100 BOPTEST steps, 100k surrogate steps)
+            Backend                       Speed [steps/s]         10M steps          Speedup
+            BOPTEST (HTTP API)                    37.6             73.9 hours           1×
+            Surrogate (single)                   6,921              24.1 min           184×
+            Surrogate (batch=32)                107,470              93 sec           2,858×
+            Surrogate (batch=1024)             1,215,752             8.2 sec         32,313×
+
+    10M steps at 1 hour/step = 1,142 years of simulated building operation.
+
+3.7   Result
+Violation rate improved from 78.7% to 35.3%; ms improved from 1.284 to 0.510.
+
+
+4     Phase 2: Inverse Problem — Surrogate Calibration
+4.1   Objective
+Adapt the surrogate to a new building by solving an inverse problem: recover Czon and Rwall
+from telemetry data contaminated with noise (σ = 0.3°C), latency (τ ∈ {1, 2, 3} steps), and bias
+(+0.5°C).
+
+                                                   4
+4.2   Problem P2.1: Latency Collapses Signal
+Root cause: Sensor latency reduced the variance of ∆T from 9.48 to 0.42°C, making the
+optimization ill-posed — all parameter values produced similar loss.
+    Solution: Preprocess each telemetry artifact (noise, latency, bias) separately before joint
+calibration.
+
+4.3   Problem P2.2: Linear Calibration Insufficient
+Root cause: Adjusting only Czon and Rwall improved RMSE by only 5.2% — the nonlinear
+dynamics captured by the NN weights were more important.
+   Solution: Fine-tune all NN weights jointly with dual learning rates: ηNN = 10−4 for network
+weights, ηcalib = 10−2 for physical parameters.
+
+4.4   Result
+RMSE: 9.12 → 1.91°C (79% improvement). Czon recovered with 7.9% error.
+
+
+5     Phase 3: Safe MORL — Surrogate v2 and Training
+5.1   Surrogate v2 Development
+Four problems were resolved to create a production-quality surrogate:
+    P3.1 (Missing Tamb ): The original surrogate had no ambient temperature input. Solution:
+8-input architecture including Tamb , hour, and day.
+    P3.2 (Single-step loss): Training on single-step predictions allowed error accumulation
+during multi-step rollouts. Solution: multi-step loss with K = {2, 4}.
+    P3.3 (Insufficient data): Original 10,000 samples covered limited operating conditions.
+Solution: 51,200 samples from 4 policies × 4 seasons on BOPTEST.
+    P3.5 (Wrong BOPTEST key): Ambient temperature was read from the wrong sensor
+key. Solution: payload inspection revealed correct key zon_weaSta_reaWeaTDryBul_y.
+    Result: RMSE: 1.128 → 0.163°C (6.9× improvement), R2 = 0.991.
+
+5.2   Safety Filter
+Horizon-2 predictive filter with 0.82°C margin. Gradient MPC fallback (λS = 50, 50 Adam
+iterations).
+    P3.4: Horizon 4 was too conservative (93% action rejection). Solution: horizon 2 with wider
+margin.
+
+
+6     Phase 3: Eleven MORL Experiments
+6.1   Experiment 1: PPO Baseline (Synthetic Weather)
+Setup: 10M steps, 32 parallel surrogate envs, synthetic sinusoidal Tamb with domain random-
+ization (Tamb,base ∼ U [−10, 25]°C).
+    Result: Mean ms = 0.798 ± 0.292, violation 51.9% (10 scenarios).
+
+6.2   Experiment 2: Reward Shaping (P3.7 — Failed)
+Idea: Asymmetric penalties (cold ×1.5), quadratic for deviations > 2°C, free energy during
+violations.
+    Result: Violation increased to 81.8%. The shaped reward amplified the sim-to-real gap by
+training the agent to exploit surrogate-specific dynamics that don’t exist on BOPTEST.
+
+                                              5
+   Lesson: Reward shaping is dangerous when there is a sim-to-real gap.
+
+6.3   Experiment 3: GRU Weather Forecast — Gao et al. (P3.8 — Partial)
+Idea from [3]: Augment observation with 24-hour weather forecast processed by GRU(32).
+Architecture: state(4) → MLP(64), forecast(24) → GRU(32), concat → MLP(64,64).
+   Result: July improved −8.3 pp, but January worsened +4.5 pp. Mean ms = 0.893.
+   Lesson: Surrogate-generated forecasts ̸= real weather patterns.
+
+6.4   Experiment 4: Runtime Shielding — Xu et al. (P3.9 — Failed)
+Idea from [4]: At deployment, iteratively correct unsafe actions (∆a = 0.1, up to 20 iterations)
+using surrogate predictions.
+    Result: Best at margin δ = 0: ms = 0.878, but energy doubled.
+    Lesson: Shield corrections are based on surrogate predictions, which are inaccurate on
+BOPTEST.
+
+6.5   Experiment 5: SAC Algorithm (P3.11 — Failed)
+Idea: Soft Actor-Critic (off-policy) might achieve better sample efficiency than PPO (on-policy).
+   Result: 3M steps, 8 envs. Mean ms = 1.063, violation 74.3%. SAC overheated all seasons
+(Tmax up to 29.9°C).
+   Lesson: PPO outperforms SAC for this HVAC control task.
+
+6.6   Experiment 6: HDRL with Synthetic Weather — Liao et al. (P3.12)
+Idea from [6]: Two specialized PPO agents with threshold-based meta-controller:
+
+   • Winter agent trained on Tamb,base ∼ U [−15, 5]°C (5M steps, 16 envs)
+
+   • Summer agent trained on Tamb,base ∼ U [10, 30]°C (5M steps, 16 envs)
+
+   • Meta-controller: Tamb < 12°C → winter, else summer
+
+   Result: Aug ms = 0.223 (best individual at that point), mean ms = 0.834.
+   Lesson: Seasonal specialization significantly improves summer performance.
+
+6.7   Experiment 7: Real Weather Integration
+Key innovation: Replaced synthetic sinusoidal Tamb with real Belgian weather data from 51,200
+BOPTEST measurements, organized into a 366 × 24 hourly lookup table.
+  Results:
+
+   • PPO + Real Weather: violation 48.8%, ms = 1.000
+
+   • HDRL + Real Weather: violation 45.6%, three scenarios below 5%, but ms = 0.972 due
+     to extreme cold events (Tmin = −4.5°C in January)
+
+   Lesson: Real weather reduces the weather mismatch component of the sim-to-real gap, but
+exposes the extreme event problem.
+
+
+
+
+                                               6
+6.8    Experiment 8: Emergency Heating Mode
+Problem: Extreme cold fronts caused Tzone to crash to −4.5°C, driving rsev to 1.21.
+   Solution: Rule-based override at inference time (no retraining):
+
+                                  if Tamb < 5°C ∧ Tzone < 20°C (Emergency)
+                  
+                  [1.0, 1.0]
+                  
+             at = πwinter (st )   if Tamb < 12°C                                            (3)
+                    πsummer (st ) otherwise
+                  
+                  
+
+    Result: Tmin raised from −4.5°C to 13.2°C. Winter rsev reduced by 3.3×. Mean ms =
+0.697 ± 0.368.
+    Lesson: Combining learned policies with rule-based safety overrides outperforms either ap-
+proach alone.
+
+6.9    Experiment 9: 5-Feature Obs + Expanded Action Space [18,30]°C
+Idea: Add Tamb as 5th observation feature so agent “sees” outdoor temperature. Expand action
+mapping to Tset ∈ [18, 30]°C for pre-heating capability.
+   Result: ms = 0.704, Sep ms = 0.140 (best individual scenario). No significant improve-
+ment over 4-feature + [21,25]°C configuration because Emergency Mode already handles extreme
+events.
+
+6.10    Experiment 10: BOPTEST Fine-tuning (Two Rounds)
+Idea: Fine-tune HDRL agents directly on BOPTEST to calibrate action-response mapping.
+    Round 1: 50k steps, lr = 10−4 , 4-feature obs, [21,25]°C. clip_fraction = 0.000.
+    Round 2: 50k steps, lr = 3 × 10−4 , 5-feature obs, [18,30]°C. clip_fraction = 0.000.
+    Conclusion: Policy completely frozen in both rounds. The remaining gap was initially
+attributed to “structural action-response mismatch” — the building physics allegedly could not
+maintain comfort. This conclusion was later overturned by Experiment 11.
+
+6.11    Experiment 11: Direct Tsupply Control
+Idea from [2, 4]: Instead of controlling Tset (interpreted by BOPTEST’s PI controller), control
+the supply air temperature Tsupply directly.
+    Implementation: Required a complete retraining cycle:
+    1. Collected 51,200 BOPTEST steps with Tsupply ∈ [18, 35]°C control (31.2 min)
+    2. Trained surrogate v3 on Tsupply data (RMSE = 0.626°C, R2 = 0.979)
+    3. Trained thermostatic PPO on v3 surrogate (17-feature obs, 49.1 min)
+    4. Validated on BOPTEST with direct fcu_oveTSup_u control
+    Critical BOPTEST configuration: Set Tset,cool = 40°C and Tset,heat = 15°C to prevent
+the PI controller from interfering with direct Tsupply commands.
+
+6.12    Best MORL Configuration (Experiments 1–10)
+6.13    All MORL Experiments Ranked
+
+7     Thermostatic Ablation Study (Gao et al. Comparison)
+To validate our Neural ODE surrogate against the thermostatic benchmark of [3], we trained
+single-objective agents to track Ttarget = 22°C with Gaussian reward (no energy penalty). Three
+variants were tested, progressively increasing observation complexity.
+
+                                               7
+      Table 2: Best MORL result: HDRL + Real Weather + Emergency Mode (12 months)
+        Scenario         Viol.%     Tmin    Tmax    E [kWh]                     ms    W%    E%
+        Jan_Winter           73.2    13.2    25.0          90.2               1.102    33   61
+        Feb_Winter           74.7    13.4    25.3          79.3               1.110    33   62
+        Mar_Spring           72.0    15.3    25.3          80.4               0.990    35   59
+        Apr_Spring           63.7    15.1    24.8          56.0               0.919    41   41
+        May_Spring           46.4    16.7    24.6          37.9               0.669    54   10
+        Jun_Summer           19.0    16.5    25.1          68.7               0.405    22   2
+        Jul_Summer            6.0    19.0    28.2         107.9               0.187     1   0
+        Aug_Summer            5.7    18.8    27.5         127.0               0.160     0   0
+        Sep_Autumn            5.7    18.6    28.0         172.6               0.178     6    0
+        Oct_Autumn           36.3    16.1    26.5         124.6               0.594    41   16
+        Nov_Autumn           66.7    15.9    25.8          88.5               0.911    39   50
+        Dec_Winter           80.7    14.1    25.2          76.0               1.137    29   68
+        Mean ± std           45.8                          92.4    0.697 ± 0.368
+
+
+                              Table 3: All eleven MORL experiments
+         Method                              ms         Viol.%      Best       Key Finding
+         HDRL+RW+Emergency                  0.697        45.8     Aug 0.160    Best mean
+         HDRL+RW+E+5F+[18,30]               0.704        46.8     Sep 0.140    Best scenario
+         PPO baseline (synth.)              0.798        51.9     Jul 0.357    Baseline
+         HDRL (synthetic)                   0.834        60.3     Aug 0.223    Specialization
+         Shield (Xu)                        0.878        64.5     Aug 0.254    Needs accuracy
+         GRU (Gao)                          0.893        57.4     Jul 0.272    Forecast gap
+         HDRL + Real Weather                0.972        45.6     Aug 0.146    rsev issue
+         PPO + Real Weather                 1.000        48.8     Jul 0.237    Weather helps
+         Reward Shaping                     1.050        81.8        —         Amplifies gap
+         SAC                                1.063        74.3     Jun 0.828    PPO > SAC
+
+
+7.1    Variant 1: Compact (9 features)
+Obs: [Tzone , CO2 , Pcool , Pfan , Tamb , hnorm , dnorm , Tamb
+                                                           +1h    +3h
+                                                               , Tamb ]. Gaussian reward with smoothness
+penalty. Trained 10M steps in 44.4 min.
+
+7.2    Variant 2: Extended forecast (12 features)
+Added +6h, +12h, +24h forecast horizons to match Gao’s 24h GRU. Asymmetric cold penalty
+(1.5×).
+
+7.3    Variant 3: Rich temporal (17 features)
+Added cyclic time encoding (sin/cos), previous action, ∆Tzone history. Non-saturating reward
+with deadband bonus, extreme penalty (T < 19°C), micro energy penalty. Network 256×256.
+
+7.4    Variant 4: Direct Tsupply (17 features, v3 surrogate)
+Same 17-feature architecture but trained on surrogate v3 (Tsupply data). At BOPTEST deploy-
+ment, controls fcu_oveTSup_u directly instead of Tset .
+
+
+
+                                                    8
+7.5   Results Comparison
+
+
+                  Table 4: Thermostatic control: all variants on BOPTEST
+                              v1 (9F) v2 (12F) v3 (17F) v4 (Tsupply )
+              Control            Tset         Tset           Tset        Tsupply
+              Surrogate           v2           v2             v2           v3
+              Jul RMSE          0.73          0.81           0.90         1.00
+              Aug RMSE            —            —             0.81         0.81
+              Winter RMSE        8.89         8.88           9.04         0.78
+              Mean RMSE          4.70         4.71           4.26         0.84
+              ±1°C (all)         41%          40%            36%          73%
+              Best month       Jul 0.73     Jul 0.81       Aug 0.81     Apr 0.63
+              Training         44 min       40 min          49 min       49 min
+
+
+
+7.6   The Breakthrough: v4 Direct Tsupply
+
+
+            Table 5: v4 Direct Tsupply : complete 12-month BOPTEST validation
+                    Scenario         RMSE        ±1°C      ±0.5°C     E [kWh]
+                    Jan_Winter            0.83       77%      50%         412
+                    Feb_Winter            0.66       88%      51%         405
+                    Mar_Spring            0.78       80%      46%         314
+                    Apr_Spring            0.63       87%      60%         233
+                    May_Spring            0.82       74%      28%         150
+                    Jun_Summer            0.99       54%      24%         133
+                    Jul_Summer            1.00       57%      29%         139
+                    Aug_Summer            1.06       58%      25%         153
+                    Sep_Autumn            0.97       69%      28%         187
+                    Oct_Autumn            0.91       71%      24%         202
+                    Nov_Autumn            0.63       88%      59%         274
+                    Dec_Winter            0.84       74%      45%         431
+                    Mean (all)            0.84   73%          39%         253
+                    Winter                0.78   79%          49%         416
+                    Summer                0.99   60%          27%         142
+
+   Key finding: The “structural gap” that plagued all previous experiments was not a building
+physics limitation. It was caused by BOPTEST’s PI controller, which:
+
+   • Interpreted Tset conservatively, limiting heating power
+
+   • Responded slowly to setpoint changes, causing temperature lag
+
+   • Could not deliver maximum power even when Tset = 25°C (its maximum in our mapping)
+
+  Bypassing the PI controller with direct Tsupply control reduced winter RMSE by 11× (8.89
+→ 0.78°C), proving the building has sufficient heating capacity when controlled directly.
+
+
+
+
+                                                 9
+                              Table 6: Final comparison with [3]
+                       Gao M.3 (PPO+GRU)             Ours v1 (Tset )    Ours v4 (Tsupply )
+      Best RMSE                 ≈ 0.5°C                 0.73°C                0.63°C
+      Mean RMSE                 ≈ 0.5°C                 4.70°C                0.84°C
+      Winter RMSE             not reported              8.89°C                0.78°C
+      Architecture             GRU(32)               MLP (default)        MLP (256×256)
+      Obs features             28 (GRU)               9 (lookup)        17 (cyclic+forecast)
+      Training time             ∼hours                  44 min                 49 min
+      Speedup                      1×                  32,313×                32,313×
+      Control level               Tset                    Tset            Tsupply (direct)
+
+
+                           Table 7: Safety metric comparison with [1]
+             Controller                       ms         Viol.%      Validation
+             PI Controller                   0.096        9.3%       Peak heat week
+             MPC                             0.016        1.2%       Peak heat week
+             Safe DRL (DDQN+MPC)             0.000        0.0%       Peak heat week
+             Our MORL (yearly)               0.697       45.8%       12 months
+             Our MORL (summer)            0.160–0.187   5.7–6.0%     Jul/Aug/Sep
+             Our v4 thermostatic            ≈ 0.05*      ≈ 5%*       12 months
+      *Estimated from RMSE = 0.84°C with [21,25]°C bounds — formal ms computation pending.
+
+
+7.7    Comparison with Gao et al.
+
+8     Comparison with Wang et al.
+
+9     Root Cause Analysis: Three Components of the Sim-to-Real
+      Gap
+Our systematic experimentation decomposed the sim-to-real gap into three independent compo-
+nents:
+
+    1. Weather mismatch (SOLVED): Synthetic sinusoidal Tamb did not capture cold fronts,
+       heat waves, or seasonal asymmetries. Solution: Real Belgian weather lookup table from
+       51,200 BOPTEST measurements. Impact: Violation reduced from 51.9% to 45.6%.
+
+    2. Extreme event response (SOLVED): The agent could not prevent deep temperature
+       crashes during sudden cold fronts. Solution: Rule-based Emergency Heating Mode (Tamb <
+       5°C ∧ Tzone < 20°C → max heat). Impact: Tmin : −4.5 → 13.2°C; ms : 0.972 → 0.697.
+
+    3. PI controller bottleneck (SOLVED in v4): Initially misidentified as “structural action-
+       response mismatch.” BOPTEST fine-tuning showed clip_fraction = 0, suggesting the
+       gap was unfixable. However, Experiment 11 proved that bypassing the PI controller with
+       direct Tsupply control reduced winter RMSE from 8.89°C to 0.78°C (11×). The building
+       has sufficient heating capacity; the PI controller was the bottleneck.
+
+    Methodological lesson: A “structural” limitation diagnosed through indirect evidence
+(frozen policy gradients) can be misleading. Direct experimental evidence (changing the control
+interface) is necessary to distinguish between true physical limitations and software/controller
+limitations.
+
+                                              10
+10    Complete Problem Log (15 Problems)
+
+
+                     Table 8: All 15 problems with root causes and solutions
+             ID        Root Cause             Solution                Impact
+             P0.1      Energy scale 10   −7
+                                              α = 1/Pmax              Pareto front re-
+                                                                      stored
+             P0.2      Obs Box[−106 ]         Box[−1, 1]              Value     function
+                                                                      stable
+             P1.1      Czon = 107             Data estimate 5.3×105   Physics correct
+             P1.2      Czon drifts            register_buffer         Parameter stable
+             P1.3      NN cancels HVAC        Residual ∆T             Architecture fix
+             P2.1      Latency ill-poses      Separate preprocess     RMSE 79% better
+             P2.2      Linear calib 5.2%      Joint NN fine-tune      Czon 7.9% error
+             P3.1      No Tamb input          8-input architecture    Weather-aware
+             P3.2      1-step loss            Multi-step K={2, 4}     Rollout stable
+             P3.3      10k data samples       51k (4 × 4)             Full coverage
+             P3.4      Horizon 4 strict       Horizon 2               2.2% false-safe
+             P3.5      Wrong BOPTEST          Payload inspection      Tamb correct
+                       key
+             P3.7      Reward amplifies       Reverted to original    Insight
+                       gap
+             P3.8      Forecast         ̸=    Real weather lookup     Solved
+                       weather
+             P3.12     Flat ̸= seasons        HDRL + Emergency        ms −46%
+
+
+
+11    Progress Summary
+
+                           Table 9: Complete improvement trajectory
+     Stage                                ms / RMSE             ∆     Key Innovation
+     Phase 0 initial                   ms = 1.284             —       MORL formulation
+     Phase 1 surrogate                 ms = 0.510            −60%     Neural ODE (32,313×)
+     PPO baseline                      ms = 0.798            −38%     10M steps, 32 envs
+     HDRL + RW + Emergency             ms = 0.697            −46%     Seasonal + rule-based
+     Summer best (Sep)                 ms = 0.140            −89%     Summer specialization
+     Thermostatic v1                  RMSE = 0.73°C           —       Gao comparison (summer)
+     Tsupply v4                      RMSE = 0.84°C            —       PI controller bypass
+     v4 winter                       RMSE = 0.78°C           11×      Structural gap solved
+
+
+
+12    Proposed Next Steps
+ 1. MORL with direct Tsupply : Combine the HDRL + Emergency architecture with Tsupply
+    control. Expected: ms < 0.3 across all seasons.
+
+ 2. PMV/PPD comfort metric: Replace temperature-only metric with ASHRAE Standard
+    55 [2], incorporating humidity, air velocity, and metabolic rate.
+
+ 3. PPG algorithm: Phasic Policy Gradient [7] for improved fine-tuning convergence (sepa-
+    rated policy/value updates).
+
+                                                   11
+  4. Optuna hyperparameter sweep: Exploit 32,313× speedup for exhaustive search over
+     learning rate, network architecture, reward weights.
+
+  5. Edge deployment: NVIDIA Jetson Orin Nano with real building IoT sensors for Phase
+     5.
+
+
+13      Conclusion
+This work established a complete MORL-based HVAC control pipeline through four phases and
+over fifteen experiments:
+
+     • Physics-informed surrogate: RC Neural ODE with 32,313× speedup (RMSE = 0.163°C,
+       R2 = 0.991), enabling rapid experimentation (35 min for 10M steps vs 73.9 hours on
+       BOPTEST).
+
+     • Inverse problem: Gradient-based calibration recovering Czon with 7.9% error from noisy,
+       latent, biased telemetry.
+
+     • MORL architecture: Three-layer controller (Emergency → HDRL → Seasonal agents)
+       achieving ms = 0.697 across 12 months, with summer ms = 0.14–0.19.
+
+     • Sim-to-real gap decomposition: Three components identified—weather mismatch (solved),
+       extreme events (solved), and PI controller bottleneck (solved via direct Tsupply ).
+
+     • Critical finding: The “structural gap” diagnosed through frozen policy gradients (clip_fraction
+       = 0) was not a building physics limitation but a control interface limitation. Direct
+       Tsupply control reduced winter RMSE from 8.89°C to 0.78°C (11× improvement), proving
+       the building has sufficient capacity when the PI controller is bypassed.
+
+    The overall trajectory—from ms = 1.284 (Phase 0) to ms = 0.697 (MORL, −46%) to RMSE
+= 0.84°C (thermostatic, all seasons)—demonstrates that combining physics-informed surrogates,
+hierarchical architectures, and systematic gap analysis produces deployable building controllers.
+
+
+References
+ [1] Wang, Z., Chen, Y., Li, Y., 2025. Synergizing deep reinforcement learning and model pre-
+     dictive control for safe building energy management. Applied Energy 377, 124328.
+
+ [2] Hedayat, S., et al., 2025. A physics-informed reinforcement learning framework for HVAC
+     optimization. Energies 18, 6310.
+
+ [3] Gao, Y., Shi, S., Miyata, S., Akashi, Y., 2024. Successful application of predictive informa-
+     tion in deep reinforcement learning control. Energy and Buildings.
+
+ [4] Xu, S., et al., 2023. Heterogeneous expert-guided training for DRL-based building energy
+     management. Proc. BuildSys.
+
+ [5] Al Sayed, K., et al., 2024. Reinforcement learning for HVAC control in intelligent buildings.
+     J. Building Engineering 95, 110085.
+
+ [6] Liao, Y., et al., 2022. Hierarchical deep reinforcement learning for HVAC control. Energy
+     and Buildings.
+
+ [7] Nguyen, A., et al., 2024. Modelling building HVAC with deep reinforcement learning. Energy
+     and Buildings.
+
+                                               12
+[8] Raissi, M., Perdikaris, P., Karniadakis, G.E., 2019. Physics-informed neural networks. J.
+    Computational Physics 378, 686–707.
+
+[9] Blum, D., et al., 2021. Building optimization testing framework (BOPTEST). J. Building
+    Performance Simulation 14(5), 586–610.
+
+
+
+
+                                            13
+

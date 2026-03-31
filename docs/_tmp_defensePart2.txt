@@ -1,0 +1,611 @@
+                  HVAC Building Energy Management
+              Multi-Objective Deep Reinforcement Learning
+Project Defense Presentation: Phases 0–3 and Current Phase 3 Continuation
+
+
+                                  Almaz Sapargali
+
+
+
+                                   March 30, 2026
+
+
+
+
+Almaz Sapargali                                                                   March 30,
+                       HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                         Learning   1 / 33
+Agenda
+
+
+1   Problem and Roadmap
+
+2   Phases 1 and 2
+
+3   Reported Phase 3
+
+4   Current Phase 3 Continuation
+
+5   MORL and Safety Layer
+
+6   Contributions, Limits, and Next Steps
+
+
+
+         Almaz Sapargali                                                                  March 30,
+                               HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                 Learning   2 / 33
+Problem Statement
+
+
+
+   HVAC control is inherently multi-objective: comfort, energy, and safety must be balanced
+   at the same time.
+   Purely model-based methods are often accurate but slow or difficult to deploy online.
+   Purely model-free RL is flexible, but BOPTEST training is expensive and
+   sample-inefficient.
+   The central question of this project is therefore:
+   Can we build a fast and physically informed RL pipeline that is accurate enough for
+   control, scalable enough for experimentation, and structured enough for safe deployment?
+
+
+
+
+       Almaz Sapargali                                                                   March 30,
+                              HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                Learning   3 / 33
+Research Roadmap
+
+
+
+   Phase 0: establish PPO-based energy-management baseline and identify reward-scaling
+   and observation-space issues.
+   Phase 1: build a physics-informed RC Neural ODE surrogate to replace slow BOPTEST
+   rollouts.
+   Phase 2: calibrate the thermal model through an inverse problem to improve physical
+   consistency.
+   Phase 3: test increasingly structured control architectures, culminating in HDRL, real
+   weather, emergency logic, and now the current direct-TSup continuation.
+
+
+
+
+       Almaz Sapargali                                                                  March 30,
+                             HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                               Learning   4 / 33
+Phase 0: Initial MORL Baseline
+
+
+    Initial PPO-based baseline established the first Pareto trade-off between comfort and
+    energy.
+    Two critical issues were discovered:
+        scale dominance in the scalarized reward,
+        observation-space mismatch between code and environment.
+    After fixing these, the early baseline achieved a reported 28% energy reduction and
+    produced the first usable Pareto front.
+    Phase 0 was important because it revealed that most early instability was not algorithmic,
+    but representational.
+
+
+
+
+        Almaz Sapargali                                                                  March 30,
+                              HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                Learning   5 / 33
+Phase 1: Why Neural ODE?
+
+
+
+   BOPTEST is accurate but slow; large RL sweeps directly on the simulator are impractical.
+   The solution was to learn a surrogate with a physically interpretable thermal update.
+   The implemented model is an RC Neural ODE with two heads:
+       a thermal head predicting ∆T ,
+       a power head predicting total HVAC power.
+   This preserves the physical meaning of the state transition while remaining fast enough for
+   massive batched rollouts.
+
+
+
+
+       Almaz Sapargali                                                                  March 30,
+                             HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                               Learning   6 / 33
+Neural ODE Formulation
+The current surrogate implementation in surrogate/rc_node_v2.py uses the feature vector
+
+                            xt = [T̃zone , T̃amb , sin h, cos h, sin d, cos d, a0 , a1 ].
+
+It predicts:
+                                      ∆Tt = fθ (xt ),           Pt = gϕ (xt ),
+and updates temperature as
+                                           Tt+1 = clip(Tt + ∆Tt ).
+
+Key design choices:
+     residual connection in the heat network,
+     cyclic encodings for hour and day,
+     explicit power positivity via Softplus,
+     multi-step training loss with physical regularization.
+          Almaz Sapargali                                                                       March 30,
+                                     HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                       Learning   7 / 33
+Phase 1 Results
+
+
+
+    Reported speed:
+        BOPTEST: 37.6 steps/s,
+        surrogate batch rollout: 1,215,752 steps/s,
+        speedup: 32,313×.
+    The Phase 3 surrogate-v2 report further improved one-step RMSE from 1.128 to 0.163 ◦ C
+    with R 2 = 0.991.
+    This surrogate became the computational foundation for the later PPO, HDRL, and
+    safety-filter pipelines.
+
+
+
+
+        Almaz Sapargali                                                                   March 30,
+                               HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                 Learning   8 / 33
+Phase 2: Inverse-Problem Calibration
+
+
+    The inverse problem stage addressed parameter mismatch between the nominal thermal
+    model and the observed building response.
+    Two key issues were solved:
+        latency and ill-posed preprocessing,
+        weak linear calibration.
+    Reported improvement:
+        RMSE reduced from 9.12 to 1.91 ◦ C,
+        79% error reduction,
+        thermal capacitance error reduced to 7.9%.
+    This phase made the surrogate more physically trustworthy, which matters later for safety
+    and for control transfer.
+
+
+
+        Almaz Sapargali                                                                   March 30,
+                               HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                 Learning   9 / 33
+Phase 3 in the Final Report
+
+
+According to MorlProjectFinalv3.pdf, Phase 3 consisted of ten systematic experiments.
+Main reported findings:
+    HDRL specialization improved over flat PPO.
+    Real weather integration removed a major simulator-to-controller mismatch.
+    Emergency heating solved many extreme cold failures.
+    Reward shaping alone amplified the gap instead of closing it.
+    BOPTEST fine-tuning did not solve the remaining issue, indicating a structural mismatch
+    rather than a pure distribution shift.
+
+
+
+
+        Almaz Sapargali                                                                  March 30,
+                              HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                Learning   10 / 33
+Best Reported Legacy Phase 3 Configuration
+
+ Method                                        ms       Viol.%           Main Finding
+ HDRL + RW + Emerg + 5F + [18,30]             0.704       46.8      Final config in report
+ HDRL + RW + Emerg (4F, [21,25])              0.697       45.8        Best ms in report
+ PPO baseline (synthetic)                     0.798       51.9         Strong baseline
+ GRU (Gao)                                    0.893       57.4          Forecast gap
+
+Legacy final controller:
+     5-feature observation,
+     hierarchical winter/summer agents,
+     emergency rule for severe cold,
+     action mapped to a setpoint-like control in the range [18,30] ◦ C.
+
+
+
+          Almaz Sapargali                                                                   March 30,
+                                 HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                   Learning   11 / 33
+Why Phase 3 Had to Continue
+
+The final report itself documented that the remaining performance gap was structural.
+The root-cause analysis highlighted three facts:
+    weather mismatch was solved,
+    extreme cold events were partly solved,
+    the remaining gap came from action-response mismatch.
+
+This directly motivated the current continuation:
+    move from indirect thermostat-style control to direct supply-air control,
+    unify surrogate training, PPO training, and BOPTEST evaluation under the same action
+    semantics,
+    re-establish strong baselines before re-launching MORL.
+
+
+         Almaz Sapargali                                                                  March 30,
+                               HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                 Learning   12 / 33
+Current Redesign: Direct Supply-Air Control
+
+The current continuation changes the control interface fundamentally.
+Previous logic:
+    indirect thermostat/setpoint control,
+    fixed or semi-fixed supply-air behavior,
+    higher risk of mismatch between surrogate and BOPTEST.
+New logic:
+    direct control of TSup in the range [18,35] ◦ C,
+    direct fan command,
+    wide heating/cooling setpoints in BOPTEST to keep the RL controller in charge,
+    identical action semantics in surrogate and BOPTEST backends.
+
+
+         Almaz Sapargali                                                                  March 30,
+                               HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                 Learning   13 / 33
+Current End-to-End Pipeline
+
+
+    Data collection: data/collect_tsupply_data.py
+        4 seasons × 4 policies × 3200 steps = 51,200 samples.
+    Surrogate training: surrogate/train_surrogate_v2.py
+        multi-step loss, physics regularization, and power prediction.
+    Thermostatic comfort-first PPO: training/train_thermostatic.py
+    Seasonal HDRL experts: training/train_hdrl.py
+    Standard PI reference: evaluation/standard_controller_baseline.py
+    Ongoing MORL and safety layer:
+        main.py,
+        evaluation/eval_safe_morl.py,
+        layers/safety/action_filter.py.
+
+
+
+       Almaz Sapargali                                                                    March 30,
+                               HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                 Learning   14 / 33
+Standard PI Controller as the Energy Reference
+
+The built-in BOPTEST controller is now evaluated explicitly without any override signals.
+Two comfort views are reported:
+    fixed-target metrics against 22 ◦ C for direct comparison with PPO-based baselines,
+    schedule-aware metrics using the testcase schedule from
+    internal_setpoints_occupancy.csv.
+
+Mean results over 12 benchmark windows:
+    RMSE22 = 3.41 ◦ C,
+    fixed-band violation = 43.8%,
+    schedule-aware violation = 27.0%,
+    schedule-aware ms = 0.503,
+    total energy = 1230.2 kWh = 25.63 kWh/m2 .
+
+        Almaz Sapargali                                                                  March 30,
+                              HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                Learning   15 / 33
+Why the PI Baseline Matters
+
+
+
+   The standard controller is not the best comfort controller for a strict 22 ◦ C target.
+   However, it is the most energy-efficient reference available in the current benchmark.
+   Therefore, it should be interpreted as:
+        the low-energy reference,
+        not the main apples-to-apples comfort baseline.
+   This gives the project a more honest evaluation frame:
+        PI baseline = energy reference,
+        thermostatic PPO = comfort reference,
+        HDRL/MORL = trade-off controllers.
+
+
+
+
+       Almaz Sapargali                                                                   March 30,
+                              HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                Learning   16 / 33
+Current Thermostatic PPO Baseline
+
+
+The current comfort-first baseline is implemented in training/train_thermostatic.py.
+Main design choices:
+    training on the direct-TSup surrogate rc_node_v3_tsupply.pt,
+    17-dimensional observation,
+    direct ambient-aware reward centered on the exact target 22 ◦ C,
+    weak energy penalty only near the target,
+    10 million PPO timesteps with 32 parallel environments.
+This controller is intentionally optimized for comfort, not for energy minimization.
+
+
+
+
+         Almaz Sapargali                                                                  March 30,
+                               HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                 Learning   17 / 33
+Thermostatic PPO: Current Validated Results
+
+ Metric                        Value                       Interpretation
+                                  ◦
+ Mean RMSE                     0.97 C               strong annual comfort
+ Mean MAE                      0.81 ◦ C                 stable tracking
+ Within ±1 ◦ C                  65.9%          close to target most of the time
+ Within ±0.5 ◦ C                35.1%              reasonably tight control
+ Total energy                3037.8 kWh                comfort-first cost
+ Normalized energy          63.29 kWh/m2             much higher than PI
+
+Seasonal RMSE:
+    winter: 0.92 ◦ C,
+    spring: 0.89 ◦ C,
+    summer: 1.20 ◦ C,
+    autumn: 0.87 ◦ C.
+
+          Almaz Sapargali                                                                         March 30,
+                                       HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                         Learning   18 / 33
+Interpretation of the Thermostatic Result
+
+
+
+
+    This is the strongest comfort result currently validated in the repository.
+    The previous winter failure mode of the thermostat-style pipeline is largely removed.
+    The remaining weakness has shifted toward cooling-season performance, not heating
+    collapse.
+    This controller now serves as the main comfort benchmark for all later trade-off methods.
+
+
+
+
+        Almaz Sapargali                                                                   March 30,
+                               HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                 Learning   19 / 33
+Current HDRL Design
+
+The current HDRL implementation in training/train_hdrl.py uses:
+    two PPO experts trained on the direct-TSup surrogate,
+    a compact 5-feature observation:
+
+                                 [Tzone , CO2 , Ptotal , TSup,prev , Tamb ],
+
+    winter and summer specialization,
+    real weather-based domain randomization,
+    emergency heating in evaluation when Tamb < 5 ◦ C and Tzone < 20 ◦ C.
+The meta-controller currently switches by a simple ambient threshold:
+
+                          Tamb < 12◦ C ⇒ πwinter ,           otherwise πsummer .
+
+
+        Almaz Sapargali                                                                    March 30,
+                                HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                  Learning   20 / 33
+HDRL: Current Validated Results
+
+ Metric                        Value                         Interpretation
+ Mean violation rate            12.7%          reasonable but not comfort-optimal
+ Mean ms                        0.307             better than old reported HDRL
+ Total energy                3070.2 kWh        slightly above thermostatic baseline
+ Normalized energy          63.96 kWh/m2                far above PI baseline
+ Winter mean violation          20.6%                       main weakness
+ Summer mean violation          16.1%                  overcooling still visible
+
+Summer-only energy:
+    thermostatic PPO: 422.7 kWh,
+    HDRL: 404.6 kWh,
+    summer saving of HDRL vs thermostatic: 4.3%.
+
+
+
+          Almaz Sapargali                                                                  March 30,
+                                HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                  Learning   21 / 33
+Controller Comparison
+
+
+ Controller                      Comfort View                  Energy                   Role
+                                                 ◦
+ Standard PI                   RMSE22 = 3.41 C              1230.2 kWh           energy reference
+ Thermostatic PPO               RMSE = 0.97 ◦ C             3037.8 kWh          comfort reference
+ HDRL                       ms = 0.307, viol = 12.7%        3070.2 kWh         trade-off prototype
+
+Relative energy versus PI baseline:
+     Thermostatic PPO: +146.9%
+     HDRL: +149.6%
+
+Relative energy versus thermostatic PPO:
+     HDRL annual difference: +1.1%
+
+
+
+          Almaz Sapargali                                                                       March 30,
+                                     HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                       Learning   22 / 33
+Why HDRL Is Still Worse than the Thermostatic Baseline
+
+   Different objective:
+        thermostatic PPO is comfort-first and tracks a fixed target of 22 ◦ C,
+        HDRL optimizes comfort + energy over the broader band [21,25] ◦ C.
+   Different information budget:
+        thermostatic PPO uses 17 features including forecasts and history,
+        HDRL uses only 5 current-state features.
+   Different control logic:
+        HDRL relies on a hard seasonal switch at 12 ◦ C,
+        this is too crude for shoulder seasons and mixed thermal regimes.
+   Result:
+        HDRL may be acceptable as a structured controller,
+        but it is not yet better than the comfort-only baseline.
+
+
+
+       Almaz Sapargali                                                                    March 30,
+                               HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                 Learning   23 / 33
+MORL Design in the Current Repository
+
+The MORL entry point is main.py.
+Current scalarization settings in configs/env.yaml:
+    wcomfort = 0.8,
+    wenergy = 0.2,
+    energy scale = 2 × 10−4 ,
+    comfort band = [21,25] ◦ C.
+Important current status:
+    MORL is implemented,
+    but by default it still trains directly on the BOPTEST backend,
+    and it has not yet been fully re-evaluated after the direct-TSup redesign.
+
+
+        Almaz Sapargali                                                                    March 30,
+                                HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                  Learning   24 / 33
+Safety Filter Layer
+
+The repository also contains a surrogate-based safety filter in
+layers/safety/action_filter.py.
+Logic:
+    take PPO action,
+    rollout the Neural ODE surrogate for a short horizon,
+    check whether predicted temperatures stay inside a shrunk safe band,
+    if unsafe, replace the action with a fallback controller.
+
+In the current code:
+    the horizon is typically 2–4 steps,
+    a safety margin is used to compensate surrogate uncertainty,
+    evaluation script: evaluation/eval_safe_morl.py.
+
+         Almaz Sapargali                                                                  March 30,
+                               HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                 Learning   25 / 33
+Honest Status of MORL and Safe MORL
+
+
+   The MORL stack and the safety layer are already implemented in code.
+   However, after the direct-TSup redesign, the main validated results are still:
+        standard PI baseline,
+        thermostatic PPO baseline,
+        HDRL.
+   Therefore, for this defense the MORL part should be presented as:
+        the next-stage objective,
+        architecturally ready,
+        not yet the final quantitative headline of the project.
+   This is scientifically stronger than overclaiming incomplete results.
+
+
+
+
+       Almaz Sapargali                                                                     March 30,
+                                HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                  Learning   26 / 33
+Main Contributions Across All Phases
+
+
+    A full research pipeline from slow BOPTEST RL to fast surrogate-assisted control.
+    A physics-informed RC Neural ODE surrogate with large speedup and strong predictive
+    accuracy.
+    An inverse-calibration stage that materially improved physical fidelity.
+    A structured Phase 3 experimental program that identified weather mismatch, seasonal
+    mismatch, and action-response mismatch.
+    A current direct-TSup redesign that produced a strong comfort baseline and a more honest
+    benchmark structure.
+    A codebase that already contains the next deployment layers: HDRL, MORL, and
+    surrogate-based safety filtering.
+
+
+
+        Almaz Sapargali                                                                   March 30,
+                               HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                 Learning   27 / 33
+Current Limitations
+
+
+
+    The current HDRL controller does not yet beat the thermostatic PPO baseline on the
+    annual comfort-energy trade-off.
+    The PI baseline remains far more energy-efficient because it solves a softer
+    scheduled-comfort problem.
+    MORL has not yet been fully re-trained and re-evaluated on the direct-TSup pipeline.
+    The current HDRL gate is threshold-based rather than learned.
+    The current annual benchmark uses 12 representative windows of 336 hours each rather
+    than a full continuous-year rollout.
+
+
+
+
+        Almaz Sapargali                                                                  March 30,
+                              HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                                Learning   28 / 33
+Next Steps
+
+
+
+   Retrain MORL first on the direct-TSup surrogate, then fine-tune on BOPTEST.
+   Replace hard seasonal switching with a learned gate or hysteresis-based meta-controller.
+   Give HDRL and MORL the same richer temporal context as the thermostatic PPO
+   baseline.
+   Move from flat band-based comfort toward a target-aware comfort metric around 22 ◦ C.
+   Extend evaluation toward PMV/PPD and ASHRAE 55 style comfort metrics.
+   Prepare edge deployment and real-building sensor integration after final controller
+   stabilization.
+
+
+
+
+       Almaz Sapargali                                                                  March 30,
+                             HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                               Learning   29 / 33
+Final Takeaways
+
+
+   Phase 0 established the MORL baseline and exposed representation problems.
+   Phase 1 delivered the key computational breakthrough: a fast and accurate Neural ODE
+   surrogate.
+   Phase 2 improved physical fidelity through inverse calibration.
+   Phase 3 established that hierarchical structure, weather realism, and emergency logic
+   matter, but also revealed a structural action mismatch.
+   The current continuation solved that mismatch by moving to direct supply-air control.
+   Today, the strongest validated result is the direct-TSup thermostatic PPO baseline, while
+   HDRL is an operational but not yet dominant trade-off controller.
+   The repository is now technically ready for the final MORL step.
+
+
+
+       Almaz Sapargali                                                                  March 30,
+                             HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                               Learning   30 / 33
+Reproducibility: Key Files
+    Report basis: docs/_tmp_morl_project_final_v3.txt extracted from
+    MorlProjectFinalv3.pdf
+    Surrogate model: surrogate/rc_node_v2.py
+    Surrogate training: surrogate/train_surrogate_v2.py
+    Direct-TSup data collection: data/collect_tsupply_data.py
+    Thermostatic baseline: training/train_thermostatic.py
+    HDRL training: training/train_hdrl.py
+    Standard PI evaluation: evaluation/standard_controller_baseline.py
+    Safety evaluation: evaluation/eval_safe_morl.py
+    Current validated outputs:
+         outputs/thermostatic_yearly_summary.csv
+         outputs/hdrl_yearly_summary.csv
+         outputs/standard_controller_yearly_summary.csv
+         outputs/standard_controller_energy_comparison.csv
+        Almaz Sapargali                                                                 March 30,
+                             HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                               Learning   31 / 33
+Reproducibility: Main Commands
+
+   Thermostatic PPO:
+        python training/train_thermostatic.py
+        PYTHONPATH=/app python3 evaluation/eval_thermostatic.py
+   HDRL:
+        python training/train_hdrl.py
+        PYTHONPATH=/app python3 evaluation/yearly_validation_hdrl.py
+   Standard PI baseline:
+        PYTHONPATH=/app python3 evaluation/standard_controller_baseline.py
+   MORL and safe MORL:
+        SEED=42 python main.py
+        MODE=eval SEED=42 python main.py
+        PYTHONPATH=/app python3 evaluation/eval_safe_morl.py –model ...
+
+       Almaz Sapargali                                                                March 30,
+                           HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                             Learning   32 / 33
+                               Thank you
+                                 Questions?
+
+
+
+
+Almaz Sapargali                                                              March 30,
+                  HVAC Building Energy ManagementMulti-Objective Deep Reinforcement    2026
+                                                                                    Learning   33 / 33
+

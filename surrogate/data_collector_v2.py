@@ -136,6 +136,7 @@ def collect_v2(
 
     cfg = load_all_configs("configs")
     env_cfg = cfg["env"]
+    env_cfg["control_mode"] = "thermostat"
     env_cfg["output_dir"] = output_dir
 
     # Устанавливаем начальное время если backend поддерживает

@@ -1,15 +1,8 @@
-"""
-evaluation/yearly_validation.py
+from __future__ import annotations
 
-Yearly BOPTEST validation for the PPO baseline trained with direct TSup control.
-
-Usage:
-    PYTHONPATH=/app python3 evaluation/yearly_validation.py
-"""
-
+import argparse
 import json
 import os
-import sys
 import time
 import zipfile
 
@@ -19,13 +12,9 @@ import requests
 from gymnasium import spaces
 from stable_baselines3 import PPO
 
-sys.path.insert(0, "/app")
-
 
 BOPTEST_URL = "http://web:8000"
 TESTCASE = "bestest_air"
-MODEL_PATH = "models/ppo_surrogate_final.zip"
-OUTPUT_DIR = "outputs"
 STEP_SEC = 3600
 STEPS_PER_SCENARIO = 336
 SELECT_TIMEOUT = 300
@@ -35,6 +24,7 @@ N_OBS = 5
 STATE_LOW = np.array([5.0, 400.0, 0.0, 18.0, -30.0], dtype=np.float32)
 STATE_HIGH = np.array([40.0, 2000.0, 5500.0, 35.0, 45.0], dtype=np.float32)
 
+T_TARGET = 22.0
 T_LOW = 21.0
 T_HIGH = 25.0
 T_SUPPLY_LOW = 18.0
@@ -85,7 +75,6 @@ def boptest_request(method, path, payload=None, timeout=60, retries=3):
 
 
 def select_testcase():
-    print("  Selecting testcase...")
     data = boptest_request("POST", f"/testcases/{TESTCASE}/select", timeout=SELECT_TIMEOUT, retries=2)
     testid = data.get("testid")
     if not testid:
@@ -161,38 +150,60 @@ def action_to_boptest(action):
     }
 
 
-def run_scenario(model, name, start_time):
-    print(f"\n{'=' * 50}")
-    print(f"SCENARIO: {name} (start={start_time}s)")
-    print(f"{'=' * 50}")
+def compute_metrics(temps: np.ndarray, powers: np.ndarray) -> dict[str, float]:
+    errors = np.abs(temps - T_TARGET)
+    rmse = float(np.sqrt(np.mean((temps - T_TARGET) ** 2)))
+    mae = float(np.mean(errors))
+    within_1 = float(np.mean(errors < 1.0) * 100.0)
+    within_05 = float(np.mean(errors < 0.5) * 100.0)
+    r_time = float(np.mean((temps < T_LOW) | (temps > T_HIGH)))
+    over = float(np.maximum((temps - T_HIGH) / T_HIGH, 0.0).max())
+    under = float(np.maximum((T_LOW - temps) / T_LOW, 0.0).max())
+    return {
+        "rmse": rmse,
+        "mae": mae,
+        "within_1c_pct": within_1,
+        "within_05c_pct": within_05,
+        "viol_pct": r_time * 100.0,
+        "energy_kwh": float(powers.sum() / 1000.0),
+        "ms": float(r_time + max(over, under)),
+        "t_min": float(temps.min()),
+        "t_max": float(temps.max()),
+        "t_mean": float(temps.mean()),
+    }
+
+
+def run_scenario(model, name, start_time, output_dir):
+    print(f"\n{'=' * 72}")
+    print(f"MORL SCENARIO: {name} (start={start_time}s)")
+    print(f"{'=' * 72}")
 
     testid = select_testcase()
-    print(f"  testid: {testid}")
     initialize(testid, start_time)
-    print("  Initialized")
-
     payload = advance(testid, {})
+
     prev_action = np.zeros(2, dtype=np.float32)
     obs, t_zone, p_total, t_amb = make_obs(payload, prev_action)
 
-    history = {"temp": [], "power": [], "t_amb": [], "t_supply": []}
+    history = {"t_zone": [], "p_total": [], "t_amb": [], "t_supply": [], "a0": [], "a1": []}
 
     for step in range(STEPS_PER_SCENARIO):
         action, _ = model.predict(obs, deterministic=True)
-        command = action_to_boptest(action)
-        payload = advance(testid, command)
+        payload = advance(testid, action_to_boptest(action))
         obs, t_zone, p_total, t_amb = make_obs(payload, action)
 
-        history["temp"].append(t_zone)
-        history["power"].append(p_total)
+        history["t_zone"].append(t_zone)
+        history["p_total"].append(p_total)
         history["t_amb"].append(t_amb)
         history["t_supply"].append(action_to_t_supply(action[0]))
+        history["a0"].append(float(action[0]))
+        history["a1"].append(float(action[1]))
 
         if step % 48 == 0:
             print(
-                f"  Step {step:3d} | T={t_zone:.1f}C | P={p_total:.0f}W "
-                f"| T_amb={t_amb:.1f}C | TSup={history['t_supply'][-1]:.1f}C "
-                f"| a=[{action[0]:.2f},{action[1]:.2f}]"
+                f"  Step {step:3d} | T={t_zone:.1f}C | P={p_total:.0f}W | "
+                f"T_amb={t_amb:.1f}C | TSup={history['t_supply'][-1]:.1f}C | "
+                f"a=[{action[0]:.2f},{action[1]:.2f}]"
             )
 
         prev_action = np.asarray(action, dtype=np.float32)
@@ -200,54 +211,41 @@ def run_scenario(model, name, start_time):
     stop(testid)
 
     df = pd.DataFrame(history)
-    csv_path = os.path.join(OUTPUT_DIR, f"ppo_baseline_scenario_{name}.csv")
-    df.to_csv(csv_path, index=False)
+    df.to_csv(os.path.join(output_dir, f"morl_scenario_{name}.csv"), index=False)
 
-    temps = np.array(history["temp"])
-    viol = ((temps < T_LOW) | (temps > T_HIGH)).mean() * 100
-    energy = np.sum(history["power"]) / 1000.0
-    r_time = ((temps < T_LOW) | (temps > T_HIGH)).mean()
-    over = ((temps - T_HIGH) / T_HIGH).clip(min=0).max()
-    under = ((T_LOW - temps) / T_LOW).clip(min=0).max()
-    ms = r_time + max(over, under)
-
-    print(f"  RESULT: viol={viol:.1f}%, E={energy:.1f}kWh, m_s={ms:.3f}")
-
-    return {
-        "name": name,
-        "viol": viol,
-        "energy": energy,
-        "ms": ms,
-        "t_min": temps.min(),
-        "t_max": temps.max(),
-        "t_mean": temps.mean(),
-    }
+    metrics = compute_metrics(df["t_zone"].to_numpy(dtype=float), df["p_total"].to_numpy(dtype=float))
+    print(
+        f"  RESULT: RMSE={metrics['rmse']:.2f}C | MAE={metrics['mae']:.2f}C | "
+        f"Viol={metrics['viol_pct']:.1f}% | E={metrics['energy_kwh']:.1f}kWh | m_s={metrics['ms']:.3f}"
+    )
+    return {"name": name, **metrics}
 
 
-def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Yearly BOPTEST validation for the MORL PPO controller.")
+    parser.add_argument("--model", default="outputs/morl_boptest_finetune_seed42/models/ppo_model.zip")
+    parser.add_argument("--output_dir", default="outputs")
+    args = parser.parse_args()
+
+    os.makedirs(args.output_dir, exist_ok=True)
 
     print("Checking BOPTEST...")
-    try:
-        response = boptest_request("GET", "/version", timeout=10)
-        print(f"BOPTEST version: {response['payload']['version']}")
-    except Exception as exc:
-        print(f"BOPTEST not available: {exc}")
-        return
+    version = boptest_request("GET", "/version", timeout=10)
+    print(f"BOPTEST version: {version['payload']['version']}")
 
-    print(f"Loading model: {MODEL_PATH}")
-    with zipfile.ZipFile(MODEL_PATH) as archive:
+    print(f"Loading MORL model: {args.model}")
+    with zipfile.ZipFile(args.model) as archive:
         data = json.loads(archive.read("data"))
     obs_shape = data.get("observation_space", {}).get("_shape", [N_OBS])
     obs_dim = obs_shape[0] if isinstance(obs_shape, list) else obs_shape
     if obs_dim != N_OBS:
         raise RuntimeError(
-            f"Model observation dim is {obs_dim}, but direct-TSup evaluator expects {N_OBS}. "
-            "Retrain the PPO baseline on the tsupply surrogate first."
+            f"Model observation dim is {obs_dim}, but MORL yearly validation expects {N_OBS}. "
+            "Pretrain and fine-tune MORL on the direct-TSup pipeline first."
         )
 
     model = PPO.load(
-        MODEL_PATH,
+        args.model,
         device="cpu",
         custom_objects={
             "action_space": spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32),
@@ -256,62 +254,37 @@ def main():
             "lr_schedule": lambda _: 3e-4,
         },
     )
-    print(f"  Model loaded OK (obs={obs_dim})")
 
     results = []
     start_all = time.time()
-
-    for name, t_start in SCENARIOS.items():
-        try:
-            results.append(run_scenario(model, name, t_start))
-        except Exception as exc:
-            print(f"  FAILED: {exc}")
-            results.append(
-                {
-                    "name": name,
-                    "viol": None,
-                    "energy": None,
-                    "ms": None,
-                    "t_min": None,
-                    "t_max": None,
-                    "t_mean": None,
-                }
-            )
+    for name, start_time in SCENARIOS.items():
+        results.append(run_scenario(model, name, start_time, args.output_dir))
 
     elapsed = (time.time() - start_all) / 60.0
+    summary = pd.DataFrame(results)
+    summary.to_csv(os.path.join(args.output_dir, "morl_yearly_summary.csv"), index=False)
 
-    print(f"\n{'=' * 70}")
-    print(f"YEARLY VALIDATION COMPLETE ({elapsed:.1f} min)")
-    print(f"{'=' * 70}")
-    print(f"{'Scenario':25s} {'Viol%':>7s} {'T_min':>7s} {'T_max':>7s} {'E_kWh':>7s} {'m_s':>7s}")
-    print("-" * 70)
+    print(f"\n{'=' * 86}")
+    print(f"MORL YEARLY VALIDATION COMPLETE ({elapsed:.1f} min)")
+    print(f"{'=' * 86}")
+    print(f"{'Scenario':15s} {'RMSE':>6s} {'MAE':>6s} {'±1C':>6s} {'±0.5C':>7s} {'Viol%':>7s} {'E_kWh':>8s} {'m_s':>7s}")
+    print("-" * 86)
 
-    valid = [row for row in results if row["viol"] is not None]
-    pd.DataFrame(results).to_csv(os.path.join(OUTPUT_DIR, "ppo_baseline_yearly_summary.csv"), index=False)
     for row in results:
-        if row["viol"] is not None:
-            print(
-                f"{row['name']:25s} {row['viol']:7.1f} {row['t_min']:7.1f} "
-                f"{row['t_max']:7.1f} {row['energy']:7.1f} {row['ms']:7.3f}"
-            )
-        else:
-            print(f"{row['name']:25s}  FAILED")
-
-    if valid:
-        viols = [row["viol"] for row in valid]
-        energies = [row["energy"] for row in valid]
-        ms_vals = [row["ms"] for row in valid]
-        print("-" * 70)
         print(
-            f"{'MEAN':25s} {np.mean(viols):7.1f} {'':7s} {'':7s} "
-            f"{np.mean(energies):7.1f} {np.mean(ms_vals):7.3f}"
-        )
-        print(
-            f"{'STD':25s} {np.std(viols):7.1f} {'':7s} {'':7s} "
-            f"{np.std(energies):7.1f} {np.std(ms_vals):7.3f}"
+            f"{row['name']:15s} {row['rmse']:6.2f} {row['mae']:6.2f} "
+            f"{row['within_1c_pct']:6.0f} {row['within_05c_pct']:7.0f} "
+            f"{row['viol_pct']:7.1f} {row['energy_kwh']:8.1f} {row['ms']:7.3f}"
         )
 
-    print(f"{'=' * 70}")
+    print("-" * 86)
+    print(
+        f"{'MEAN':15s} {summary['rmse'].mean():6.2f} {summary['mae'].mean():6.2f} "
+        f"{summary['within_1c_pct'].mean():6.0f} {summary['within_05c_pct'].mean():7.0f} "
+        f"{summary['viol_pct'].mean():7.1f} {summary['energy_kwh'].mean():8.1f} {summary['ms'].mean():7.3f}"
+    )
+    print("=" * 86)
+    print(f"Saved summary: {os.path.join(args.output_dir, 'morl_yearly_summary.csv')}")
 
 
 if __name__ == "__main__":

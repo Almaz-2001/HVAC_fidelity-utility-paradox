@@ -1,0 +1,198 @@
+                 HVAC Building Energy Management
+             Multi-Objective Deep Reinforcement Learning
+                                   Phases 0–3: Final Report
+
+                                        Almaz Sapargali
+
+                                           March 2026
+
+
+                                             Abstract
+         Four phases of research toward MORL-based HVAC control. Phase 0: PPO baseline
+     (28% energy reduction). Phase 1: RC Neural ODE surrogate (32,313× speedup, RMSE
+     0.163°C). Phase 2: inverse problem calibration (79% RMSE improvement). Phase 3: ten
+     systematic experiments culminating in a three-layer architecture—HDRL with real weather,
+     5-feature observations (Tamb -aware), expanded action space [18, 30]°C, and Emergency Heat-
+     ing Mode—achieving ms = 0.704 ± 0.369 across 12 monthly scenarios (168 days, ≈1,142
+     years), with summer ms = 0.140–0.173. BOPTEST fine-tuning confirmed the remaining gap
+     is structural (clip_fraction = 0). 15 problems documented.
+
+
+Contents
+1 Phases 0–2 Summary                                                                               2
+
+2 Phase 3: Ten Experiments                                                                         2
+  2.1 Surrogate v2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .     2
+  2.2 Experiment Summary . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .         2
+  2.3 Final Configuration: 12-Month Validation . . . . . . . . . . . . . . . . . . . . . .         2
+  2.4 BOPTEST Fine-tuning (Experiments 9–10) . . . . . . . . . . . . . . . . . . . . .             2
+  2.5 Root Cause Analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      3
+
+3 Progress Summary                                                                                 3
+
+4 Proposed Next Steps                                                                              3
+
+5 All 15 Problems                                                                                  4
+
+
+
+
+                                                 1
+1     Phases 0–2 Summary
+Phase 0: P0.1 scale dominance (α), P0.2 obs mismatch. Result: 28% energy reduction, Pareto
+front.
+    Phase 1: Physics-informed Neural ODE. P1.1–P1.3 (Czon , buffer, ∆T ). Speed: 37.6 (BOPTEST)
+vs 1,215,752 (surrogate batch) steps/s = 32,313×.
+    Phase 2: Inverse problem. P2.1 latency, P2.2 linear weak. RMSE 9.12 → 1.91°C (79%),
+Czon error 7.9%.
+
+
+2     Phase 3: Ten Experiments
+2.1    Surrogate v2
+P3.1–P3.3, P3.5. RMSE 1.128 → 0.163°C (6.9×), R2 = 0.991.
+
+2.2    Experiment Summary
+
+
+                        Table 1: All ten experiments ranked by mean ms
+      Method                                     ms      Viol.%        Best      Finding
+      HDRL+RW+Emerg+5F+[18,30]                  0.704      46.8     Sep 0.140    Final config
+      HDRL+RW+Emerg (4F, [21,25])               0.697      45.8     Aug 0.160    Best ms
+      PPO baseline (synthetic)                  0.798      51.9     Jul 0.357    Strong baseline
+      HDRL (synthetic)                          0.834      60.3     Aug 0.223    Specialization
+      Shield (Xu)                               0.878      64.5     Aug 0.254    Needs accuracy
+      GRU (Gao)                                 0.893      57.4     Jul 0.272    Forecast gap
+      HDRL + Real Weather                       0.972      45.6     Aug 0.146    rsev issue
+      PPO + Real Weather                        1.000      48.8     Jul 0.237    Weather helps
+      Reward Shaping                            1.050      81.8        —         Amplifies gap
+      SAC                                       1.063      74.3     Jun 0.828    PPO > SAC
+
+
+
+2.3    Final Configuration: 12-Month Validation
+Three-layer controller with 5-feature observations and expanded action space:
+
+                                      Tamb < 5°C ∧ Tzone < 20°C (Emergency)
+                      
+                      [1.0, 1.0]
+                      
+                at = πwinter (st )    Tamb < 12°C (Winter agent)                                   (1)
+                        πsummer (st ) otherwise (Summer agent)
+                      
+                      
+
+    Observation: st = [Tzone , CO2 , Pcool , Pfan , Tamb ] (5 features). Action mapping: a0 ∈ [−1, 1] →
+Tset ∈ [18, 30]°C.
+
+2.4    BOPTEST Fine-tuning (Experiments 9–10)
+Fine-tuning both agents for 50k steps on BOPTEST with lr = 3 × 10−4 :
+   Conclusion: The remaining gap is structural (action-response mismatch), not distributional.
+The policy is converged and cannot be shifted by BOPTEST data alone.
+
+
+
+
+                                                  2
+         Table 2: Final result: HDRL + Real Weather + Emergency + 5F + [18,30]°C
+       Scenario             Viol.%    Tmin   Tmax       E                ms    W%    E%
+       Jan_Winter              72.0   13.2   25.1     89.6             1.090    33   61
+       Feb_Winter              73.5   13.4   25.0     79.8             1.098    33   62
+       Mar_Spring              72.6   15.3   24.7     81.1             0.997    35   59
+       Apr_Spring              64.9   15.0   24.4     58.9             0.935    41   42
+       May_Spring              51.2   16.6   24.1     43.5             0.723    54   10
+       Jun_Summer              24.7   16.4   24.1     84.5             0.465    22    2
+       Jul_Summer               7.7   19.0   25.4    123.3             0.173     1    0
+       Aug_Summer               6.5   18.8   25.7    142.0             0.169     0    0
+       Sep_Autumn               2.7   18.6   25.0    181.3            0.140      6    0
+       Oct_Autumn              36.3   16.1   25.3    128.8             0.594    41   17
+       Nov_Autumn              69.0   15.8   25.3     92.0             0.936    38   50
+       Dec_Winter              80.1   14.1   24.6     74.9             1.130    30   68
+       Mean ± std       46.8 ± 28.4                  98.3    0.704 ± 0.369
+
+
+                   Table 3: Fine-tuning diagnostics: policy remained frozen
+                                 Exp 9 (4F, [21,25])     Exp 10 (5F, [18,30])
+               clip_fraction             0.000                       0.000
+               approx_kl                0.0003                     0.000006
+               lr                        10−4                      3 × 10−4
+               ms after                  0.704                       0.704
+
+
+2.5    Root Cause Analysis
+    1. Weather mismatch — solved (real weather integration)
+
+    2. Extreme events — solved (Emergency Heating Mode)
+
+    3. Action-response mismatch — structural (BOPTEST heating capacity limit)
+
+
+3     Progress Summary
+
+
+                     Table 4: Improvement trajectory: 45% reduction in ms
+             Stage                                            ms     Improvement
+             Phase 1 initial                                 1.284        —
+             PPO baseline                                    0.798       −38%
+             HDRL + Real Weather + Emergency + 5F            0.704       −45%
+             Summer best (Sep)                               0.140       −89%
+
+
+
+4     Proposed Next Steps
+    1. PMV/PPD comfort metric (ASHRAE 55)
+
+    2. PPG algorithm for improved convergence
+
+
+                                                 3
+    3. Edge deployment on NVIDIA Jetson Orin Nano
+
+    4. Real building sensor integration (IoT)
+
+
+5     All 15 Problems
+
+                                  Table 5: Problem–solution log
+                ID       Root Cause             Solution              Status
+                P0.1     α ratio 100k           α = 1/Pmax            Fixed
+                P0.2     Obs space mis-         Box[−1, 1]            Fixed
+                         match
+                P1.1     Czon too large         Data estimate         Fixed
+                P1.2     Czon drifts            register_buffer       Fixed
+                P1.3     NN cancels HVAC        Residual ∆T           Fixed
+                P2.1     Latency ill-poses      Separate preprocess   Fixed
+                P2.2     Linear calib weak      Joint NN fine-tune    Fixed
+                P3.1     No Tamb                8 inputs              Fixed
+                P3.2     1-step loss            Multi-step K={2, 4}   Fixed
+                P3.3     10k data               51k, 4×4              Fixed
+                P3.4     Filter strict          Horizon 2             Fixed
+                P3.5     Wrong BOPTEST          Payload inspection    Fixed
+                         key
+                P3.7     Reward amplifies       Reverted              Insight
+                         gap
+                P3.8     Forecast ̸= weather    Real weather data     Solved
+                P3.12    Flat ̸= seasons        HDRL + Emergency      Solved
+
+
+
+
+References
+[1] Wang, Z. et al., Applied Energy, 377, 124328, 2025.
+
+[2] Hedayat, S. et al., Energies, 18, 6310, 2025.
+
+[3] Gao, Y. et al., Energy and Buildings, 2024.
+
+[4] Xu, S. et al., Proc. BuildSys, 2023.
+
+[5] Al Sayed, K. et al., J. Building Eng., 95, 110085, 2024.
+
+[6] Liao, Y. et al., Energy and Buildings, 2022.
+
+[7] Nguyen, A. et al., Energy and Buildings, 2024.
+
+
+
+
+                                                    4
+

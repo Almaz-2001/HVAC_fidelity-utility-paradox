@@ -160,7 +160,7 @@ def main():
     )
     parser.add_argument("--model", required=True)
     parser.add_argument("--surrogate",
-                        default="/app/outputs/surrogate_v2/rc_node_v2_best.pt")
+                        default="/app/outputs/surrogate_v2/rc_node_v3_tsupply.pt")
     parser.add_argument("--out_dir",
                         default="/app/outputs/eval_multi_seed")
     parser.add_argument("--steps", type=int, default=5000)

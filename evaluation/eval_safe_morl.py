@@ -34,6 +34,12 @@ def eval_safe_morl(
 
     model = PPO.load(model_path, device="cpu")
     print(f"[EVAL] PPO model: {model_path}")
+    if model.observation_space.shape != env.observation_space.shape:
+        raise RuntimeError(
+            f"Model obs shape {model.observation_space.shape} does not match env "
+            f"obs shape {env.observation_space.shape}. Retrain or pick a model "
+            "for the direct-TSup pipeline."
+        )
 
     safety_filter = None
     if use_safety and surrogate_path:
@@ -196,6 +202,7 @@ def eval_safe_morl(
     df = pd.DataFrame(rows)
     csv_path = os.path.join(out_dir, "eval_safe_morl.csv")
     df.to_csv(csv_path, index=False)
+    pd.DataFrame([results]).to_csv(os.path.join(out_dir, "summary.csv"), index=False)
 
     print(f"\n{'='*60}")
     print(f"EVALUATION RESULTS")
@@ -243,7 +250,7 @@ def main():
     )
     parser.add_argument("--model", required=True)
     parser.add_argument("--surrogate",
-                        default="/app/outputs/surrogate_v2/rc_node_v2_best.pt")
+                        default="/app/outputs/surrogate_v2/rc_node_v3_tsupply.pt")
     parser.add_argument("--out_dir",
                         default="/app/outputs/eval_safe_morl")
     parser.add_argument("--steps", type=int, default=5000)
