@@ -17,11 +17,20 @@ def make_surrogate_env(env_id, rank, seed=0):
     def _init():
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         local_surrogate_path = os.path.join(project_root, "outputs", "surrogate_v2", "rc_node_v3_tsupply.pt")
+        surrogate_kind = os.environ.get("SURROGATE_KIND", "legacy_v3")
+        surrogate_path = os.environ.get("SURROGATE_PATH", local_surrogate_path)
+        surrogate_summary_json = os.environ.get("SURROGATE_SUMMARY_JSON")
+        surrogate_checkpoint = os.environ.get("SURROGATE_CHECKPOINT")
+        surrogate_base_model = os.environ.get("SURROGATE_BASE_MODEL")
 
         config = {
             "backend": "surrogate",
             "control_mode": "tsup_direct",
-            "surrogate_path": local_surrogate_path,
+            "surrogate_kind": surrogate_kind,
+            "surrogate_path": surrogate_path,
+            "surrogate_summary_json": surrogate_summary_json,
+            "surrogate_checkpoint": surrogate_checkpoint,
+            "surrogate_base_model": surrogate_base_model,
             "weather_csv": _resolve_weather_csv(project_root),
             "comfort_shaping": {
                 "deadband_c": 0.5,

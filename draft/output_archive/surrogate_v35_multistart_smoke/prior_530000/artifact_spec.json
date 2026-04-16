@@ -1,0 +1,10 @@
+{
+  "temp_bias_c": 0.5,
+  "temp_noise_std": 0.08,
+  "temp_latency_steps": 2,
+  "power_scale": 1.04,
+  "power_bias_w": 35.0,
+  "power_noise_rel": 0.015,
+  "c_zon_true_j_per_k": 420000.0,
+  "surrogate_czon_ref_j_per_k": 530000.0
+}

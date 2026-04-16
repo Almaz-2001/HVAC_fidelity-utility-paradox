@@ -1,0 +1,84 @@
+{
+  "env": {
+    "run_name": "morl_surrogate_ppo",
+    "output_dir": "outputs/morl_surrogate_ppo",
+    "backend": "surrogate",
+    "control_mode": "tsup_direct",
+    "obs_mode": "basic",
+    "surrogate_path": "outputs/surrogate_v2/rc_node_v3_tsupply.pt",
+    "surrogate_device": "cpu",
+    "boptest_url": "http://web:8000",
+    "testcase_id": "bestest_air",
+    "step_sec": 3600,
+    "t_supply_low": 18.0,
+    "t_supply_high": 35.0,
+    "cooling_setpoint_c": 40.0,
+    "heating_setpoint_c": 15.0,
+    "domain_randomization": {
+      "enabled": true,
+      "t_init_low": 15.0,
+      "t_init_high": 28.0,
+      "weather_noise_std": 1.5
+    },
+    "action_wrappers": {
+      "normalize_action": true,
+      "smoothing": {
+        "enabled": true,
+        "deadband": 1.0,
+        "rate_limit": true,
+        "max_delta": 0.15
+      }
+    },
+    "morl": {
+      "temp_low": 21.0,
+      "temp_high": 25.0,
+      "energy_scale": 0.0002,
+      "w_comfort": 0.8,
+      "w_energy": 0.2,
+      "w_safety": 0.0
+    },
+    "comfort_shaping": {
+      "deadband_c": 0.5,
+      "band_bonus": 0.05,
+      "undershoot_weight": 1.15,
+      "overshoot_weight": 1.15,
+      "cold_amb_threshold_c": 8.0,
+      "hot_amb_threshold_c": 24.0,
+      "cold_undershoot_weight": 1.6,
+      "hot_overshoot_weight": 1.8,
+      "heating_action_bonus": 0.04,
+      "cooling_action_bonus": 0.06,
+      "heating_t_supply_c": 29.0,
+      "cooling_t_supply_c": 21.0,
+      "action_fan_threshold": 0.55
+    },
+    "surrogate_kind": "v35_calibrated",
+    "surrogate_summary_json": "outputs/surrogate_v35_inverse_boptest_prior420_heads_only/calibration_summary_boptest_v35.json"
+  },
+  "agent": {
+    "algorithm": "PPO",
+    "policy": "MlpPolicy",
+    "device": "cpu",
+    "ppo": {
+      "learning_rate": 0.0003,
+      "n_steps": 2048,
+      "batch_size": 64,
+      "n_epochs": 10,
+      "gamma": 0.99,
+      "gae_lambda": 0.95,
+      "clip_range": 0.2,
+      "ent_coef": 0.0,
+      "vf_coef": 0.5
+    }
+  },
+  "train": {
+    "total_timesteps": 2000000,
+    "seed": 42,
+    "morl_csv": true,
+    "output_dir": "/app/outputs/morl_surrogate_ppo/seed42/pretrain",
+    "morl_csv_name": "morl_surrogate_log.csv",
+    "save_model": true,
+    "save_path": "/app/outputs/morl_surrogate_ppo/seed42/pretrain/models"
+  },
+  "config_dir": "/app/configs/morl_surrogate_ppo"
+}

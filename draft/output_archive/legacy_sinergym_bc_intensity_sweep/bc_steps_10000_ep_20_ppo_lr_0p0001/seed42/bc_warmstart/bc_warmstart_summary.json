@@ -1,0 +1,8 @@
+{
+  "epochs": 20,
+  "batch_size": 256,
+  "learning_rate": 0.001,
+  "dataset_size": 10000,
+  "final_bc_loss": 0.12549289576709272,
+  "history_csv": "outputs/legacy_sinergym_bc_intensity_sweep/bc_steps_10000_ep_20_ppo_lr_0p0001/seed42/bc_warmstart/bc_warmstart_history.csv"
+}

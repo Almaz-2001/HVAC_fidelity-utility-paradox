@@ -94,6 +94,7 @@ def parse_weights(text: str | None) -> np.ndarray:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train true vector-reward MORL on the surrogate with ERAM-style adversarial weight updates.")
+    parser.add_argument("--config-dir", default="configs", help="Directory containing env.yaml, agent.yaml, train.yaml")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--iterations", type=int, default=20)
     parser.add_argument("--chunk_steps", type=int, default=100_000)
@@ -101,17 +102,37 @@ def main() -> None:
     parser.add_argument("--adv_lr", type=float, default=1.0)
     parser.add_argument("--init_weights", default="0.34,0.33,0.33")
     parser.add_argument("--out_dir", default=None)
+    parser.add_argument(
+        "--surrogate-kind",
+        choices=["legacy_v3", "v35_raw", "v35_calibrated"],
+        default=None,
+        help="Select which direct-TSup surrogate implementation to use.",
+    )
+    parser.add_argument("--surrogate-path", default=None, help="Legacy v3 base model path.")
+    parser.add_argument("--surrogate-summary-json", default=None, help="Calibration summary JSON for v3.5 adapters.")
+    parser.add_argument("--surrogate-checkpoint", default=None, help="Explicit v3.5 staged checkpoint path.")
+    parser.add_argument("--surrogate-base-model", default=None, help="Explicit base v3 TSup checkpoint for v3.5 adapters.")
     args = parser.parse_args()
 
     set_all_seeds(args.seed)
 
-    cfg = load_all_configs("configs")
+    cfg = load_all_configs(args.config_dir)
     env_cfg = dict(cfg["env"])
     agent_cfg = dict(cfg["agent"])
     train_cfg = dict(cfg["train"])
 
     env_cfg["backend"] = "surrogate"
     env_cfg["control_mode"] = "tsup_direct"
+    if args.surrogate_kind is not None:
+        env_cfg["surrogate_kind"] = args.surrogate_kind
+    if args.surrogate_path is not None:
+        env_cfg["surrogate_path"] = args.surrogate_path
+    if args.surrogate_summary_json is not None:
+        env_cfg["surrogate_summary_json"] = args.surrogate_summary_json
+    if args.surrogate_checkpoint is not None:
+        env_cfg["surrogate_checkpoint"] = args.surrogate_checkpoint
+    if args.surrogate_base_model is not None:
+        env_cfg["surrogate_base_model"] = args.surrogate_base_model
 
     out_dir = Path(args.out_dir or f"outputs/morl_eram_seed{args.seed}")
     models_dir = out_dir / "models"
@@ -138,6 +159,7 @@ def main() -> None:
         "env": env_cfg,
         "agent": agent_cfg,
         "train": train_cfg,
+        "config_dir": str(Path(args.config_dir).resolve()),
     }
     (out_dir / "config_snapshot.json").write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
 

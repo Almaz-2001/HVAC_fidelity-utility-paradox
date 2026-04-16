@@ -1,0 +1,9 @@
+LIVE SURROGATE ROLLOUT VALIDATION
+========================================================================
+1h rollout: RMSE=0.630 C [0.524, 0.731], bias=-0.016 C
+Best horizon by temp RMSE: 1h (RMSE=0.630 C, bias=-0.016 C)
+Longest tested horizon 24h: RMSE=0.782 C, 95%% abs-error=1.606 C
+Best full episode: spring_cool (RMSE=0.418 C, bias=+0.164 C)
+Worst full episode: autumn_random (RMSE=1.334 C, bias=+0.073 C)
+
+Note: energy validation follows the surrogate training target (P_cool + P_fan).

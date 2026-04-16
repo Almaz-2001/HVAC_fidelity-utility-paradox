@@ -1,0 +1,8 @@
+{
+  "epochs": 20,
+  "batch_size": 256,
+  "learning_rate": 0.001,
+  "dataset_size": 10000,
+  "final_bc_loss": 0.12549289576709272,
+  "history_csv": "outputs/legacy_sinergym_exponential_bc_sweep/exp_bc_wc_0p8_we_0p2_alpha_1p5_scale_0p02/seed42/bc_warmstart/bc_warmstart_history.csv"
+}

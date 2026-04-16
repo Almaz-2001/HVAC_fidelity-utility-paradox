@@ -21,10 +21,10 @@ from training.train_ppo import build_ppo, train_ppo, maybe_save_model
 
 PARETO_RUNS = [
     {"name": "comfort_only",     "w_comfort": 1.0, "w_energy": 0.0},
-    {"name": "comfort_dominant", "w_comfort": 0.8, "w_energy": 0.2},
+    {"name": "comfort_dominant", "w_comfort": 0.85, "w_energy": 0.15},
     {"name": "balanced",         "w_comfort": 0.6, "w_energy": 0.4},
-    {"name": "energy_dominant",  "w_comfort": 0.4, "w_energy": 0.6},
-    {"name": "energy_only",      "w_comfort": 0.0, "w_energy": 1.0},
+    {"name": "energy_dominant",  "w_comfort": 0.35, "w_energy": 0.65},
+    {"name": "energy_only",      "w_comfort": 0.1, "w_energy": 0.9},
 ]
 
 
@@ -124,7 +124,7 @@ def _eval_one(run_cfg: dict, seed: int, base_cfg: dict,
     try:
         safety = env.get_safety_metric()
     except AttributeError:
-        safety = {"r_time": None, "r_sev": None, "m_s": None}
+        safety = {"r_time": np.nan, "r_sev": np.nan, "m_s": np.nan}
 
     try:
         env.close()
@@ -151,17 +151,21 @@ def _eval_one(run_cfg: dict, seed: int, base_cfg: dict,
         "mean_power_w":     float(np.mean(powers)),
         
         "total_energy_kwh": float(np.sum(powers)) * 3600 / 1e6,
-        "r_time":           safety.get("r_time"),
-        "r_sev":            safety.get("r_sev"),
-        "m_s":              safety.get("m_s"),
-        "violation_pct":    (safety["r_time"] * 100
-                             if safety.get("r_time") is not None else None),
+        "r_time":           float(safety.get("r_time", np.nan)),
+        "r_sev":            float(safety.get("r_sev", np.nan)),
+        "m_s":              float(safety.get("m_s", np.nan)),
+        "violation_pct":    (
+            float(safety["r_time"]) * 100
+            if safety.get("r_time") is not None and np.isfinite(float(safety.get("r_time", np.nan)))
+            else np.nan
+        ),
     }
 
+    ms_str = f"{result['m_s']:.4f}" if np.isfinite(result["m_s"]) else "n/a"
     print(f"[EVAL] {name} seed={seed}: "
           f"comfort={result['mean_comfort']:.3f}, "
           f"energy={result['mean_energy']:.5f}, "
-          f"m_s={result['m_s']:.4f}")
+          f"m_s={ms_str}")
     return result
 
 
@@ -296,7 +300,8 @@ def _find_best(df: pd.DataFrame) -> str:
 
 def run_pareto_sweep(cfg: dict, seeds: list,
                      total_timesteps: int, eval_steps: int) -> None:
-    base_output = "/app/outputs/pareto"
+    env_output_dir = str(cfg.get("env", {}).get("output_dir", "/app/outputs"))
+    base_output = os.environ.get("PARETO_OUTPUT_DIR", os.path.join(env_output_dir, "pareto"))
     os.makedirs(base_output, exist_ok=True)
 
     all_results = []

@@ -68,6 +68,7 @@ def load_weights(weights_path: str | None) -> dict[str, float]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fine-tune MORL PPO on BOPTEST after surrogate pretraining.")
+    parser.add_argument("--config-dir", default="configs", help="Directory containing env.yaml, agent.yaml, train.yaml")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--steps", type=int, default=100_000)
     parser.add_argument("--learning_rate", type=float, default=1e-4)
@@ -86,7 +87,7 @@ def main() -> None:
             "Run training/train_morl_surrogate.py first or pass --model."
         )
 
-    cfg = load_all_configs("configs")
+    cfg = load_all_configs(args.config_dir)
     env_cfg = dict(cfg["env"])
     agent_cfg = dict(cfg["agent"])
     train_cfg = dict(cfg["train"])
@@ -119,6 +120,7 @@ def main() -> None:
         "pretrained_model": model_path,
         "learning_rate": args.learning_rate,
         "objective_weights": eram_weights,
+        "config_dir": str(Path(args.config_dir).resolve()),
     }
     (out_dir / "config_snapshot.json").write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
 

@@ -4,6 +4,14 @@
     "dockerfile": "../Dockerfile",
     "context": ".."
   },
+  "runArgs": [
+    "--gpus",
+    "all"
+  ],
+  "containerEnv": {
+    "NVIDIA_VISIBLE_DEVICES": "all",
+    "NVIDIA_DRIVER_CAPABILITIES": "compute,utility"
+  },
   "workspaceFolder": "/app",
   "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind",
   "customizations": {

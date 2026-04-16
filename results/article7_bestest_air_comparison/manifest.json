@@ -1,0 +1,17 @@
+{
+  "benchmark_summary": "C:\\Users\\user\\Desktop\\HVAC_DRL_MORL\\outputs\\bestest_air_article7_style\\summary.csv",
+  "article7_config": "C:\\Users\\user\\Desktop\\HVAC_DRL_MORL\\configs\\article7_hydronic.yaml",
+  "outputs": {
+    "figures": [
+      "all_metrics_peak_heat_window.png",
+      "all_metrics_typical_heat_window.png",
+      "ms_vs_article7_context.png",
+      "tradeoff_power_vs_ms.png"
+    ],
+    "tables": [
+      "article7_reference_context.csv",
+      "bestest_air_article7_enriched_summary.csv",
+      "bestest_air_article7_enriched_summary.json"
+    ]
+  }
+}

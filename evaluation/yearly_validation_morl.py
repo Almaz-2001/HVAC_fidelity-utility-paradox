@@ -16,7 +16,7 @@ from stable_baselines3 import PPO
 BOPTEST_URL = "http://web:8000"
 TESTCASE = "bestest_air"
 STEP_SEC = 3600
-STEPS_PER_SCENARIO = 336
+SCENARIO_DAYS = 14
 SELECT_TIMEOUT = 300
 ADVANCE_TIMEOUT = 60
 N_OBS = 5
@@ -165,7 +165,7 @@ def compute_metrics(temps: np.ndarray, powers: np.ndarray) -> dict[str, float]:
         "within_1c_pct": within_1,
         "within_05c_pct": within_05,
         "viol_pct": r_time * 100.0,
-        "energy_kwh": float(powers.sum() / 1000.0),
+        "energy_kwh": float(powers.sum() * (STEP_SEC / 3600.0) / 1000.0),
         "ms": float(r_time + max(over, under)),
         "t_min": float(temps.min()),
         "t_max": float(temps.max()),
@@ -186,8 +186,10 @@ def run_scenario(model, name, start_time, output_dir):
     obs, t_zone, p_total, t_amb = make_obs(payload, prev_action)
 
     history = {"t_zone": [], "p_total": [], "t_amb": [], "t_supply": [], "a0": [], "a1": []}
+    steps_per_scenario = int(round(SCENARIO_DAYS * 86400 / STEP_SEC))
+    log_interval = max(1, int(round(86400 / STEP_SEC)))
 
-    for step in range(STEPS_PER_SCENARIO):
+    for step in range(steps_per_scenario):
         action, _ = model.predict(obs, deterministic=True)
         payload = advance(testid, action_to_boptest(action))
         obs, t_zone, p_total, t_amb = make_obs(payload, action)
@@ -199,7 +201,7 @@ def run_scenario(model, name, start_time, output_dir):
         history["a0"].append(float(action[0]))
         history["a1"].append(float(action[1]))
 
-        if step % 48 == 0:
+        if step % log_interval == 0:
             print(
                 f"  Step {step:3d} | T={t_zone:.1f}C | P={p_total:.0f}W | "
                 f"T_amb={t_amb:.1f}C | TSup={history['t_supply'][-1]:.1f}C | "
@@ -222,10 +224,21 @@ def run_scenario(model, name, start_time, output_dir):
 
 
 def main() -> None:
+    global STEP_SEC, SCENARIO_DAYS, BOPTEST_URL, TESTCASE
+
     parser = argparse.ArgumentParser(description="Yearly BOPTEST validation for the MORL PPO controller.")
     parser.add_argument("--model", default="outputs/morl_boptest_finetune_seed42/models/ppo_model.zip")
     parser.add_argument("--output_dir", default="outputs")
+    parser.add_argument("--step-sec", type=int, default=STEP_SEC)
+    parser.add_argument("--scenario-days", type=int, default=SCENARIO_DAYS)
+    parser.add_argument("--boptest-url", default=BOPTEST_URL)
+    parser.add_argument("--testcase", default=TESTCASE)
     args = parser.parse_args()
+
+    STEP_SEC = int(args.step_sec)
+    SCENARIO_DAYS = int(args.scenario_days)
+    BOPTEST_URL = args.boptest_url
+    TESTCASE = args.testcase
 
     os.makedirs(args.output_dir, exist_ok=True)
 

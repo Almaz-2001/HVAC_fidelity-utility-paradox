@@ -1,0 +1,29 @@
+{
+  "generated_files": {
+    "surrogate_rollout_table": "results/research_benchmark/tables/surrogate_rollout_benchmark.csv",
+    "inverse_table": "results/research_benchmark/tables/inverse_calibration_benchmark.csv",
+    "controller_table": "results/research_benchmark/tables/controller_benchmark.csv",
+    "experiment_matrix": "results/research_benchmark/tables/experiment_matrix.csv",
+    "surrogate_figure": "results/research_benchmark/figures/surrogate_fidelity_dashboard.png",
+    "controller_figure": "results/research_benchmark/figures/controller_benchmark_dashboard.png",
+    "tradeoff_figure": "results/research_benchmark/figures/controller_tradeoff_scatter.png"
+  },
+  "source_files": {
+    "controller_summary_csv": "outputs/three_model_comparison/comparison_summary.csv",
+    "surrogate_compare_csv": "outputs/surrogate_v35_rollout_live/v35_compare_summary.csv",
+    "raw_horizon_csv": "outputs/surrogate_v35_rollout_live/raw_v35/horizon_metrics.csv",
+    "calibrated_horizon_csv": "outputs/surrogate_v35_rollout_live/calibrated_v35/horizon_metrics.csv",
+    "inverse_summary_json": "outputs/surrogate_v35_inverse_boptest_prior420_heads_only/calibration_summary_boptest_v35.json",
+    "multistart_summary_csv": "outputs/surrogate_v35_inverse_boptest_multistart/multistart_summary_v35.csv",
+    "morl_progress_csv": "outputs/eval_multi_seed/summary.csv"
+  },
+  "notes": {
+    "implemented_controller_families": [
+      "PI",
+      "Thermostatic PPO",
+      "HDRL",
+      "MORL/PPO + safety layer"
+    ],
+    "downstream_control_alignment_status": "pending calibrated-surrogate controller retrain"
+  }
+}

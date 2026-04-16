@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from time import thread_time_ns
 from typing import Any, Dict
 
 import numpy as np
@@ -17,6 +18,7 @@ from envs.tsup_features import (
     build_basic_tsup_obs,
     build_extended_tsup_obs,
 )
+from surrogate.direct_tsup_adapter import load_direct_tsup_adapter
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -38,6 +40,15 @@ _SURROGATE_V3_CANDIDATES = [
     os.path.join(_PROJECT_ROOT, "outputs", "surrogate_v2", "rc_node_v3_tsupply.pt"),
     "/app/outputs/surrogate_v2/rc_node_v3_tsupply.pt",
 ]
+_SURROGATE_V35_SUMMARY_CANDIDATES = [
+    os.path.join(
+        _PROJECT_ROOT,
+        "outputs",
+        "surrogate_v35_inverse_boptest_prior420_heads_only",
+        "calibration_summary_boptest_v35.json",
+    ),
+    "/app/outputs/surrogate_v35_inverse_boptest_prior420_heads_only/calibration_summary_boptest_v35.json",
+]
 _WEATHER_V2_CANDIDATES = [
     os.path.join(_PROJECT_ROOT, "data", "surrogate_v2", "boptest_v2_all.csv"),
     "/app/data/surrogate_v2/boptest_v2_all.csv",
@@ -55,6 +66,15 @@ def _resolve_existing_path(candidates: list[str]) -> str:
         if path and os.path.exists(path):
             return path
     return candidates[0]
+
+
+def _resolve_torch_device(value: str | None, default: str = "cpu") -> torch.device:
+    raw = (value or default).strip().lower()
+    if raw == "auto":
+        raw = "cuda" if torch.cuda.is_available() else "cpu"
+    if raw == "cuda" and not torch.cuda.is_available():
+        raw = "cpu"
+    return torch.device(raw)
 
 
 def _action_to_t_supply(a0: float, t_supply_low: float, t_supply_high: float) -> float:
@@ -79,6 +99,8 @@ def _parse_comfort_shaping(config: Dict[str, Any]) -> Dict[str, float]:
         "heating_t_supply_c": float(shaping.get("heating_t_supply_c", 29.0)),
         "cooling_t_supply_c": float(shaping.get("cooling_t_supply_c", 21.0)),
         "action_fan_threshold": float(shaping.get("action_fan_threshold", 0.55)),
+
+         
     }
 
 
@@ -114,6 +136,14 @@ class SurrogateBackend(HVACBaseEnv):
 
         surrogate_path_cfg = config.get("surrogate_path")
         surrogate_path = surrogate_path_cfg or _resolve_existing_path(_SURROGATE_V3_CANDIDATES)
+        surrogate_kind = str(config.get("surrogate_kind", "legacy_v3")).lower()
+        surrogate_summary_json = config.get("surrogate_summary_json")
+        if surrogate_summary_json is None and surrogate_kind in {"v35_raw", "v35_calibrated", "raw_v35", "calibrated_v35"}:
+            surrogate_summary_json = _resolve_existing_path(_SURROGATE_V35_SUMMARY_CANDIDATES)
+        self.torch_device = _resolve_torch_device(
+            str(config.get("surrogate_device")) if config.get("surrogate_device") is not None else None,
+            "cpu",
+        )
 
         control_mode_cfg = config.get("control_mode")
         if control_mode_cfg is not None:
@@ -137,7 +167,15 @@ class SurrogateBackend(HVACBaseEnv):
         self._observation_space = spaces.Box(low=-1.0, high=1.0, shape=obs_shape, dtype=np.float32)
         self._action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
 
-        self.model = self._load_surrogate(surrogate_path)
+        self.model = self._load_surrogate(
+            surrogate_path=surrogate_path,
+            surrogate_kind=surrogate_kind,
+            summary_json=surrogate_summary_json,
+            checkpoint_path=config.get("surrogate_checkpoint"),
+            base_model_path=config.get("surrogate_base_model"),
+            c_zon_min=float(config.get("surrogate_c_zon_min", 5.0e4)),
+            q_scale=float(config.get("surrogate_q_scale", 3000.0)),
+        )
 
         weather_path = config.get("weather_csv")
         if not weather_path:
@@ -161,21 +199,36 @@ class SurrogateBackend(HVACBaseEnv):
         self._max_overshoot = 0.0
         self._max_undershoot = 0.0
 
-        print(f"[SURROGATE] Loaded: {surrogate_path}")
+        model_meta = self.model.describe() if hasattr(self.model, "describe") else {}
+        print(f"[SURROGATE] Kind: {model_meta.get('kind', surrogate_kind)}")
+        print(f"[SURROGATE] Loaded: {model_meta.get('checkpoint_path') or model_meta.get('summary_json') or model_meta.get('legacy_model_path') or surrogate_path}")
+        if model_meta.get("base_model_path"):
+            print(f"[SURROGATE] Base model: {model_meta['base_model_path']}")
         print(f"[SURROGATE] Control mode: {self.control_mode}")
         print(f"[SURROGATE] Obs shape: {self._observation_space.shape}")
         print(f"[SURROGATE] Weather: {'REAL' if self.weather.available else 'SYNTHETIC'} ({weather_path})")
+        print(f"[SURROGATE] Torch device: {self.torch_device}")
 
-    def _load_surrogate(self, path: str):
-        from surrogate.rc_node_v2 import RCNeuralODEv2
-
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Surrogate not found: {path}")
-        checkpoint = torch.load(path, map_location="cpu", weights_only=False)
-        model = RCNeuralODEv2(hidden_dim=checkpoint.get("hidden_dim", 64))
-        model.load_state_dict(checkpoint["model_state"])
-        model.eval()
-        return model
+    def _load_surrogate(
+        self,
+        surrogate_path: str,
+        surrogate_kind: str,
+        summary_json: str | None,
+        checkpoint_path: str | None,
+        base_model_path: str | None,
+        c_zon_min: float,
+        q_scale: float,
+    ):
+        return load_direct_tsup_adapter(
+            kind=surrogate_kind,
+            legacy_model_path=surrogate_path,
+            summary_json=summary_json,
+            checkpoint_path=checkpoint_path,
+            base_model_path=base_model_path,
+            device=self.torch_device,
+            c_zon_min=c_zon_min,
+            q_scale=q_scale,
+        )
 
     @property
     def observation_space(self):
@@ -309,12 +362,12 @@ class SurrogateBackend(HVACBaseEnv):
     def _surrogate_step(self, a0, a1):
         with torch.no_grad():
             t_next, p_total = self.model(
-                torch.tensor([self._t_zone]),
-                torch.tensor([self._t_amb]),
-                torch.tensor([self._hour]),
-                torch.tensor([self._day]),
-                torch.tensor([a0]),
-                torch.tensor([a1]),
+                torch.tensor([self._t_zone], device=self.torch_device),
+                torch.tensor([self._t_amb], device=self.torch_device),
+                torch.tensor([self._hour], device=self.torch_device),
+                torch.tensor([self._day], device=self.torch_device),
+                torch.tensor([a0], device=self.torch_device),
+                torch.tensor([a1], device=self.torch_device),
             )
         return float(t_next[0]), float(p_total[0])
 

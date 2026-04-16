@@ -4,6 +4,7 @@ evaluation/yearly_validation_hdrl.py
 Yearly BOPTEST validation for the seasonal HDRL setup under direct TSup control.
 """
 
+import argparse
 import json
 import os
 import sys
@@ -33,7 +34,7 @@ WINTER_MODEL = "models/ppo_winter_final.zip"
 SUMMER_MODEL = "models/ppo_summer_final.zip"
 OUTPUT_DIR = "outputs"
 STEP_SEC = 3600
-STEPS_PER_SCENARIO = 336
+SCENARIO_DAYS = 14
 SELECT_TIMEOUT = 300
 ADVANCE_TIMEOUT = 60
 WINTER_ENTER_T_AMB = 10.0
@@ -158,7 +159,7 @@ def make_obs(payload, prev_action, prev_t_zone, weather):
         delta_t_zone,
         weather,
     )
-    return obs, t_c, p_total, t_amb
+    return obs, t_c, p_total, t_amb, sim_time
 
 
 def action_to_boptest(action):
@@ -212,16 +213,18 @@ def run_scenario(winter_model, summer_model, name, start_time):
     payload = advance(testid, {})
     weather = WeatherLookup()
     prev_action = np.zeros(2, dtype=np.float32)
-    obs, t_zone, p_total, t_amb = make_obs(payload, prev_action, None, weather)
+    obs, t_zone, p_total, t_amb, sim_time = make_obs(payload, prev_action, None, weather)
     gate_mode = "winter" if t_amb < WINTER_ENTER_T_AMB else "summer"
 
-    history = {"temp": [], "power": [], "t_amb": [], "agent": [], "mode": [], "t_supply": []}
+    history_rows = []
     winter_count = 0
     summer_count = 0
     emergency_count = 0
     gate_switches = 0
+    steps_per_scenario = int(round(SCENARIO_DAYS * 86400 / STEP_SEC))
+    log_interval = max(1, int(round(86400 / STEP_SEC)))
 
-    for step in range(STEPS_PER_SCENARIO):
+    for step in range(steps_per_scenario):
         if t_amb < EMERGENCY_T_AMB and t_zone < EMERGENCY_T_ZONE:
             action = EMERGENCY_ACTION.copy()
             agent_name = "E"
@@ -241,21 +244,41 @@ def run_scenario(winter_model, summer_model, name, start_time):
                 summer_count += 1
 
         prev_t_zone = t_zone
+        prev_t_amb = t_amb
+        prev_power = p_total
+        prev_sim_time = sim_time
         command = action_to_boptest(action)
         payload = advance(testid, command)
-        obs, t_zone, p_total, t_amb = make_obs(payload, action, prev_t_zone, weather)
+        obs, t_zone, p_total, t_amb, sim_time = make_obs(payload, action, prev_t_zone, weather)
 
-        history["temp"].append(t_zone)
-        history["power"].append(p_total)
-        history["t_amb"].append(t_amb)
-        history["agent"].append(agent_name)
-        history["mode"].append("winter" if gate_mode == "winter" else "summer")
-        history["t_supply"].append(action_to_t_supply(action[0]))
+        a0 = float(action[0])
+        a1 = float(action[1])
+        t_supply = action_to_t_supply(a0)
+        fan_u = action_to_fan(a1)
+        history_rows.append(
+            {
+                "step": step,
+                "prev_time": prev_sim_time,
+                "time": sim_time,
+                "prev_t_zone": prev_t_zone,
+                "prev_t_amb": prev_t_amb,
+                "prev_power": prev_power,
+                "temp": t_zone,
+                "power": p_total,
+                "t_amb": t_amb,
+                "agent": agent_name,
+                "mode": "winter" if gate_mode == "winter" else "summer",
+                "a0": a0,
+                "a1": a1,
+                "fan_u": fan_u,
+                "t_supply": t_supply,
+            }
+        )
 
-        if step % 48 == 0:
+        if step % log_interval == 0:
             print(
                 f"  Step {step:3d} | T={t_zone:.1f}C | P={p_total:.0f}W "
-                f"| T_amb={t_amb:.1f}C | TSup={history['t_supply'][-1]:.1f}C "
+                f"| T_amb={t_amb:.1f}C | TSup={t_supply:.1f}C "
                 f"| {agent_name} | gate={gate_mode[0].upper()} | a=[{action[0]:.2f},{action[1]:.2f}]"
             )
 
@@ -263,13 +286,13 @@ def run_scenario(winter_model, summer_model, name, start_time):
 
     stop(testid)
 
-    df = pd.DataFrame(history)
+    df = pd.DataFrame(history_rows)
     csv_path = os.path.join(OUTPUT_DIR, f"hdrl_scenario_{name}.csv")
     df.to_csv(csv_path, index=False)
 
-    temps = np.array(history["temp"])
+    temps = df["temp"].to_numpy(dtype=float)
     viol = ((temps < T_LOW) | (temps > T_HIGH)).mean() * 100
-    energy = np.sum(history["power"]) / 1000.0
+    energy = float(df["power"].sum() * (STEP_SEC / 3600.0) / 1000.0)
     r_time = ((temps < T_LOW) | (temps > T_HIGH)).mean()
     over = ((temps - T_HIGH) / T_HIGH).clip(min=0).max()
     under = ((T_LOW - temps) / T_LOW).clip(min=0).max()
@@ -299,6 +322,26 @@ def run_scenario(winter_model, summer_model, name, start_time):
 
 
 def main():
+    global WINTER_MODEL, SUMMER_MODEL, OUTPUT_DIR, STEP_SEC, SCENARIO_DAYS, BOPTEST_URL, TESTCASE
+
+    parser = argparse.ArgumentParser(description="Yearly BOPTEST validation for HDRL direct TSup control.")
+    parser.add_argument("--winter-model", default=WINTER_MODEL)
+    parser.add_argument("--summer-model", default=SUMMER_MODEL)
+    parser.add_argument("--output-dir", default=OUTPUT_DIR)
+    parser.add_argument("--step-sec", type=int, default=STEP_SEC)
+    parser.add_argument("--scenario-days", type=int, default=SCENARIO_DAYS)
+    parser.add_argument("--boptest-url", default=BOPTEST_URL)
+    parser.add_argument("--testcase", default=TESTCASE)
+    args = parser.parse_args()
+
+    WINTER_MODEL = args.winter_model
+    SUMMER_MODEL = args.summer_model
+    OUTPUT_DIR = args.output_dir
+    STEP_SEC = int(args.step_sec)
+    SCENARIO_DAYS = int(args.scenario_days)
+    BOPTEST_URL = args.boptest_url
+    TESTCASE = args.testcase
+
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     print("Checking BOPTEST...")

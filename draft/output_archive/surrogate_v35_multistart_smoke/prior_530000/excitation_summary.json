@@ -1,0 +1,14 @@
+{
+  "rows_total": 300,
+  "rows_train_all": 240,
+  "rows_train_selected": 240,
+  "rows_excitation": 12,
+  "rows_context": 228,
+  "rows_val": 60,
+  "excitation_quantile": 0.95,
+  "excitation_threshold": 2.2790852619041586,
+  "excitation_mix_ratio": 0.0,
+  "excitation_mode": "dt_only",
+  "score_mean_train": 0.8396993549816194,
+  "score_mean_excitation": 2.812144467936056
+}

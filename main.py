@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import os
 import random
 from typing import List
@@ -29,6 +30,16 @@ def _set_all_seeds(seed: int) -> None:
             torch.cuda.manual_seed_all(seed)
     except Exception:
         pass
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="HVAC_DRL_MORL entrypoint")
+    parser.add_argument(
+        "--config-dir",
+        default=os.environ.get("CONFIGS_DIR", "configs"),
+        help="Directory containing env.yaml, agent.yaml, train.yaml",
+    )
+    return parser.parse_args()
 
 
 def run_one(seed: int, cfg: dict) -> None:
@@ -195,7 +206,8 @@ def run_pareto(cfg: dict) -> None:
 
 def main():
     print("--- Запуск HVAC_DRL_MORL ---")
-    cfg  = load_all_configs("configs")
+    args = _parse_args()
+    cfg  = load_all_configs(args.config_dir)
     mode = os.environ.get("MODE", "").lower().strip()
 
     # ===== EVAL =====

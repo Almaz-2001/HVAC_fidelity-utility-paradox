@@ -1,0 +1,16 @@
+LIVE SINERGYM SUMMARY
+====================
+
+Source directory: /app/outputs/legacy_sinergym
+This report is built from real CSV outputs, not hard-coded figure values.
+
+Baseline comparison (mean across available seeds):
+- Learned PPO: mean HVAC power = 499.80 W, mean comfort penalty = 11.003, p95 comfort penalty = 89.141, mean zone temp = 24.448 C
+- Rule-based: mean HVAC power = 518.24 W, mean comfort penalty = 10.943, p95 comfort penalty = 89.492, mean zone temp = 24.588 C
+- Random: mean HVAC power = 507.11 W, mean comfort penalty = 12.014, p95 comfort penalty = 86.707, mean zone temp = 23.548 C
+- Zero-hold: mean HVAC power = 508.88 W, mean comfort penalty = 12.158, p95 comfort penalty = 86.574, mean zone temp = 23.447 C
+
+Interpretation:
+- This live artifact is honest with respect to the available CSVs.
+- It does not reproduce hidden article values from hard-coded dictionaries.
+- If the thesis requires a rule-based baseline, that baseline must still be implemented and re-run.

@@ -16,7 +16,12 @@ from envs.factory import EnvFactory
 
 def eval_safe_morl(
     model_path: str,
+    config_dir: str = "configs",
     surrogate_path: Optional[str] = None,
+    surrogate_kind: str = "legacy_v3",
+    surrogate_summary_json: Optional[str] = None,
+    surrogate_checkpoint: Optional[str] = None,
+    surrogate_base_model: Optional[str] = None,
     out_dir: str = "/app/outputs/eval_safe_morl",
     n_steps: int = 5000,
     seed: int = 42,
@@ -29,8 +34,19 @@ def eval_safe_morl(
 ) -> Dict[str, float]:
     Path(out_dir).mkdir(parents=True, exist_ok=True)
 
-    cfg = load_all_configs("configs")
-    env = EnvFactory.create(cfg["env"])
+    cfg = load_all_configs(config_dir)
+    env_cfg = dict(cfg["env"])
+    if surrogate_kind:
+        env_cfg["surrogate_kind"] = surrogate_kind
+    if surrogate_path:
+        env_cfg["surrogate_path"] = surrogate_path
+    if surrogate_summary_json:
+        env_cfg["surrogate_summary_json"] = surrogate_summary_json
+    if surrogate_checkpoint:
+        env_cfg["surrogate_checkpoint"] = surrogate_checkpoint
+    if surrogate_base_model:
+        env_cfg["surrogate_base_model"] = surrogate_base_model
+    env = EnvFactory.create(env_cfg)
 
     model = PPO.load(model_path, device="cpu")
     print(f"[EVAL] PPO model: {model_path}")
@@ -46,6 +62,10 @@ def eval_safe_morl(
         from layers.safety.action_filter import SurrogateSafetyFilter
         safety_filter = SurrogateSafetyFilter(
             model_path=surrogate_path,
+            surrogate_kind=surrogate_kind,
+            surrogate_summary_json=surrogate_summary_json,
+            surrogate_checkpoint=surrogate_checkpoint,
+            surrogate_base_model=surrogate_base_model,
             horizon=horizon,
             t_low=t_low,
             t_high=t_high,
@@ -249,8 +269,13 @@ def main():
         description="Evaluate PPO + Surrogate Safety Filter"
     )
     parser.add_argument("--model", required=True)
+    parser.add_argument("--config-dir", default="configs")
     parser.add_argument("--surrogate",
                         default="/app/outputs/surrogate_v2/rc_node_v3_tsupply.pt")
+    parser.add_argument("--surrogate-kind", choices=["legacy_v3", "v35_raw", "v35_calibrated"], default="legacy_v3")
+    parser.add_argument("--surrogate-summary-json", default=None)
+    parser.add_argument("--surrogate-checkpoint", default=None)
+    parser.add_argument("--surrogate-base-model", default=None)
     parser.add_argument("--out_dir",
                         default="/app/outputs/eval_safe_morl")
     parser.add_argument("--steps", type=int, default=5000)
@@ -263,7 +288,12 @@ def main():
 
     eval_safe_morl(
         model_path=args.model,
+        config_dir=args.config_dir,
         surrogate_path=args.surrogate,
+        surrogate_kind=args.surrogate_kind,
+        surrogate_summary_json=args.surrogate_summary_json,
+        surrogate_checkpoint=args.surrogate_checkpoint,
+        surrogate_base_model=args.surrogate_base_model,
         out_dir=args.out_dir,
         n_steps=args.steps,
         seed=args.seed,

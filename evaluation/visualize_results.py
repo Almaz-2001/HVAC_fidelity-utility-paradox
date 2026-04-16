@@ -57,7 +57,7 @@ MS_COMPARISON = {
 }
 
 
-OUT_DIR = "/app/outputs/figures"
+OUT_DIR = os.environ.get("FIGURE_OUTPUT_DIR", "/app/outputs/figures")
 Path(OUT_DIR).mkdir(parents=True, exist_ok=True)
 
 

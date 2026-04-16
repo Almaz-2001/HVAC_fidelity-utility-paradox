@@ -1,0 +1,37 @@
+article: "Article 7 safe DRL reproduction benchmark"
+scenario_day_source: "local_days_json"
+
+boptest:
+  url: "http://web:8000"
+  testcase_id: "bestest_hydronic_heat_pump"
+  step_sec: 900
+  warmup_period_sec: 0
+  timeout_sec: 60
+  select_timeout_sec: 300
+  retries: 3
+  backoff_base_sec: 1.0
+
+paths:
+  comfort_schedule_csv: "boptest_rte/testcases/bestest_hydronic_heat_pump/models/Resources/dataFromModel.csv"
+  local_days_json: "boptest_rte/testcases/bestest_hydronic_heat_pump/models/days.json"
+
+scenarios:
+  peak_heat_day:
+    label: "Peak heat day"
+    article_period: "January 17 to January 31"
+    start_day_of_year: 17
+    duration_days: 14
+  typical_heat_day:
+    label: "Typical heat day"
+    article_period: "April 19 to May 3"
+    start_day_of_year: 109
+    duration_days: 14
+
+references:
+  article7_table5:
+    pi:
+      peak_heat_day: 0.096
+      typical_heat_day: 0.090
+    mpc:
+      peak_heat_day: 0.016
+      typical_heat_day: 0.041

@@ -8,14 +8,26 @@ Usage:
     python training/train_hdrl.py
 """
 
+import argparse
 import os
 import sys
 import time
+
+import torch
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
+
+
+def _resolve_torch_device(env_var_name: str, default: str) -> str:
+    raw = os.environ.get(env_var_name, default).strip().lower()
+    if raw == "auto":
+        raw = "cuda" if torch.cuda.is_available() else "cpu"
+    if raw == "cuda" and not torch.cuda.is_available():
+        raw = "cpu"
+    return raw
 
 
 def _resolve_weather_csv(project_root: str) -> str:
@@ -69,13 +81,24 @@ def make_seasonal_env(env_id, rank, seed=0, season="winter"):
     def _init():
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         local_surrogate_path = os.path.join(project_root, "outputs", "surrogate_v2", "rc_node_v3_tsupply.pt")
+        surrogate_device = _resolve_torch_device("HDRL_SURROGATE_DEVICE", "cpu")
+        surrogate_kind = os.environ.get("HDRL_SURROGATE_KIND", "legacy_v3")
+        surrogate_summary_json = os.environ.get("HDRL_SURROGATE_SUMMARY_JSON")
+        surrogate_checkpoint = os.environ.get("HDRL_SURROGATE_CHECKPOINT")
+        surrogate_base_model = os.environ.get("HDRL_SURROGATE_BASE_MODEL")
+        surrogate_path = os.environ.get("HDRL_SURROGATE_PATH", local_surrogate_path)
 
         if season == "winter":
             config = {
                 "backend": "surrogate",
                 "control_mode": "tsup_direct",
                 "obs_mode": "extended",
-                "surrogate_path": local_surrogate_path,
+                "surrogate_kind": surrogate_kind,
+                "surrogate_path": surrogate_path,
+                "surrogate_summary_json": surrogate_summary_json,
+                "surrogate_checkpoint": surrogate_checkpoint,
+                "surrogate_base_model": surrogate_base_model,
+                "surrogate_device": surrogate_device,
                 "weather_csv": _resolve_weather_csv(project_root),
                 "domain_randomization": {
                     "enabled": True,
@@ -91,7 +114,12 @@ def make_seasonal_env(env_id, rank, seed=0, season="winter"):
                 "backend": "surrogate",
                 "control_mode": "tsup_direct",
                 "obs_mode": "extended",
-                "surrogate_path": local_surrogate_path,
+                "surrogate_kind": surrogate_kind,
+                "surrogate_path": surrogate_path,
+                "surrogate_summary_json": surrogate_summary_json,
+                "surrogate_checkpoint": surrogate_checkpoint,
+                "surrogate_base_model": surrogate_base_model,
+                "surrogate_device": surrogate_device,
                 "weather_csv": _resolve_weather_csv(project_root),
                 "domain_randomization": {
                     "enabled": True,
@@ -119,9 +147,12 @@ def make_seasonal_env(env_id, rank, seed=0, season="winter"):
 
 
 def train_agent(season, total_timesteps=5_000_000, num_envs=16):
+    policy_device = _resolve_torch_device("HDRL_POLICY_DEVICE", "auto")
     print(f"\n{'=' * 60}")
     print(f"TRAINING {season.upper()} AGENT")
     print(f"{'=' * 60}")
+    print(f"  Policy device: {policy_device}")
+    print(f"  Surrogate device: {_resolve_torch_device('HDRL_SURROGATE_DEVICE', 'cpu')}")
 
     vec_env = SubprocVecEnv([make_seasonal_env("HVAC", i, seed=42, season=season) for i in range(num_envs)])
     vec_env = VecMonitor(vec_env)
@@ -135,6 +166,7 @@ def train_agent(season, total_timesteps=5_000_000, num_envs=16):
         n_epochs=10,
         gamma=0.99,
         policy_kwargs={"net_arch": [256, 256]},
+        device=policy_device,
         verbose=1,
         tensorboard_log=f"./logs/hdrl_{season}_tsup/",
     )
@@ -155,20 +187,40 @@ def train_agent(season, total_timesteps=5_000_000, num_envs=16):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Train HDRL winter/summer agents on the direct-TSup surrogate.")
+    parser.add_argument("--winter-steps", type=int, default=int(os.environ.get("WINTER_TIMESTEPS", "5000000")))
+    parser.add_argument("--summer-steps", type=int, default=int(os.environ.get("SUMMER_TIMESTEPS", "7000000")))
+    parser.add_argument("--num-envs", type=int, default=int(os.environ.get("HDRL_ENVS", "16")))
+    parser.add_argument("--surrogate-kind", choices=["legacy_v3", "v35_raw", "v35_calibrated"], default=os.environ.get("HDRL_SURROGATE_KIND", "legacy_v3"))
+    parser.add_argument("--surrogate-path", default=os.environ.get("HDRL_SURROGATE_PATH"))
+    parser.add_argument("--surrogate-summary-json", default=os.environ.get("HDRL_SURROGATE_SUMMARY_JSON"))
+    parser.add_argument("--surrogate-checkpoint", default=os.environ.get("HDRL_SURROGATE_CHECKPOINT"))
+    parser.add_argument("--surrogate-base-model", default=os.environ.get("HDRL_SURROGATE_BASE_MODEL"))
+    args = parser.parse_args()
+
+    os.environ["HDRL_SURROGATE_KIND"] = args.surrogate_kind
+    if args.surrogate_path:
+        os.environ["HDRL_SURROGATE_PATH"] = args.surrogate_path
+    if args.surrogate_summary_json:
+        os.environ["HDRL_SURROGATE_SUMMARY_JSON"] = args.surrogate_summary_json
+    if args.surrogate_checkpoint:
+        os.environ["HDRL_SURROGATE_CHECKPOINT"] = args.surrogate_checkpoint
+    if args.surrogate_base_model:
+        os.environ["HDRL_SURROGATE_BASE_MODEL"] = args.surrogate_base_model
+
     print("HIERARCHICAL DRL TRAINING (direct TSup)")
     t_total = time.time()
 
-    winter_steps = int(os.environ.get("WINTER_TIMESTEPS", "5000000"))
-    summer_steps = int(os.environ.get("SUMMER_TIMESTEPS", "7000000"))
-    num_envs = int(os.environ.get("HDRL_ENVS", "16"))
-
-    winter_path = train_agent("winter", total_timesteps=winter_steps, num_envs=num_envs)
-    summer_path = train_agent("summer", total_timesteps=summer_steps, num_envs=num_envs)
+    winter_path = train_agent("winter", total_timesteps=int(args.winter_steps), num_envs=int(args.num_envs))
+    summer_path = train_agent("summer", total_timesteps=int(args.summer_steps), num_envs=int(args.num_envs))
 
     elapsed = (time.time() - t_total) / 60
     print(f"\n{'=' * 60}")
     print(f"HDRL TRAINING COMPLETE ({elapsed:.1f} min)")
     print(f"{'=' * 60}")
+    print(f"  Surrogate kind: {args.surrogate_kind}")
+    if args.surrogate_summary_json:
+        print(f"  V3.5 summary: {args.surrogate_summary_json}")
     print(f"  Winter: {winter_path}")
     print(f"  Summer: {summer_path}")
     print("  Observation: 17D extended TSup features (time + forecast + action history)")

@@ -1,44 +1,57 @@
-
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from gymnasium import spaces
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
 
 class WeatherGRUExtractor(BaseFeaturesExtractor):
-    
+    """
+    Split the observation into:
+    - non-forecast state features -> MLP
+    - contiguous forecast sequence -> GRU
+
+    This matches the Article 22 idea more closely than a plain MLP:
+    predictive weather information is processed as a short sequence rather than
+    as unrelated scalar features.
+    """
 
     def __init__(
         self,
         observation_space: spaces.Box,
-        state_dim: int = 4,
-        forecast_len: int = 24,
-        state_hidden: int = 64,
+        forecast_start: int,
+        forecast_len: int,
+        state_hidden: int = 128,
         gru_hidden: int = 32,
-        combined_hidden: int = 64,
-        features_dim: int = 64,
+        combined_hidden: int = 128,
+        features_dim: int = 128,
     ):
+        obs_dim = int(observation_space.shape[0])
+        if forecast_start < 0 or forecast_len <= 0 or forecast_start + forecast_len > obs_dim:
+            raise ValueError(
+                f"Invalid forecast slice: start={forecast_start}, len={forecast_len}, obs_dim={obs_dim}"
+            )
+
+        self.forecast_start = int(forecast_start)
+        self.forecast_len = int(forecast_len)
+        self.state_dim = obs_dim - self.forecast_len
         super().__init__(observation_space, features_dim)
 
-        self.state_dim = state_dim
-        self.forecast_len = forecast_len
-
-        
         self.state_net = nn.Sequential(
-            nn.Linear(state_dim, state_hidden),
+            nn.Linear(self.state_dim, state_hidden),
+            nn.ReLU(),
+            nn.Linear(state_hidden, state_hidden),
             nn.ReLU(),
         )
 
-        
         self.gru = nn.GRU(
-            input_size=1,           
+            input_size=1,
             hidden_size=gru_hidden,
             num_layers=1,
             batch_first=True,
         )
 
-        
         self.combined_net = nn.Sequential(
             nn.Linear(state_hidden + gru_hidden, combined_hidden),
             nn.ReLU(),
@@ -47,19 +60,18 @@ class WeatherGRUExtractor(BaseFeaturesExtractor):
         )
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
-        
-        state = observations[:, :self.state_dim]                    
-        weather = observations[:, self.state_dim:]                  
+        forecast = observations[:, self.forecast_start : self.forecast_start + self.forecast_len]
+        state = torch.cat(
+            [
+                observations[:, : self.forecast_start],
+                observations[:, self.forecast_start + self.forecast_len :],
+            ],
+            dim=1,
+        )
 
-        
-        state_feat = self.state_net(state)                          
+        state_feat = self.state_net(state)
+        forecast_seq = forecast.unsqueeze(-1)
+        _, hidden = self.gru(forecast_seq)
+        forecast_feat = hidden.squeeze(0)
 
-        
-        weather_seq = weather.unsqueeze(-1)                         
-        _, gru_hidden = self.gru(weather_seq)                       
-        weather_feat = gru_hidden.squeeze(0)                        
-
-        
-        combined = torch.cat([state_feat, weather_feat], dim=1)     
-        return self.combined_net(combined)
-                              
+        return self.combined_net(torch.cat([state_feat, forecast_feat], dim=1))

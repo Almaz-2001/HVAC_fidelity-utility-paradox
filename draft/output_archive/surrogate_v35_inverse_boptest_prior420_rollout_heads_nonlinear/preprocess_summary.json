@@ -1,0 +1,9 @@
+{
+  "latency_est_steps": 2.0,
+  "latency_search_rmse_c": 0.6624733831916397,
+  "temp_bias_est_c": 0.39915380096435626,
+  "power_scale_est": 1.0323976172190295,
+  "power_bias_est_w": 34.78564904197568,
+  "postprocess_rmse_c": 1.442783271029558,
+  "postprocess_power_mae_w": 63.76250920967612
+}

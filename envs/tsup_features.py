@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import os
+import zipfile
 from typing import Optional
 
 import numpy as np
@@ -8,8 +10,12 @@ import pandas as pd
 
 
 FORECAST_HORIZONS = [1, 3, 6, 12, 24]
-EXTENDED_TSUP_OBS_DIM = 17
 BASIC_TSUP_OBS_DIM = 5
+TIME_TSUP_OBS_DIM = 4
+HISTORY_TSUP_OBS_DIM = 3
+NO_FORECAST_TSUP_OBS_DIM = BASIC_TSUP_OBS_DIM + TIME_TSUP_OBS_DIM + HISTORY_TSUP_OBS_DIM
+EXTENDED_TSUP_OBS_DIM = NO_FORECAST_TSUP_OBS_DIM + len(FORECAST_HORIZONS)
+SUPPORTED_TSUP_OBS_DIMS = frozenset({NO_FORECAST_TSUP_OBS_DIM, EXTENDED_TSUP_OBS_DIM})
 
 PHYS_LOW = np.array([5.0, 400.0, 0.0, 18.0, -30.0], dtype=np.float32)
 PHYS_HIGH = np.array([40.0, 2000.0, 5500.0, 35.0, 45.0], dtype=np.float32)
@@ -129,6 +135,39 @@ def build_basic_tsup_obs(t_zone: float, co2: float, p_total: float, t_supply_pre
     return np.clip(obs, -1.0, 1.0).astype(np.float32)
 
 
+def build_tsup_obs(
+    t_zone: float,
+    co2: float,
+    p_total: float,
+    t_supply_prev: float,
+    t_amb: float,
+    hour: float,
+    day: float,
+    prev_action: np.ndarray,
+    delta_t_zone: float,
+    weather: WeatherLookup,
+    include_forecast: bool = True,
+) -> np.ndarray:
+    phys_norm = build_basic_tsup_obs(t_zone, co2, p_total, t_supply_prev, t_amb)
+    hour_sin, hour_cos = encode_hour_cyc(hour)
+    day_sin, day_cos = encode_day_cyc(day)
+    blocks: list[np.ndarray] = [
+        phys_norm,
+        np.array([hour_sin, hour_cos, day_sin, day_cos], dtype=np.float32),
+    ]
+    if include_forecast:
+        forecasts = [norm_t_amb(weather.forecast(hour, day, horizon)) for horizon in FORECAST_HORIZONS]
+        blocks.append(np.array(forecasts, dtype=np.float32))
+    blocks.extend(
+        [
+            np.asarray(prev_action, dtype=np.float32),
+            np.array([norm_delta_t(delta_t_zone)], dtype=np.float32),
+        ]
+    )
+    obs = np.concatenate(blocks).astype(np.float32)
+    return np.clip(obs, -1.0, 1.0)
+
+
 def build_extended_tsup_obs(
     t_zone: float,
     co2: float,
@@ -141,17 +180,29 @@ def build_extended_tsup_obs(
     delta_t_zone: float,
     weather: WeatherLookup,
 ) -> np.ndarray:
-    phys_norm = build_basic_tsup_obs(t_zone, co2, p_total, t_supply_prev, t_amb)
-    hour_sin, hour_cos = encode_hour_cyc(hour)
-    day_sin, day_cos = encode_day_cyc(day)
-    forecasts = [norm_t_amb(weather.forecast(hour, day, horizon)) for horizon in FORECAST_HORIZONS]
-    obs = np.concatenate(
-        [
-            phys_norm,
-            np.array([hour_sin, hour_cos, day_sin, day_cos], dtype=np.float32),
-            np.array(forecasts, dtype=np.float32),
-            np.asarray(prev_action, dtype=np.float32),
-            np.array([norm_delta_t(delta_t_zone)], dtype=np.float32),
-        ]
-    ).astype(np.float32)
-    return np.clip(obs, -1.0, 1.0)
+    return build_tsup_obs(
+        t_zone=t_zone,
+        co2=co2,
+        p_total=p_total,
+        t_supply_prev=t_supply_prev,
+        t_amb=t_amb,
+        hour=hour,
+        day=day,
+        prev_action=prev_action,
+        delta_t_zone=delta_t_zone,
+        weather=weather,
+        include_forecast=True,
+    )
+
+
+def infer_tsup_model_obs_dim(model_path: str, default_obs_dim: int = EXTENDED_TSUP_OBS_DIM) -> int:
+    with zipfile.ZipFile(model_path) as archive:
+        data = json.loads(archive.read("data"))
+    obs_shape = data.get("observation_space", {}).get("_shape", [default_obs_dim])
+    obs_dim = int(obs_shape[0] if isinstance(obs_shape, list) else obs_shape)
+    if obs_dim not in SUPPORTED_TSUP_OBS_DIMS:
+        raise RuntimeError(
+            f"Model {model_path} has unsupported obs dim {obs_dim}. "
+            f"Supported dims: {sorted(SUPPORTED_TSUP_OBS_DIMS)}."
+        )
+    return obs_dim

@@ -1,0 +1,169 @@
+{
+  "reported_milestones": {
+    "phase0_energy_reduction_pct": 28.0,
+    "phase1_speedup_x": 32313.0,
+    "phase1_rmse_c": 0.163,
+    "phase1_r2": 0.991,
+    "phase2_rmse_improvement_pct": 79.0,
+    "phase2_czon_error_pct": 7.9,
+    "phase3_best_ms_mean": 0.697,
+    "phase3_best_ms_std": 0.368,
+    "phase3_summer_ms_best_low": 0.14,
+    "phase3_summer_ms_best_high": 0.187,
+    "tsup_v4_mean_rmse_c": 0.84,
+    "tsup_v4_winter_rmse_c": 0.78
+  },
+  "current_validated_controllers": {
+    "standard_pi": {
+      "controller_key": "standard_pi",
+      "controller": "Standard PI",
+      "rmse22_mean": "3.4101761790671827",
+      "mae22_mean": "2.8416293249740483",
+      "within_1c_mean": "16.46825396825397",
+      "within_05c_mean": "5.307539682539683",
+      "viol_21_25_mean": "43.77480158730159",
+      "ms_fixed_mean": "0.6946545489831387",
+      "energy_total_kwh": "1230.1895908232757",
+      "energy_mean_kwh": "102.51579923527298",
+      "energy_total_kwh_m2": "25.62894980881824"
+    },
+    "thermostatic": {
+      "controller_key": "thermostatic",
+      "controller": "Thermostatic PPO",
+      "rmse22_mean": "0.8668943222684198",
+      "mae22_mean": "0.7211169328867889",
+      "within_1c_mean": "72.32142857142857",
+      "within_05c_mean": "39.50892857142857",
+      "viol_21_25_mean": "17.93154761904762",
+      "ms_fixed_mean": "0.22799340048538555",
+      "energy_total_kwh": "3078.0706664516665",
+      "energy_mean_kwh": "256.5058888709722",
+      "energy_total_kwh_m2": "64.12647221774306"
+    },
+    "hdrl": {
+      "controller_key": "hdrl",
+      "controller": "HDRL",
+      "rmse22_mean": "1.1600945555256332",
+      "mae22_mean": "0.8986598892460905",
+      "within_1c_mean": "65.99702380952381",
+      "within_05c_mean": "36.58234126984127",
+      "viol_21_25_mean": "11.23511904761905",
+      "ms_fixed_mean": "0.25190706048557643",
+      "energy_total_kwh": "2956.3309563155144",
+      "energy_mean_kwh": "246.36091302629288",
+      "energy_total_kwh_m2": "61.59022825657321"
+    }
+  },
+  "surrogate_progress": [
+    {
+      "stage": "Report Phase 1 surrogate",
+      "source_type": "reported_in_reports",
+      "temp_rmse_c": 0.163,
+      "long_rollout_rmse_c": "",
+      "r2_temp": 0.991,
+      "speedup_x": 32313.0,
+      "c_zon_error_pct": "",
+      "note": "Physics-informed RC Neural ODE milestone from reports/Current_HVAC_PPO_MORL.pdf."
+    },
+    {
+      "stage": "Current live rollout on surrogate",
+      "source_type": "measured_from_outputs",
+      "temp_rmse_c": 0.6093373111643668,
+      "long_rollout_rmse_c": 0.7540727734367152,
+      "r2_temp": "",
+      "speedup_x": "",
+      "c_zon_error_pct": "",
+      "note": "24h rollout RMSE = 0.754 C."
+    },
+    {
+      "stage": "Inverse problem v3",
+      "source_type": "measured_from_outputs",
+      "temp_rmse_c": 0.40486860275268555,
+      "long_rollout_rmse_c": "",
+      "r2_temp": "",
+      "speedup_x": "",
+      "c_zon_error_pct": 34.71547861392097,
+      "note": "Baseline RMSE 0.5560 -> 0.4049 C."
+    },
+    {
+      "stage": "Inverse problem v3.5 multistart best prior",
+      "source_type": "measured_from_outputs",
+      "temp_rmse_c": 0.5275453925132751,
+      "long_rollout_rmse_c": "",
+      "r2_temp": "",
+      "speedup_x": "",
+      "c_zon_error_pct": 3.113028273809524,
+      "note": "Best prior tested = 420000 J/K."
+    },
+    {
+      "stage": "Inverse problem v3.5 heads-only",
+      "source_type": "measured_from_outputs",
+      "temp_rmse_c": 0.5256316065788269,
+      "long_rollout_rmse_c": "",
+      "r2_temp": "",
+      "speedup_x": "",
+      "c_zon_error_pct": 3.066421130952381,
+      "note": "Stage C mode = heads_only."
+    },
+    {
+      "stage": "v3.5 rollout raw model",
+      "source_type": "measured_from_outputs",
+      "temp_rmse_c": 0.6135094335585078,
+      "long_rollout_rmse_c": 0.7613073389824053,
+      "r2_temp": "",
+      "speedup_x": "",
+      "c_zon_error_pct": 3.066421130952381,
+      "note": "24h rollout RMSE = 0.761 C."
+    },
+    {
+      "stage": "v3.5 rollout calibrated heads-only",
+      "source_type": "measured_from_outputs",
+      "temp_rmse_c": 0.6161150129594745,
+      "long_rollout_rmse_c": 0.7655620262782283,
+      "r2_temp": "",
+      "speedup_x": "",
+      "c_zon_error_pct": 3.066421130952381,
+      "note": "24h rollout RMSE = 0.766 C."
+    }
+  ],
+  "morl_progress": [
+    {
+      "experiment": "Phase 0 reported baseline",
+      "source_type": "reported_in_reports",
+      "metric_primary": "energy_reduction_pct",
+      "value_primary": 28.0,
+      "metric_secondary": "best_ms_mean",
+      "value_secondary": 0.697,
+      "note": "Reported milestones from reports/Current_HVAC_PPO_MORL.pdf."
+    },
+    {
+      "experiment": "Pareto balanced",
+      "source_type": "measured_from_outputs",
+      "metric_primary": "m_s",
+      "value_primary": 0.50612,
+      "metric_secondary": "total_energy_kwh",
+      "value_secondary": 481.65864,
+      "note": "Current raw Pareto point."
+    },
+    {
+      "experiment": "Pareto energy_only",
+      "source_type": "measured_from_outputs",
+      "metric_primary": "m_s",
+      "value_primary": 0.84534,
+      "metric_secondary": "total_energy_kwh",
+      "value_secondary": 329.8389,
+      "note": "Energy-dominant point with comfort collapse."
+    },
+    {
+      "experiment": "Safe MORL multi-seed",
+      "source_type": "measured_from_outputs",
+      "metric_primary": "ppo_sf_ms_mean",
+      "value_primary": 1.7367449305398124,
+      "metric_secondary": "ppo_sf_accept_mean",
+      "value_secondary": 8.7,
+      "note": "Safety layer summary from outputs/eval_multi_seed/summary.csv."
+    }
+  ],
+  "deleted_temp_graphs_total_targets": 18,
+  "deleted_temp_graphs_removed_now": 0
+}

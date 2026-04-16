@@ -7,6 +7,7 @@ Usage:
     PYTHONPATH=/app python3 evaluation/eval_thermostatic.py
 """
 
+import argparse
 import json
 import os
 import sys
@@ -27,10 +28,15 @@ MODEL_PATH = "models/ppo_thermostatic.zip"
 OUTPUT_DIR = "outputs"
 T_TARGET = 22.0
 STEP_SEC = 3600
-STEPS_PER_SCENARIO = 336
+SCENARIO_DAYS = 14
 SELECT_TIMEOUT = 300
 FORECAST_HORIZONS = [1, 3, 6, 12, 24]
-N_OBS = 17
+N_PHYS = 5
+N_TIME = 4
+N_FORECAST = len(FORECAST_HORIZONS)
+N_HISTORY = 3
+N_OBS_M1 = N_PHYS + N_TIME + N_HISTORY
+N_OBS_M23 = N_PHYS + N_TIME + N_FORECAST + N_HISTORY
 
 PHYS_LOW = np.array([5.0, 400.0, 0.0, 18.0, -30.0], dtype=np.float32)
 PHYS_HIGH = np.array([40.0, 2000.0, 5500.0, 35.0, 45.0], dtype=np.float32)
@@ -155,7 +161,7 @@ def get_val(payload, key):
     return float(v.get("value", v) if isinstance(v, dict) else v)
 
 
-def make_obs(payload, sim_time, prev_action, prev_t_zone=None):
+def make_obs(payload, sim_time, prev_action, prev_t_zone=None, obs_dim=N_OBS_M23):
     t_c = get_val(payload, "zon_reaTRooAir_y") - 273.15
     co2 = get_val(payload, "zon_reaCO2RooAir_y")
     p_cool = get_val(payload, "fcu_reaPCoo_y")
@@ -174,18 +180,23 @@ def make_obs(payload, sim_time, prev_action, prev_t_zone=None):
 
     hour_sin, hour_cos = encode_hour_cyc(hour)
     day_sin, day_cos = encode_day_cyc(day)
-    forecasts = [norm_t(weather_forecast(hour, day, h)) for h in FORECAST_HORIZONS]
+    include_forecast = obs_dim == N_OBS_M23
+    forecasts = [norm_t(weather_forecast(hour, day, h)) for h in FORECAST_HORIZONS] if include_forecast else []
     delta_t = 0.0 if prev_t_zone is None else (t_c - prev_t_zone)
 
-    obs = np.concatenate(
+    blocks = [
+        phys_norm,
+        [hour_sin, hour_cos, day_sin, day_cos],
+    ]
+    if include_forecast:
+        blocks.append(forecasts)
+    blocks.extend(
         [
-            phys_norm,
-            [hour_sin, hour_cos, day_sin, day_cos],
-            forecasts,
             np.array(prev_action, dtype=np.float32),
             [norm_delta_t(delta_t)],
         ]
-    ).astype(np.float32)
+    )
+    obs = np.concatenate(blocks).astype(np.float32)
     return obs, t_c, t_amb, p_total
 
 
@@ -205,7 +216,7 @@ def action_to_boptest(action):
     }
 
 
-def run_scenario(model, name, start_time):
+def run_scenario(model, name, start_time, obs_dim):
     print(f"\n  {name}:", end=" ")
     data = boptest_request("POST", f"/testcases/{TESTCASE}/select", timeout=SELECT_TIMEOUT)
     testid = data["testid"]
@@ -220,25 +231,52 @@ def run_scenario(model, name, start_time):
     payload = boptest_request("POST", f"/advance/{testid}", {})
     payload = payload.get("payload", payload)
     sim_time = start_time + STEP_SEC
-    obs, t_zone, _, _ = make_obs(payload, sim_time, np.zeros(2, dtype=np.float32))
+    obs, t_zone, t_amb, p_total = make_obs(payload, sim_time, np.zeros(2, dtype=np.float32), obs_dim=obs_dim)
 
     errors, temps, powers, ambs, tsups = [], [], [], [], []
+    trace_rows = []
 
-    for _ in range(STEPS_PER_SCENARIO):
+    steps_per_scenario = int(round(SCENARIO_DAYS * 86400 / STEP_SEC))
+
+    for _ in range(steps_per_scenario):
         action, _ = model.predict(obs, deterministic=True)
         u = action_to_boptest(action)
+        prev_sim_time = sim_time
         prev_t_zone = t_zone
+        prev_t_amb = t_amb
+        prev_p_total = p_total
         payload = boptest_request("POST", f"/advance/{testid}", u)
         payload = payload.get("payload", payload)
         sim_time += STEP_SEC
-        obs, t_zone, t_amb, p_total = make_obs(payload, sim_time, action, prev_t_zone)
-        t_supply = action_to_t_supply(float(action[0]))
+        obs, t_zone, t_amb, p_total = make_obs(payload, sim_time, action, prev_t_zone, obs_dim=obs_dim)
+        a0 = float(action[0])
+        a1 = float(action[1])
+        t_supply = action_to_t_supply(a0)
+        fan_u = action_to_fan(a1)
 
         errors.append(abs(t_zone - T_TARGET))
         temps.append(t_zone)
         powers.append(p_total)
         ambs.append(t_amb)
         tsups.append(t_supply)
+        trace_rows.append(
+            {
+                "step": len(errors) - 1,
+                "prev_time": prev_sim_time,
+                "time": sim_time,
+                "prev_t_zone": prev_t_zone,
+                "prev_t_amb": prev_t_amb,
+                "prev_p_total": prev_p_total,
+                "a0": a0,
+                "a1": a1,
+                "fan_u": fan_u,
+                "t_supply": t_supply,
+                "t_zone": t_zone,
+                "abs_error": abs(t_zone - T_TARGET),
+                "p_total": p_total,
+                "t_amb": t_amb,
+            }
+        )
 
     try:
         boptest_request("PUT", f"/stop/{testid}", timeout=10)
@@ -247,16 +285,7 @@ def run_scenario(model, name, start_time):
 
     errors = np.array(errors)
     temps = np.array(temps)
-    detail_df = pd.DataFrame(
-        {
-            "step": np.arange(len(errors)),
-            "t_zone": temps,
-            "abs_error": errors,
-            "p_total": powers,
-            "t_amb": ambs,
-            "t_supply": tsups,
-        }
-    )
+    detail_df = pd.DataFrame(trace_rows)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     detail_df.to_csv(os.path.join(OUTPUT_DIR, f"thermostatic_scenario_{name}.csv"), index=False)
 
@@ -264,7 +293,7 @@ def run_scenario(model, name, start_time):
     mae = np.mean(errors)
     within_1 = (errors < 1.0).mean() * 100
     within_05 = (errors < 0.5).mean() * 100
-    energy = np.sum(powers) / 1000
+    energy = np.sum(powers) * (STEP_SEC / 3600.0) / 1000
 
     print(
         f"RMSE={rmse:.2f}C | +-1C={within_1:.0f}% | +-0.5C={within_05:.0f}% | "
@@ -284,9 +313,26 @@ def run_scenario(model, name, start_time):
 
 
 def main():
+    global MODEL_PATH, OUTPUT_DIR, STEP_SEC, SCENARIO_DAYS, BOPTEST_URL, TESTCASE
+
+    parser = argparse.ArgumentParser(description="BOPTEST validation for direct-TSup thermostatic control.")
+    parser.add_argument("--model", default=MODEL_PATH)
+    parser.add_argument("--output-dir", default=OUTPUT_DIR)
+    parser.add_argument("--step-sec", type=int, default=STEP_SEC)
+    parser.add_argument("--scenario-days", type=int, default=SCENARIO_DAYS)
+    parser.add_argument("--boptest-url", default=BOPTEST_URL)
+    parser.add_argument("--testcase", default=TESTCASE)
+    args = parser.parse_args()
+
+    MODEL_PATH = args.model
+    OUTPUT_DIR = args.output_dir
+    STEP_SEC = int(args.step_sec)
+    SCENARIO_DAYS = int(args.scenario_days)
+    BOPTEST_URL = args.boptest_url
+    TESTCASE = args.testcase
+
     print("=" * 70)
     print(f"THERMOSTATIC v4 BOPTEST VALIDATION (target={T_TARGET}C)")
-    print(f"Obs: {N_OBS}F | Forecast: {FORECAST_HORIZONS}h")
     print(f"Control: direct TSup in [{T_SUPPLY_LOW}, {T_SUPPLY_HIGH}]C")
     print("=" * 70)
 
@@ -299,12 +345,15 @@ def main():
 
     z = zipfile.ZipFile(MODEL_PATH)
     data = json.loads(z.read("data"))
-    obs_dim = data.get("observation_space", {}).get("_shape", [N_OBS])[0]
-    if obs_dim != N_OBS:
+    obs_dim = data.get("observation_space", {}).get("_shape", [N_OBS_M23])[0]
+    if obs_dim not in (N_OBS_M1, N_OBS_M23):
         raise RuntimeError(
-            f"Model observation dim is {obs_dim}, but evaluator expects {N_OBS}. "
-            "Retrain the thermostatic policy before running this evaluator."
+            f"Model observation dim is {obs_dim}, but evaluator expects one of ({N_OBS_M1}, {N_OBS_M23}). "
+            "Retrain the thermostatic policy with an Article 22 compatible observation layout."
         )
+    include_forecast = obs_dim == N_OBS_M23
+    variant = "M.2/M.3-like" if include_forecast else "M.1-like"
+    print(f"Obs: {obs_dim}F | Forecast enabled: {include_forecast} | Variant: {variant}")
 
     model = PPO.load(
         MODEL_PATH,
@@ -323,7 +372,7 @@ def main():
 
     for name, st in SCENARIOS.items():
         try:
-            results.append(run_scenario(model, name, st))
+            results.append(run_scenario(model, name, st, obs_dim))
         except Exception as e:
             print(f"FAILED: {e}")
 

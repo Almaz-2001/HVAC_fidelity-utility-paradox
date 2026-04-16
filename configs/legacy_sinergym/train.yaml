@@ -1,0 +1,17 @@
+total_timesteps: 500000
+seed: 42
+
+morl_csv: true
+output_dir: /app/outputs/legacy_sinergym
+morl_csv_name: morl_log.csv
+
+save_model: true
+save_path: /app/outputs/legacy_sinergym/models
+
+bc_warmstart:
+  enabled: false
+  steps: 10000
+  epochs: 20
+  batch_size: 256
+  learning_rate: 0.001
+  dataset_name: rbc_warmstart_dataset.csv

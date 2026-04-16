@@ -1,0 +1,14 @@
+FINAL CONCLUSION
+================
+
+1. Best fixed-target comfort: Thermostatic PPO (mean RMSE22 = 0.867 C, mean m_s = 0.228).
+2. Best energy efficiency: Standard PI (total energy = 1230.2 kWh, 25.63 kWh/m2).
+3. Best fixed-band violation rate among the two RL controllers: HDRL (mean violation = 11.2% vs 17.9% for Thermostatic PPO), but HDRL still has worse mean RMSE22 (1.160 C).
+4. Annual trade-off status: HDRL does not yet beat Thermostatic PPO on the yearly benchmark. Its annual energy is -4.0% relative to Thermostatic PPO.
+5. Seasonal nuance: HDRL reduces summer energy by 6.6% relative to Thermostatic PPO across Jun-Aug, but that gain is not enough to offset weaker non-summer performance.
+6. Relative to the Standard PI baseline, both RL controllers remain much more energy-intensive: Thermostatic PPO is +150.2% and HDRL is +140.3% versus PI.
+
+Recommended interpretation:
+- Standard PI = low-energy reference baseline.
+- Thermostatic PPO = strongest comfort reference baseline.
+- HDRL = structured trade-off controller that is promising but not yet dominant annually.

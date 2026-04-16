@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\(''pptxgenjs''\\)\")",
+      "Bash(where node:*)",
+      "Bash(\"C:/Program Files/nodejs/node.exe\" -v)",
+      "Bash(\"C:/Program Files \\(x86\\)/nodejs/node.exe\" -v)",
+      "Bash(cmd //c \"node -v\")",
+      "Bash(cmd //c \"where node\")",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/user/AppData/Roaming/**)",
+      "Read(//c/Users/user/AppData/Local/**)",
+      "Bash(python -c \"import pptx; print\\(''''python-pptx available''''\\)\")",
+      "Bash(pip install:*)",
+      "Bash(python create_presentation.py)",
+      "Bash(python -m markitdown \"C:/Users/user/Desktop/HVAC_DRL_MORL/presentation_conference.pptx\")",
+      "Bash(python add_slides.py)"
+    ]
+  }
+}

@@ -91,6 +91,10 @@ class SurrogateMPCFallback:
     def __init__(
         self,
         model_path: str,
+        surrogate_kind: str = "legacy_v3",
+        surrogate_summary_json: Optional[str] = None,
+        surrogate_checkpoint: Optional[str] = None,
+        surrogate_base_model: Optional[str] = None,
         horizon: int = 4,
         n_iters: int = 50,
         lr: float = 0.1,
@@ -99,11 +103,16 @@ class SurrogateMPCFallback:
         lambda_safety: float = 50.0,
         lambda_energy: float = 1.0,
     ):
-        from surrogate.rc_node_v2 import RCNeuralODEv2
+        from surrogate.direct_tsup_adapter import load_direct_tsup_adapter
 
-        checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
-        self.model = RCNeuralODEv2(hidden_dim=checkpoint["hidden_dim"])
-        self.model.load_state_dict(checkpoint["model_state"])
+        self.model = load_direct_tsup_adapter(
+            kind=surrogate_kind,
+            legacy_model_path=model_path,
+            summary_json=surrogate_summary_json,
+            checkpoint_path=surrogate_checkpoint,
+            base_model_path=surrogate_base_model,
+            device="cpu",
+        )
         self.model.eval()
 
         for param in self.model.parameters():

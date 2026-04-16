@@ -1,0 +1,3 @@
+# Optional legacy requirements for the Sinergym/ArticleRus workflow
+-r requirements.txt
+sinergym==2.5.2

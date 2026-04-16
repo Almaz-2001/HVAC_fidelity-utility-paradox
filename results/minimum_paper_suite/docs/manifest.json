@@ -1,0 +1,12 @@
+{
+  "status_table": "results/minimum_paper_suite/tables/minimum_experiment_status.csv",
+  "commands_table": "results/minimum_paper_suite/tables/next_commands.csv",
+  "next_steps_markdown": "results/minimum_paper_suite/docs/next_steps.md",
+  "artifacts_checked": {
+    "controller_15min": true,
+    "controller_15min_gru": true,
+    "thermostatic_m2_model": true,
+    "thermostatic_m3_model": true,
+    "thermostatic_m1_model": false
+  }
+}

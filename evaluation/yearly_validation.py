@@ -7,6 +7,7 @@ Usage:
     PYTHONPATH=/app python3 evaluation/yearly_validation.py
 """
 
+import argparse
 import json
 import os
 import sys
@@ -27,7 +28,7 @@ TESTCASE = "bestest_air"
 MODEL_PATH = "models/ppo_surrogate_final.zip"
 OUTPUT_DIR = "outputs"
 STEP_SEC = 3600
-STEPS_PER_SCENARIO = 336
+SCENARIO_DAYS = 14
 SELECT_TIMEOUT = 300
 ADVANCE_TIMEOUT = 60
 N_OBS = 5
@@ -176,8 +177,10 @@ def run_scenario(model, name, start_time):
     obs, t_zone, p_total, t_amb = make_obs(payload, prev_action)
 
     history = {"temp": [], "power": [], "t_amb": [], "t_supply": []}
+    steps_per_scenario = int(round(SCENARIO_DAYS * 86400 / STEP_SEC))
+    log_interval = max(1, int(round(86400 / STEP_SEC)))
 
-    for step in range(STEPS_PER_SCENARIO):
+    for step in range(steps_per_scenario):
         action, _ = model.predict(obs, deterministic=True)
         command = action_to_boptest(action)
         payload = advance(testid, command)
@@ -188,7 +191,7 @@ def run_scenario(model, name, start_time):
         history["t_amb"].append(t_amb)
         history["t_supply"].append(action_to_t_supply(action[0]))
 
-        if step % 48 == 0:
+        if step % log_interval == 0:
             print(
                 f"  Step {step:3d} | T={t_zone:.1f}C | P={p_total:.0f}W "
                 f"| T_amb={t_amb:.1f}C | TSup={history['t_supply'][-1]:.1f}C "
@@ -205,7 +208,7 @@ def run_scenario(model, name, start_time):
 
     temps = np.array(history["temp"])
     viol = ((temps < T_LOW) | (temps > T_HIGH)).mean() * 100
-    energy = np.sum(history["power"]) / 1000.0
+    energy = np.sum(history["power"]) * (STEP_SEC / 3600.0) / 1000.0
     r_time = ((temps < T_LOW) | (temps > T_HIGH)).mean()
     over = ((temps - T_HIGH) / T_HIGH).clip(min=0).max()
     under = ((T_LOW - temps) / T_LOW).clip(min=0).max()
@@ -225,6 +228,24 @@ def run_scenario(model, name, start_time):
 
 
 def main():
+    global MODEL_PATH, OUTPUT_DIR, STEP_SEC, SCENARIO_DAYS, BOPTEST_URL, TESTCASE
+
+    parser = argparse.ArgumentParser(description="Yearly BOPTEST validation for the PPO baseline.")
+    parser.add_argument("--model", default=MODEL_PATH)
+    parser.add_argument("--output-dir", default=OUTPUT_DIR)
+    parser.add_argument("--step-sec", type=int, default=STEP_SEC)
+    parser.add_argument("--scenario-days", type=int, default=SCENARIO_DAYS)
+    parser.add_argument("--boptest-url", default=BOPTEST_URL)
+    parser.add_argument("--testcase", default=TESTCASE)
+    args = parser.parse_args()
+
+    MODEL_PATH = args.model
+    OUTPUT_DIR = args.output_dir
+    STEP_SEC = int(args.step_sec)
+    SCENARIO_DAYS = int(args.scenario_days)
+    BOPTEST_URL = args.boptest_url
+    TESTCASE = args.testcase
+
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     print("Checking BOPTEST...")
