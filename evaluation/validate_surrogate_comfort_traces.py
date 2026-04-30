@@ -31,9 +31,8 @@ from surrogate.rc_node_v2 import RCNeuralODEv2
 
 MODEL_PATH = "outputs/surrogate_v2/rc_node_v3_tsupply.pt"
 OUTPUT_DIR = "outputs/surrogate_comfort_traces"
-T_TARGET = 22.0
-T_LOW = 21.0
-T_HIGH = 25.0
+DEFAULT_T_LOW = 21.0
+DEFAULT_T_HIGH = 24.0
 SCENARIO_ORDER = [
     "Jan_Winter",
     "Feb_Winter",
@@ -86,6 +85,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model_path", default=MODEL_PATH)
     parser.add_argument("--artifact_dir", default=OUTPUT_DIR)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--comfort-low", type=float, default=DEFAULT_T_LOW)
+    parser.add_argument("--comfort-high", type=float, default=DEFAULT_T_HIGH)
     return parser.parse_args()
 
 
@@ -172,12 +173,13 @@ def build_rollout_trace(
     return pd.DataFrame(rows)
 
 
-def scenario_metrics(trace_df: pd.DataFrame) -> dict[str, float]:
+def scenario_metrics(trace_df: pd.DataFrame, t_low: float, t_high: float) -> dict[str, float]:
+    t_target = 0.5 * (float(t_low) + float(t_high))
     actual = trace_df["actual_t_zone"].to_numpy(dtype=float)
     pred = trace_df["pred_t_zone"].to_numpy(dtype=float)
     err = pred - actual
-    actual_in_band = ((actual >= T_LOW) & (actual <= T_HIGH)).mean() * 100.0
-    pred_in_band = ((pred >= T_LOW) & (pred <= T_HIGH)).mean() * 100.0
+    actual_in_band = ((actual >= t_low) & (actual <= t_high)).mean() * 100.0
+    pred_in_band = ((pred >= t_low) & (pred <= t_high)).mean() * 100.0
     return {
         "rmse_c": float(np.sqrt(np.mean(err ** 2))),
         "mae_c": float(np.mean(np.abs(err))),
@@ -187,8 +189,8 @@ def scenario_metrics(trace_df: pd.DataFrame) -> dict[str, float]:
         "actual_in_band_pct": float(actual_in_band),
         "pred_in_band_pct": float(pred_in_band),
         "band_gap_pct": float(pred_in_band - actual_in_band),
-        "actual_mean_abs_to_target": float(np.mean(np.abs(actual - T_TARGET))),
-        "pred_mean_abs_to_target": float(np.mean(np.abs(pred - T_TARGET))),
+        "actual_mean_abs_to_midpoint": float(np.mean(np.abs(actual - t_target))),
+        "pred_mean_abs_to_midpoint": float(np.mean(np.abs(pred - t_target))),
     }
 
 
@@ -198,6 +200,8 @@ def load_and_rollout(
     model: RCNeuralODEv2,
     device: torch.device,
     artifact_dir: Path,
+    t_low: float,
+    t_high: float,
 ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
     scenario_rows = []
     traces: dict[str, pd.DataFrame] = {}
@@ -218,7 +222,7 @@ def load_and_rollout(
         trace_df.insert(0, "controller", spec.label)
         trace_df.to_csv(trace_dir / f"{spec.key}_{scenario}.csv", index=False)
         traces[scenario] = trace_df
-        metrics = scenario_metrics(trace_df)
+        metrics = scenario_metrics(trace_df, t_low=t_low, t_high=t_high)
         metrics.update({"controller_key": spec.key, "controller": spec.label, "scenario": scenario})
         scenario_rows.append(metrics)
 
@@ -240,8 +244,8 @@ def aggregate(scenario_df: pd.DataFrame) -> pd.DataFrame:
             actual_in_band_mean=("actual_in_band_pct", "mean"),
             pred_in_band_mean=("pred_in_band_pct", "mean"),
             band_gap_mean=("band_gap_pct", "mean"),
-            actual_abs_target_mean=("actual_mean_abs_to_target", "mean"),
-            pred_abs_target_mean=("pred_mean_abs_to_target", "mean"),
+            actual_abs_midpoint_mean=("actual_mean_abs_to_midpoint", "mean"),
+            pred_abs_midpoint_mean=("pred_mean_abs_to_midpoint", "mean"),
         )
     )
     return summary
@@ -263,10 +267,17 @@ def build_controller_full_trace(traces: dict[str, pd.DataFrame]) -> pd.DataFrame
     return pd.concat(frames, ignore_index=True)
 
 
-def plot_controller_grid(spec: TraceSpec, traces: dict[str, pd.DataFrame], artifact_dir: Path) -> Path:
+def plot_controller_grid(
+    spec: TraceSpec,
+    traces: dict[str, pd.DataFrame],
+    artifact_dir: Path,
+    t_low: float,
+    t_high: float,
+) -> Path:
     fig, axes = plt.subplots(3, 4, figsize=(18, 10), sharex=True, sharey=True)
     axes = axes.flatten()
     y_min, y_max = 17.0, 29.0
+    t_target = 0.5 * (float(t_low) + float(t_high))
 
     for ax, scenario in zip(axes, SCENARIO_ORDER):
         trace_df = traces.get(scenario)
@@ -274,8 +285,8 @@ def plot_controller_grid(spec: TraceSpec, traces: dict[str, pd.DataFrame], artif
             ax.set_visible(False)
             continue
         x = trace_df["step"].to_numpy(dtype=float)
-        ax.axhspan(T_LOW, T_HIGH, color="#cfe8ff", alpha=0.30)
-        ax.axhline(T_TARGET, color="#666666", linestyle="--", linewidth=1.0)
+        ax.axhspan(t_low, t_high, color="#cfe8ff", alpha=0.30)
+        ax.axhline(t_target, color="#666666", linestyle="--", linewidth=1.0)
         ax.plot(x, trace_df["actual_t_zone"].to_numpy(dtype=float), color="#3266ad", linewidth=1.8, label="BOPTEST")
         ax.plot(x, trace_df["pred_t_zone"].to_numpy(dtype=float), color=spec.color, linewidth=1.6, label="Surrogate")
         ax.set_title(scenario)
@@ -325,10 +336,13 @@ def plot_summary(summary_df: pd.DataFrame, artifact_dir: Path) -> Path:
 def plot_combined_yearly(
     controller_traces: dict[str, dict[str, pd.DataFrame]],
     artifact_dir: Path,
+    t_low: float,
+    t_high: float,
 ) -> Path:
     fig, axes = plt.subplots(len(TRACE_SPECS), 1, figsize=(16, 8), sharex=False)
     if len(TRACE_SPECS) == 1:
         axes = [axes]
+    t_target = 0.5 * (float(t_low) + float(t_high))
 
     for ax, spec in zip(axes, TRACE_SPECS):
         traces = controller_traces[spec.key]
@@ -354,8 +368,8 @@ def plot_combined_yearly(
             continue
 
         full_df = pd.concat(frames, ignore_index=True)
-        ax.axhspan(T_LOW, T_HIGH, color="#cfe8ff", alpha=0.30)
-        ax.axhline(T_TARGET, color="#666666", linestyle="--", linewidth=1.0)
+        ax.axhspan(t_low, t_high, color="#cfe8ff", alpha=0.30)
+        ax.axhline(t_target, color="#666666", linestyle="--", linewidth=1.0)
         ax.plot(
             full_df["global_step"].to_numpy(dtype=float),
             full_df["actual_t_zone"].to_numpy(dtype=float),
@@ -425,6 +439,8 @@ def plot_standalone_surrogate(
     boptest_log: pd.DataFrame,
     surrogate_log: pd.DataFrame,
     artifact_dir: Path,
+    t_low: float,
+    t_high: float,
 ) -> Path:
     merged = boptest_log.merge(
         surrogate_log,
@@ -446,11 +462,12 @@ def plot_standalone_surrogate(
     ).sort_values(["controller_key", "global_step"], kind="stable")
 
     merged["combined_step"] = np.arange(len(merged))
+    t_target = 0.5 * (float(t_low) + float(t_high))
 
     fig, axes = plt.subplots(2, 1, figsize=(16, 8), sharex=True)
 
-    axes[0].axhspan(T_LOW, T_HIGH, color="#cfe8ff", alpha=0.30)
-    axes[0].axhline(T_TARGET, color="#666666", linestyle="--", linewidth=1.0)
+    axes[0].axhspan(t_low, t_high, color="#cfe8ff", alpha=0.30)
+    axes[0].axhline(t_target, color="#666666", linestyle="--", linewidth=1.0)
     axes[0].plot(
         merged["combined_step"].to_numpy(dtype=float),
         merged["boptest_t_zone"].to_numpy(dtype=float),
@@ -497,10 +514,13 @@ def plot_standalone_surrogate(
     return out_path
 
 
-def build_text_summary(summary_df: pd.DataFrame, artifact_dir: Path) -> Path:
+def build_text_summary(summary_df: pd.DataFrame, artifact_dir: Path, t_low: float, t_high: float) -> Path:
     lines = [
         "SURROGATE COMFORT-TRACE VALIDATION",
         "=================================",
+        "",
+        f"Comfort band used for validation: [{t_low:.1f}, {t_high:.1f}] C",
+        f"Comfort midpoint used for auxiliary statistics: {(t_low + t_high) / 2.0:.1f} C",
         "",
         "This validation uses comfort-oriented action traces from:",
         "- evaluation/eval_thermostatic.py",
@@ -602,13 +622,15 @@ def main() -> None:
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
     model, device = load_surrogate(args.model_path, args.device)
+    t_low = float(args.comfort_low)
+    t_high = float(args.comfort_high)
 
     scenario_frames = []
     full_trace_frames = []
     controller_traces: dict[str, dict[str, pd.DataFrame]] = {}
     grid_paths = []
     for spec in TRACE_SPECS:
-        scenario_df, traces = load_and_rollout(outputs_dir, spec, model, device, artifact_dir)
+        scenario_df, traces = load_and_rollout(outputs_dir, spec, model, device, artifact_dir, t_low, t_high)
         scenario_df.to_csv(artifact_dir / f"comfort_trace_metrics_{spec.key}.csv", index=False)
         scenario_frames.append(scenario_df)
         full_trace_df = build_controller_full_trace(traces)
@@ -616,23 +638,24 @@ def main() -> None:
         full_trace_df.to_csv(artifact_dir / f"comfort_trace_full_{spec.key}.csv", index=False)
         full_trace_frames.append(full_trace_df)
         controller_traces[spec.key] = traces
-        grid_paths.append(plot_controller_grid(spec, traces, artifact_dir))
+        grid_paths.append(plot_controller_grid(spec, traces, artifact_dir, t_low, t_high))
 
     all_scenarios = pd.concat(scenario_frames, ignore_index=True)
     summary_df = aggregate(all_scenarios)
     summary_df.to_csv(artifact_dir / "comfort_trace_summary.csv", index=False)
 
     summary_plot = plot_summary(summary_df, artifact_dir)
-    combined_yearly_plot = plot_combined_yearly(controller_traces, artifact_dir)
+    combined_yearly_plot = plot_combined_yearly(controller_traces, artifact_dir, t_low, t_high)
     parity_plot = plot_parity(full_trace_frames, artifact_dir)
-    summary_txt = build_text_summary(summary_df, artifact_dir)
+    summary_txt = build_text_summary(summary_df, artifact_dir, t_low, t_high)
     boptest_log_path, surrogate_log_path = build_explicit_logs(full_trace_frames, artifact_dir)
     boptest_log_df = pd.read_csv(boptest_log_path)
     surrogate_log_df = pd.read_csv(surrogate_log_path)
-    standalone_plot = plot_standalone_surrogate(boptest_log_df, surrogate_log_df, artifact_dir)
+    standalone_plot = plot_standalone_surrogate(boptest_log_df, surrogate_log_df, artifact_dir, t_low, t_high)
 
     print("COMFORT-TRACE SURROGATE VALIDATION COMPLETE")
     print("===========================================")
+    print(f"Comfort band: [{t_low:.1f}, {t_high:.1f}] C")
     print(f"Saved: {summary_plot}")
     print(f"Saved: {combined_yearly_plot}")
     print(f"Saved: {parity_plot}")

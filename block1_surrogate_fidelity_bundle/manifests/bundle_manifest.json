@@ -1,0 +1,237 @@
+{
+  "bundle": "block1_surrogate_fidelity_bundle",
+  "source_root": "C:\\Users\\user\\Desktop\\HVAC_DRL_MORL",
+  "item_count": 46,
+  "items": [
+    {
+      "type": "file",
+      "source": "data\\collect_tsupply_data.py",
+      "bundle_path": "code\\data\\collect_tsupply_data.py"
+    },
+    {
+      "type": "file",
+      "source": "surrogate\\rc_node_v2.py",
+      "bundle_path": "code\\surrogate\\rc_node_v2.py"
+    },
+    {
+      "type": "file",
+      "source": "surrogate\\rc_node_v35.py",
+      "bundle_path": "code\\surrogate\\rc_node_v35.py"
+    },
+    {
+      "type": "file",
+      "source": "surrogate\\train_surrogate_backbone.py",
+      "bundle_path": "code\\surrogate\\train_surrogate_backbone.py"
+    },
+    {
+      "type": "file",
+      "source": "surrogate\\train_surrogate_v2.py",
+      "bundle_path": "code\\surrogate\\train_surrogate_v2.py"
+    },
+    {
+      "type": "file",
+      "source": "surrogate\\inverse_problem_boptest_v3.py",
+      "bundle_path": "code\\surrogate\\inverse_problem_boptest_v3.py"
+    },
+    {
+      "type": "file",
+      "source": "surrogate\\inverse_problem_boptest_v35.py",
+      "bundle_path": "code\\surrogate\\inverse_problem_boptest_v35.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\validate_surrogate_v35_rollout_prepared.py",
+      "bundle_path": "code\\evaluation\\validate_surrogate_v35_rollout_prepared.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\validate_closed_loop_transfer_thermostatic_live.py",
+      "bundle_path": "code\\evaluation\\validate_closed_loop_transfer_thermostatic_live.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\diagnose_thermostatic_obs_transfer_gap.py",
+      "bundle_path": "code\\evaluation\\diagnose_thermostatic_obs_transfer_gap.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\build_hou_evins_appendix_tables.py",
+      "bundle_path": "code\\evaluation\\build_hou_evins_appendix_tables.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\build_hou_evins_open_items_closure.py",
+      "bundle_path": "code\\evaluation\\build_hou_evins_open_items_closure.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\build_block1_fidelity_bundle.py",
+      "bundle_path": "code\\evaluation\\build_block1_fidelity_bundle.py"
+    },
+    {
+      "type": "file",
+      "source": "draft\\legacy_archive\\top_level\\block_1_2_surrogate_rmse\\data\\prepare_block12_15min_dataset.py",
+      "bundle_path": "code\\draft\\legacy_archive\\top_level\\block_1_2_surrogate_rmse\\data\\prepare_block12_15min_dataset.py"
+    },
+    {
+      "type": "file",
+      "source": "draft\\legacy_archive\\top_level\\block_1_2_surrogate_rmse\\data\\collect_block12_15min_dataset.py",
+      "bundle_path": "code\\draft\\legacy_archive\\top_level\\block_1_2_surrogate_rmse\\data\\collect_block12_15min_dataset.py"
+    },
+    {
+      "type": "file",
+      "source": "draft\\legacy_archive\\top_level\\block_1_2_surrogate_rmse\\training\\train_block12_backbone.py",
+      "bundle_path": "code\\draft\\legacy_archive\\top_level\\block_1_2_surrogate_rmse\\training\\train_block12_backbone.py"
+    },
+    {
+      "type": "file",
+      "source": "data\\surrogate_v2\\boptest_v2_tsupply.csv",
+      "bundle_path": "data\\surrogate_v2\\boptest_v2_tsupply.csv"
+    },
+    {
+      "type": "file",
+      "source": "data\\block_1_2_surrogate_rmse\\boptest_block12_15min_prepared.csv",
+      "bundle_path": "data\\block_1_2_surrogate_rmse\\boptest_block12_15min_prepared.csv"
+    },
+    {
+      "type": "file",
+      "source": "data\\block_1_2_surrogate_rmse\\boptest_block12_15min_collected.csv",
+      "bundle_path": "data\\block_1_2_surrogate_rmse\\boptest_block12_15min_collected.csv"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\surrogate_v35_inverse_boptest_15min_block13_closed_loop",
+      "bundle_path": "outputs\\surrogate_v35_inverse_boptest_15min_block13_closed_loop"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\surrogate_v35_inverse_boptest_15min_power_head_only",
+      "bundle_path": "outputs\\surrogate_v35_inverse_boptest_15min_power_head_only"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\surrogate_v35_rollout_prepared_15min_power_head_only",
+      "bundle_path": "outputs\\surrogate_v35_rollout_prepared_15min_power_head_only"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block13_closed_loop_transfer_no_delta_t_powerlog_tzone",
+      "bundle_path": "outputs\\block13_closed_loop_transfer_no_delta_t_powerlog_tzone"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block13_obs_gap_no_delta_t_powerlog_tzone",
+      "bundle_path": "outputs\\block13_obs_gap_no_delta_t_powerlog_tzone"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block_1_2_surrogate_rmse\\prepared_15min_dataset",
+      "bundle_path": "outputs\\block_1_2_surrogate_rmse\\prepared_15min_dataset"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block_1_2_surrogate_rmse\\collected_15min_dataset",
+      "bundle_path": "outputs\\block_1_2_surrogate_rmse\\collected_15min_dataset"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block_1_2_surrogate_rmse\\collected_15min_focus_dataset",
+      "bundle_path": "outputs\\block_1_2_surrogate_rmse\\collected_15min_focus_dataset"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block_1_2_surrogate_rmse\\prepared_15min_baseline",
+      "bundle_path": "outputs\\block_1_2_surrogate_rmse\\prepared_15min_baseline"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block_1_2_surrogate_rmse\\collected_15min_baseline",
+      "bundle_path": "outputs\\block_1_2_surrogate_rmse\\collected_15min_baseline"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block_1_2_surrogate_rmse\\collected_15min_focus",
+      "bundle_path": "outputs\\block_1_2_surrogate_rmse\\collected_15min_focus"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block_1_2_surrogate_rmse\\prepared_15min_rollout_select",
+      "bundle_path": "outputs\\block_1_2_surrogate_rmse\\prepared_15min_rollout_select"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block_1_2_surrogate_rmse\\prepared_15min_rollout_long",
+      "bundle_path": "outputs\\block_1_2_surrogate_rmse\\prepared_15min_rollout_long"
+    },
+    {
+      "type": "file",
+      "source": "reports\\block1_surrogate_final_report.md",
+      "bundle_path": "reports\\block1_surrogate_final_report.md"
+    },
+    {
+      "type": "file",
+      "source": "reports\\block1_surrogate_final_metrics.csv",
+      "bundle_path": "reports\\block1_surrogate_final_metrics.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hou_evins_compliance_matrix.md",
+      "bundle_path": "reports\\hou_evins_compliance_matrix.md"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hou_evins_partial_closure.md",
+      "bundle_path": "reports\\hou_evins_partial_closure.md"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hou_evins_sample_generation_table.csv",
+      "bundle_path": "reports\\hou_evins_sample_generation_table.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hou_evins_stage_a_processing_table.csv",
+      "bundle_path": "reports\\hou_evins_stage_a_processing_table.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hou_evins_feature_justification_table.csv",
+      "bundle_path": "reports\\hou_evins_feature_justification_table.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hou_evins_architecture_justification_table.csv",
+      "bundle_path": "reports\\hou_evins_architecture_justification_table.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hou_evins_final_open_items_closure.md",
+      "bundle_path": "reports\\hou_evins_final_open_items_closure.md"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hou_evins_sample_size_justification_table.csv",
+      "bundle_path": "reports\\hou_evins_sample_size_justification_table.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hou_evins_split_representativeness_table.csv",
+      "bundle_path": "reports\\hou_evins_split_representativeness_table.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hou_evins_targeted_sensitivity_table.csv",
+      "bundle_path": "reports\\hou_evins_targeted_sensitivity_table.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\reproduce_current_state_runbook.md",
+      "bundle_path": "reports\\reproduce_current_state_runbook.md"
+    },
+    {
+      "type": "file",
+      "source": "reports\\reproduction_contours.md",
+      "bundle_path": "reports\\reproduction_contours.md"
+    }
+  ]
+}

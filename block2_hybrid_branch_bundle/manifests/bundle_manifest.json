@@ -1,0 +1,227 @@
+{
+  "bundle": "block2_hybrid_branch_bundle",
+  "source_root": "C:\\Users\\user\\Desktop\\HVAC_DRL_MORL",
+  "item_count": 44,
+  "items": [
+    {
+      "type": "file",
+      "source": "training\\train_thermostatic.py",
+      "bundle_path": "code\\training\\train_thermostatic.py"
+    },
+    {
+      "type": "file",
+      "source": "training\\launch_thermostatic_warmstart_benchmark.py",
+      "bundle_path": "code\\training\\launch_thermostatic_warmstart_benchmark.py"
+    },
+    {
+      "type": "file",
+      "source": "training\\finetune_tsup_policies_boptest.py",
+      "bundle_path": "code\\training\\finetune_tsup_policies_boptest.py"
+    },
+    {
+      "type": "file",
+      "source": "surrogate\\direct_tsup_adapter.py",
+      "bundle_path": "code\\surrogate\\direct_tsup_adapter.py"
+    },
+    {
+      "type": "file",
+      "source": "envs\\tsup_features.py",
+      "bundle_path": "code\\envs\\tsup_features.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\benchmark_bestest_air_article7_style.py",
+      "bundle_path": "code\\evaluation\\benchmark_bestest_air_article7_style.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\validate_closed_loop_transfer_thermostatic_live.py",
+      "bundle_path": "code\\evaluation\\validate_closed_loop_transfer_thermostatic_live.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\diagnose_thermostatic_obs_transfer_gap.py",
+      "bundle_path": "code\\evaluation\\diagnose_thermostatic_obs_transfer_gap.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\build_hybrid_surrogate_snapshot.py",
+      "bundle_path": "code\\evaluation\\build_hybrid_surrogate_snapshot.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\build_hybrid_evidence_closure.py",
+      "bundle_path": "code\\evaluation\\build_hybrid_evidence_closure.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\build_block2_hybrid_bundle.py",
+      "bundle_path": "code\\evaluation\\build_block2_hybrid_bundle.py"
+    },
+    {
+      "type": "file",
+      "source": "models\\ppo_thermostatic.zip",
+      "bundle_path": "models\\ppo_thermostatic.zip"
+    },
+    {
+      "type": "file",
+      "source": "models\\ppo_thermostatic_hybrid_v3_v35_l005.zip",
+      "bundle_path": "models\\ppo_thermostatic_hybrid_v3_v35_l005.zip"
+    },
+    {
+      "type": "file",
+      "source": "models\\ppo_thermostatic_hybrid_v3_v35_l010.zip",
+      "bundle_path": "models\\ppo_thermostatic_hybrid_v3_v35_l010.zip"
+    },
+    {
+      "type": "file",
+      "source": "models\\ppo_thermostatic_hybrid_v3_v35_l015.zip",
+      "bundle_path": "models\\ppo_thermostatic_hybrid_v3_v35_l015.zip"
+    },
+    {
+      "type": "file",
+      "source": "models\\ppo_thermostatic_v35_15min_no_delta_t_powerlog_tzone.zip",
+      "bundle_path": "models\\ppo_thermostatic_v35_15min_no_delta_t_powerlog_tzone.zip"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\surrogate_v2",
+      "bundle_path": "outputs\\surrogate_v2"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\surrogate_v35_inverse_boptest_15min_power_head_only",
+      "bundle_path": "outputs\\surrogate_v35_inverse_boptest_15min_power_head_only"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\bestest_air_article7_style_15min",
+      "bundle_path": "outputs\\bestest_air_article7_style_15min"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block2_thermostatic_hybrid_v3_v35_l010",
+      "bundle_path": "outputs\\block2_thermostatic_hybrid_v3_v35_l010"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block2_thermostatic_warmstart_utility",
+      "bundle_path": "outputs\\block2_thermostatic_warmstart_utility"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block13_closed_loop_transfer_hybrid_l010",
+      "bundle_path": "outputs\\block13_closed_loop_transfer_hybrid_l010"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block13_obs_gap_hybrid_l010",
+      "bundle_path": "outputs\\block13_obs_gap_hybrid_l010"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block13_closed_loop_transfer_pure_v3",
+      "bundle_path": "outputs\\block13_closed_loop_transfer_pure_v3"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block13_obs_gap_pure_v3",
+      "bundle_path": "outputs\\block13_obs_gap_pure_v3"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block13_closed_loop_transfer_no_delta_t_powerlog_tzone",
+      "bundle_path": "outputs\\block13_closed_loop_transfer_no_delta_t_powerlog_tzone"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\block13_obs_gap_no_delta_t_powerlog_tzone",
+      "bundle_path": "outputs\\block13_obs_gap_no_delta_t_powerlog_tzone"
+    },
+    {
+      "type": "dir",
+      "source": "draft\\legacy_archive\\outputs\\block2_thermostatic_hybrid_v3_v35_l005",
+      "bundle_path": "outputs\\legacy_archive_outputs\\block2_thermostatic_hybrid_v3_v35_l005"
+    },
+    {
+      "type": "dir",
+      "source": "draft\\legacy_archive\\outputs\\block2_thermostatic_hybrid_v3_v35_l015",
+      "bundle_path": "outputs\\legacy_archive_outputs\\block2_thermostatic_hybrid_v3_v35_l015"
+    },
+    {
+      "type": "file",
+      "source": "reports\\block2_hybrid_surrogate_report.md",
+      "bundle_path": "reports\\block2_hybrid_surrogate_report.md"
+    },
+    {
+      "type": "file",
+      "source": "reports\\block2_hybrid_surrogate_metrics.csv",
+      "bundle_path": "reports\\block2_hybrid_surrogate_metrics.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hybrid_evidence_closure.md",
+      "bundle_path": "reports\\hybrid_evidence_closure.md"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hybrid_disagreement_summary.csv",
+      "bundle_path": "reports\\hybrid_disagreement_summary.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hybrid_transfer_comparison.csv",
+      "bundle_path": "reports\\hybrid_transfer_comparison.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\hybrid_evidence_status.md",
+      "bundle_path": "reports\\hybrid_evidence_status.md"
+    },
+    {
+      "type": "file",
+      "source": "reports\\structured_plan_status.md",
+      "bundle_path": "reports\\structured_plan_status.md"
+    },
+    {
+      "type": "file",
+      "source": "results\\minimum_paper_suite\\docs\\next_steps.md",
+      "bundle_path": "reports\\next_steps.md"
+    },
+    {
+      "type": "file",
+      "source": "reports\\figures\\hybrid_boptest_comfort_traces.png",
+      "bundle_path": "reports\\figures\\hybrid_boptest_comfort_traces.png"
+    },
+    {
+      "type": "file",
+      "source": "reports\\figures\\hybrid_boptest_power_energy_traces.png",
+      "bundle_path": "reports\\figures\\hybrid_boptest_power_energy_traces.png"
+    },
+    {
+      "type": "file",
+      "source": "reports\\figures\\hybrid_vs_pi_ms.png",
+      "bundle_path": "reports\\figures\\hybrid_vs_pi_ms.png"
+    },
+    {
+      "type": "file",
+      "source": "reports\\figures\\hybrid_vs_pi_violation.png",
+      "bundle_path": "reports\\figures\\hybrid_vs_pi_violation.png"
+    },
+    {
+      "type": "file",
+      "source": "reports\\figures\\hybrid_vs_pi_energy.png",
+      "bundle_path": "reports\\figures\\hybrid_vs_pi_energy.png"
+    },
+    {
+      "type": "file",
+      "source": "reports\\figures\\hybrid_disagreement_summary.png",
+      "bundle_path": "reports\\figures\\hybrid_disagreement_summary.png"
+    },
+    {
+      "type": "file",
+      "source": "reports\\figures\\hybrid_transfer_gap_comparison.png",
+      "bundle_path": "reports\\figures\\hybrid_transfer_gap_comparison.png"
+    }
+  ]
+}

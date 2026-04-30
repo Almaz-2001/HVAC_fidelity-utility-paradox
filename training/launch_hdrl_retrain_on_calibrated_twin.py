@@ -5,9 +5,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
-SUMMARY_JSON = ROOT / "outputs" / "surrogate_v35_inverse_boptest_prior420_heads_only" / "calibration_summary_boptest_v35.json"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from training.block2_v35_paths import V35_15MIN_SUMMARY_JSON
+
+SUMMARY_JSON = V35_15MIN_SUMMARY_JSON
 
 
 def build_command(extra_args: list[str]) -> list[str]:
@@ -23,12 +27,12 @@ def build_command(extra_args: list[str]) -> list[str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Launch HDRL retraining on the calibrated v3.5 direct-TSup surrogate."
+        description="Launch HDRL retraining on the calibrated 15-minute v3.5 direct-TSup surrogate."
     )
     _, extra_args = parser.parse_known_args()
 
     cmd = build_command(extra_args)
-    print("HDRL retrain on v35_calibrated")
+    print("HDRL retrain on 15-minute v35_calibrated")
     print("Command:")
     print(" ".join(f'"{part}"' if " " in part else part for part in cmd))
     subprocess.run(cmd, cwd=str(ROOT), check=True)

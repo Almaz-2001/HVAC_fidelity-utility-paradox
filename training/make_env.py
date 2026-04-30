@@ -22,16 +22,27 @@ def make_surrogate_env(env_id, rank, seed=0):
         surrogate_summary_json = os.environ.get("SURROGATE_SUMMARY_JSON")
         surrogate_checkpoint = os.environ.get("SURROGATE_CHECKPOINT")
         surrogate_base_model = os.environ.get("SURROGATE_BASE_MODEL")
+        step_sec = int(float(os.environ.get("SURROGATE_STEP_SEC", "900")))
+        episode_days = float(os.environ.get("SURROGATE_EPISODE_DAYS", "14"))
+        temp_low = float(os.environ.get("SURROGATE_TEMP_LOW", "21.0"))
+        temp_high = float(os.environ.get("SURROGATE_TEMP_HIGH", "24.0"))
+        max_episode_steps = int(round(episode_days * 86400.0 / step_sec))
 
         config = {
             "backend": "surrogate",
             "control_mode": "tsup_direct",
+            "step_sec": step_sec,
+            "max_episode_steps": max_episode_steps,
             "surrogate_kind": surrogate_kind,
             "surrogate_path": surrogate_path,
             "surrogate_summary_json": surrogate_summary_json,
             "surrogate_checkpoint": surrogate_checkpoint,
             "surrogate_base_model": surrogate_base_model,
             "weather_csv": _resolve_weather_csv(project_root),
+            "morl": {
+                "temp_low": temp_low,
+                "temp_high": temp_high,
+            },
             "comfort_shaping": {
                 "deadband_c": 0.5,
                 "band_bonus": 0.05,
@@ -50,7 +61,7 @@ def make_surrogate_env(env_id, rank, seed=0):
         }
 
         env = EnvFactory.create(config)
-        env = TimeLimit(env, max_episode_steps=336)
+        env = TimeLimit(env, max_episode_steps=max_episode_steps)
         env.reset(seed=seed + rank)
         env.action_space.seed(seed + rank)
         return env

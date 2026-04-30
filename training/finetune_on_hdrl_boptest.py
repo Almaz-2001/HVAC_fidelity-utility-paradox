@@ -23,7 +23,7 @@ from envs.tsup_features import (
 
 
 T_LOW = 21.0
-T_HIGH = 25.0
+T_HIGH = 24.0
 T_SUPPLY_LOW = 18.0
 T_SUPPLY_HIGH = 35.0
 COOLING_SETPOINT_C = 40.0
@@ -35,7 +35,7 @@ class BOPTESTDirectEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
-    def __init__(self, url="http://web:8000", testcase="bestest_air", start_time=0, step_sec=3600, max_steps=336):
+    def __init__(self, url="http://web:8000", testcase="bestest_air", start_time=0, step_sec=900, max_steps=1344):
         super().__init__()
 
         self.url = url
@@ -222,8 +222,8 @@ def finetune_agent(model_path, save_path, start_time, agent_name, steps=10000):
         url="http://web:8000",
         testcase="bestest_air",
         start_time=start_time,
-        step_sec=3600,
-        max_steps=336,
+        step_sec=900,
+        max_steps=1344,
     )
     env = Monitor(env)
 
@@ -244,7 +244,7 @@ def finetune_agent(model_path, save_path, start_time, agent_name, steps=10000):
     print(f"  Start time: {start_time}s ({agent_name})")
     print(f"  Control: direct TSup in [{T_SUPPLY_LOW}, {T_SUPPLY_HIGH}]C")
     print(f"  Steps: {steps:,}")
-    print(f"  Episodes: ~{steps // 336}")
+    print(f"  Episodes: ~{steps // 1344}")
     print(f"  Estimated: {steps / 37.6 / 60:.0f} min")
     print()
 

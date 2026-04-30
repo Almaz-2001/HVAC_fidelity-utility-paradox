@@ -5,10 +5,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
-SUMMARY_JSON = ROOT / "outputs" / "surrogate_v35_inverse_boptest_prior420_heads_only" / "calibration_summary_boptest_v35.json"
-ARTIFACT_ROOT = ROOT / "outputs" / "morl_surrogate_ppo_v35_calibrated"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from training.block2_v35_paths import MORL_V35_15MIN_ARTIFACT_ROOT, V35_15MIN_SUMMARY_JSON
+
+SUMMARY_JSON = V35_15MIN_SUMMARY_JSON
+ARTIFACT_ROOT = MORL_V35_15MIN_ARTIFACT_ROOT
 
 
 def build_command(extra_args: list[str]) -> list[str]:
@@ -28,12 +32,12 @@ def build_command(extra_args: list[str]) -> list[str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Launch MORL surrogate pretraining on the calibrated v3.5 direct-TSup surrogate."
+        description="Launch MORL surrogate pretraining on the calibrated 15-minute v3.5 direct-TSup surrogate."
     )
     _, extra_args = parser.parse_known_args()
 
     cmd = build_command(extra_args)
-    print("MORL pretrain on v35_calibrated")
+    print("MORL pretrain on 15-minute v35_calibrated")
     print("Command:")
     print(" ".join(f'"{part}"' if " " in part else part for part in cmd))
     subprocess.run(cmd, cwd=str(ROOT), check=True)

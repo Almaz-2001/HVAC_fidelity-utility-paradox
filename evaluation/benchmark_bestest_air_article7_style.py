@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import time
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,10 @@ if str(REPO_ROOT) not in sys.path:
 
 from envs.tsup_features import (
     EXTENDED_TSUP_OBS_DIM,
+    SUPPORTED_DELTA_FEATURE_MODES,
+    SUPPORTED_POWER_FEATURE_MODES,
+    SUPPORTED_T_ZONE_FEATURE_MODES,
+    SUPPORTED_TSUP_OBS_ABLATIONS,
     SUPPORTED_TSUP_OBS_DIMS,
     WeatherLookup,
     action_to_fan,
@@ -34,8 +39,8 @@ from layers.safety.fallback import SurrogateMPCFallback
 
 
 T_LOW = 21.0
-T_HIGH = 25.0
-T_TARGET = 22.0
+T_HIGH = 24.0
+T_TARGET = 22.5
 COOLING_SETPOINT_C = 40.0
 HEATING_SETPOINT_C = 15.0
 WINTER_ENTER_T_AMB = 10.0
@@ -62,6 +67,12 @@ HDRL_WINTER_MODEL_CANDIDATES = [
 HDRL_SUMMER_MODEL_CANDIDATES = [
     REPO_ROOT / "models" / "ppo_summer_final.zip",
     Path("/app/models/ppo_summer_final.zip"),
+]
+
+MORL_MODEL_CANDIDATES = [
+    REPO_ROOT / "outputs" / "morl_surrogate_ppo_v35_15min" / "seed42" / "finetune_boptest" / "models" / "ppo_model.zip",
+    REPO_ROOT / "outputs" / "morl_boptest_finetune_seed42" / "models" / "ppo_model.zip",
+    Path("/app/outputs/morl_surrogate_ppo_v35_15min/seed42/finetune_boptest/models/ppo_model.zip"),
 ]
 
 
@@ -202,6 +213,20 @@ def load_ppo_model(path: str) -> tuple[PPO, int]:
     return PPO.load(path, device="cpu", custom_objects=custom_objects), obs_dim
 
 
+def load_morl_model(path: str) -> tuple[PPO, int]:
+    with zipfile.ZipFile(path) as archive:
+        data = json.loads(archive.read("data"))
+    obs_shape = data.get("observation_space", {}).get("_shape", [5])
+    obs_dim = obs_shape[0] if isinstance(obs_shape, list) else int(obs_shape)
+    custom_objects = {
+        "action_space": spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32),
+        "observation_space": spaces.Box(low=-1.0, high=1.0, shape=(obs_dim,), dtype=np.float32),
+        "clip_range": lambda _: 0.2,
+        "lr_schedule": lambda _: 3e-4,
+    }
+    return PPO.load(path, device="cpu", custom_objects=custom_objects), obs_dim
+
+
 def build_bestest_air_command(action: np.ndarray) -> dict[str, Any]:
     t_supply = action_to_t_supply(float(action[0]))
     fan_u = action_to_fan(float(action[1]))
@@ -217,16 +242,11 @@ def build_bestest_air_command(action: np.ndarray) -> dict[str, Any]:
     }
 
 
-def make_obs(
+def parse_payload_state(
     payload: dict[str, Any],
     prev_action: np.ndarray,
     prev_t_zone: float | None,
-    weather: WeatherLookup,
-    obs_dim: int,
-) -> tuple[np.ndarray, dict[str, float]]:
-    if obs_dim not in SUPPORTED_TSUP_OBS_DIMS:
-        raise RuntimeError(f"Unsupported observation dim {obs_dim}. Supported dims: {sorted(SUPPORTED_TSUP_OBS_DIMS)}.")
-
+) -> dict[str, float]:
     t_zone_c = k_to_c(flatten_boptest_value(payload, "zon_reaTRooAir_y"))
     co2_ppm = flatten_boptest_value(payload, "zon_reaCO2RooAir_y")
     p_cool_w = flatten_boptest_value(payload, "fcu_reaPCoo_y")
@@ -240,19 +260,6 @@ def make_obs(
     prev_t_supply_c = action_to_t_supply(float(prev_action[0])) if prev_action is not None else 26.5
     delta_t_zone_c = 0.0 if prev_t_zone is None else (t_zone_c - prev_t_zone)
 
-    obs = build_tsup_obs(
-        t_zone_c,
-        co2_ppm,
-        p_total_w,
-        prev_t_supply_c,
-        t_amb_c,
-        hour,
-        day,
-        prev_action if prev_action is not None else np.zeros(2, dtype=np.float32),
-        delta_t_zone_c,
-        weather,
-        include_forecast=(obs_dim == EXTENDED_TSUP_OBS_DIM),
-    )
     state = {
         "t_zone": float(t_zone_c),
         "co2_ppm": float(co2_ppm),
@@ -263,7 +270,66 @@ def make_obs(
         "day": float(day),
         "delta_t_zone": float(delta_t_zone_c),
     }
+    return state
+
+
+def make_tsup_obs(
+    payload: dict[str, Any],
+    prev_action: np.ndarray,
+    prev_t_zone: float | None,
+    weather: WeatherLookup,
+    obs_dim: int,
+    obs_ablation: str = "none",
+    delta_feature_mode: str = "raw",
+    t_zone_feature_mode: str = "raw",
+    power_feature_mode: str = "raw",
+) -> tuple[np.ndarray, dict[str, float]]:
+    if obs_dim not in SUPPORTED_TSUP_OBS_DIMS:
+        raise RuntimeError(f"Unsupported observation dim {obs_dim}. Supported dims: {sorted(SUPPORTED_TSUP_OBS_DIMS)}.")
+
+    state = parse_payload_state(payload, prev_action, prev_t_zone)
+    prev_t_supply_c = action_to_t_supply(float(prev_action[0])) if prev_action is not None else 26.5
+    obs = build_tsup_obs(
+        state["t_zone"],
+        state["co2_ppm"],
+        state["p_total_w"],
+        prev_t_supply_c,
+        state["t_amb"],
+        state["hour"],
+        state["day"],
+        prev_action if prev_action is not None else np.zeros(2, dtype=np.float32),
+        state["delta_t_zone"],
+        weather,
+        include_forecast=(obs_dim == EXTENDED_TSUP_OBS_DIM),
+        obs_ablation=obs_ablation,
+        delta_feature_mode=delta_feature_mode,
+        t_zone_feature_mode=t_zone_feature_mode,
+        power_feature_mode=power_feature_mode,
+    )
     return obs, state
+
+
+def make_morl_obs(
+    payload: dict[str, Any],
+    prev_action: np.ndarray,
+    prev_t_zone: float | None,
+) -> tuple[np.ndarray, dict[str, float]]:
+    state = parse_payload_state(payload, prev_action, prev_t_zone)
+    prev_t_supply_c = action_to_t_supply(float(prev_action[0])) if prev_action is not None else 0.5 * (
+        T_SUPPLY_LOW + T_SUPPLY_HIGH
+    )
+    raw = np.array(
+        [
+            state["t_zone"],
+            state["co2_ppm"],
+            state["p_total_w"],
+            prev_t_supply_c,
+            state["t_amb"],
+        ],
+        dtype=np.float32,
+    )
+    obs = 2.0 * (raw - STATE_LOW) / (STATE_HIGH - STATE_LOW) - 1.0
+    return np.clip(obs, -1.0, 1.0), state
 
 
 def compute_safety_metrics(trace_df: pd.DataFrame, step_sec: int) -> dict[str, float]:
@@ -276,7 +342,7 @@ def compute_safety_metrics(trace_df: pd.DataFrame, step_sec: int) -> dict[str, f
     under = np.where(below, (T_LOW - temps) / T_LOW, 0.0)
     over = np.where(above, (temps - T_HIGH) / T_HIGH, 0.0)
     r_sev = float(max(np.max(under), np.max(over)))
-    rmse_22 = float(np.sqrt(np.mean((temps - T_TARGET) ** 2)))
+    rmse_center = float(np.sqrt(np.mean((temps - T_TARGET) ** 2)))
     mean_power_w = float(trace_df["p_total_w"].mean())
     energy_kwh = float(trace_df["p_total_w"].sum() * (step_sec / 3600.0) / 1000.0)
     within_band_pct = float(np.mean((temps >= T_LOW) & (temps <= T_HIGH)) * 100.0)
@@ -286,7 +352,8 @@ def compute_safety_metrics(trace_df: pd.DataFrame, step_sec: int) -> dict[str, f
         "r_sev": r_sev,
         "m_s": float(r_time + r_sev),
         "violation_pct": float(r_time * 100.0),
-        "rmse_22_c": rmse_22,
+        "rmse_center_c": rmse_center,
+        "rmse_22_c": rmse_center,
         "mean_power_w": mean_power_w,
         "energy_kwh": energy_kwh,
         "within_band_pct": within_band_pct,
@@ -346,16 +413,37 @@ def derive_article7_style_scenarios(
 
 class BaseController:
     name: str
+    obs_mode: str = "tsup"
 
     def act(self, obs: np.ndarray, state: dict[str, float]) -> tuple[np.ndarray, dict[str, Any]]:
         raise NotImplementedError
 
 
+class PIController(BaseController):
+    name = "pi"
+    obs_mode = "none"
+
+    def act(self, obs: np.ndarray, state: dict[str, float]) -> tuple[None, dict[str, Any]]:
+        return None, {"source": "built_in_pi"}
+
+
 class ThermostaticController(BaseController):
     name = "thermostatic"
+    obs_mode = "tsup"
 
-    def __init__(self, model_path: str) -> None:
+    def __init__(
+        self,
+        model_path: str,
+        obs_ablation: str = "none",
+        delta_feature_mode: str = "raw",
+        t_zone_feature_mode: str = "raw",
+        power_feature_mode: str = "raw",
+    ) -> None:
         self.model, self.obs_dim = load_ppo_model(model_path)
+        self.obs_ablation = str(obs_ablation).strip().lower()
+        self.delta_feature_mode = str(delta_feature_mode).strip().lower()
+        self.t_zone_feature_mode = str(t_zone_feature_mode).strip().lower()
+        self.power_feature_mode = str(power_feature_mode).strip().lower()
 
     def act(self, obs: np.ndarray, state: dict[str, float]) -> tuple[np.ndarray, dict[str, Any]]:
         action, _ = self.model.predict(obs, deterministic=True)
@@ -365,8 +453,17 @@ class ThermostaticController(BaseController):
 
 class HDRLController(BaseController):
     name = "hdrl"
+    obs_mode = "tsup"
 
-    def __init__(self, winter_model_path: str, summer_model_path: str) -> None:
+    def __init__(
+        self,
+        winter_model_path: str,
+        summer_model_path: str,
+        obs_ablation: str = "none",
+        delta_feature_mode: str = "raw",
+        t_zone_feature_mode: str = "raw",
+        power_feature_mode: str = "raw",
+    ) -> None:
         self.winter_model, self.winter_obs_dim = load_ppo_model(winter_model_path)
         self.summer_model, self.summer_obs_dim = load_ppo_model(summer_model_path)
         if self.winter_obs_dim != self.summer_obs_dim:
@@ -376,6 +473,10 @@ class HDRLController(BaseController):
             )
         self.obs_dim = self.winter_obs_dim
         self.gate_mode = "winter"
+        self.obs_ablation = obs_ablation
+        self.delta_feature_mode = delta_feature_mode
+        self.t_zone_feature_mode = t_zone_feature_mode
+        self.power_feature_mode = power_feature_mode
 
     def reset(self, initial_t_amb: float) -> None:
         self.gate_mode = "winter" if initial_t_amb < WINTER_ENTER_T_AMB else "summer"
@@ -407,6 +508,7 @@ class HDRLController(BaseController):
 
 class SurrogateMPCController(BaseController):
     name = "surrogate_mpc"
+    obs_mode = "tsup"
 
     def __init__(
         self,
@@ -433,6 +535,42 @@ class SurrogateMPCController(BaseController):
     def act(self, obs: np.ndarray, state: dict[str, float]) -> tuple[np.ndarray, dict[str, Any]]:
         action = self.policy.compute(state)
         return np.asarray(action, dtype=np.float32), {"source": "surrogate_mpc"}
+
+
+class MORLController(BaseController):
+    name = "morl"
+    obs_mode = "morl"
+
+    def __init__(self, model_path: str) -> None:
+        self.model, self.obs_dim = load_morl_model(model_path)
+
+    def act(self, obs: np.ndarray, state: dict[str, float]) -> tuple[np.ndarray, dict[str, Any]]:
+        action, _ = self.model.predict(obs, deterministic=True)
+        return np.asarray(action, dtype=np.float32), {"source": "morl"}
+
+
+def build_controller_obs(
+    controller: BaseController,
+    payload: dict[str, Any],
+    prev_action: np.ndarray,
+    prev_t_zone: float | None,
+    weather: WeatherLookup,
+) -> tuple[np.ndarray | None, dict[str, float]]:
+    if getattr(controller, "obs_mode", "tsup") == "none":
+        return None, parse_payload_state(payload, prev_action, prev_t_zone)
+    if controller.obs_mode == "morl":
+        return make_morl_obs(payload, prev_action, prev_t_zone)
+    return make_tsup_obs(
+        payload,
+        prev_action,
+        prev_t_zone,
+        weather,
+        getattr(controller, "obs_dim", EXTENDED_TSUP_OBS_DIM),
+        obs_ablation=getattr(controller, "obs_ablation", "none"),
+        delta_feature_mode=getattr(controller, "delta_feature_mode", "raw"),
+        t_zone_feature_mode=getattr(controller, "t_zone_feature_mode", "raw"),
+        power_feature_mode=getattr(controller, "power_feature_mode", "raw"),
+    )
 
 
 def plot_scenario_trace(
@@ -501,8 +639,7 @@ def run_controller_on_scenario(
 
     prev_action = np.zeros(2, dtype=np.float32)
     prev_t_zone = None
-    obs_dim = getattr(controller, "obs_dim", EXTENDED_TSUP_OBS_DIM)
-    obs, state = make_obs(payload, prev_action, prev_t_zone, weather, obs_dim)
+    obs, state = build_controller_obs(controller, payload, prev_action, prev_t_zone, weather)
 
     if isinstance(controller, HDRLController):
         controller.reset(state["t_amb"])
@@ -511,14 +648,16 @@ def run_controller_on_scenario(
     try:
         for step in range(total_steps):
             action, meta = controller.act(obs, state)
-            command = build_bestest_air_command(action)
+            action_arr = None if action is None else np.asarray(action, dtype=np.float32)
+            command = {} if action_arr is None else build_bestest_air_command(action_arr)
             next_payload = client.advance(testid, command)
-            next_obs, next_state = make_obs(
+            next_prev_action = prev_action if action_arr is None else action_arr
+            next_obs, next_state = build_controller_obs(
+                controller,
                 next_payload,
-                np.asarray(action, dtype=np.float32),
+                next_prev_action,
                 state["t_zone"],
                 weather,
-                obs_dim,
             )
 
             rows.append(
@@ -528,17 +667,17 @@ def run_controller_on_scenario(
                     "t_zone_c": next_state["t_zone"],
                     "t_amb_c": next_state["t_amb"],
                     "p_total_w": next_state["p_total_w"],
-                    "a0": float(action[0]),
-                    "a1": float(action[1]),
-                    "t_supply_cmd_c": action_to_t_supply(float(action[0])),
-                    "fan_cmd_u": action_to_fan(float(action[1])),
+                    "a0": float(action_arr[0]) if action_arr is not None else float("nan"),
+                    "a1": float(action_arr[1]) if action_arr is not None else float("nan"),
+                    "t_supply_cmd_c": action_to_t_supply(float(action_arr[0])) if action_arr is not None else float("nan"),
+                    "fan_cmd_u": action_to_fan(float(action_arr[1])) if action_arr is not None else float("nan"),
                     "controller_source": str(meta.get("source", controller.name)),
                     "prev_t_zone_c": state["t_zone"],
                 }
             )
 
             prev_t_zone = state["t_zone"]
-            prev_action = np.asarray(action, dtype=np.float32)
+            prev_action = next_prev_action
             obs, state = next_obs, next_state
     finally:
         client.stop(testid)
@@ -569,7 +708,7 @@ def parse_controller_names(raw: str) -> list[str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Article 7 style safety benchmark on bestest_air using our surrogate and controllers."
+        description="Windowed benchmark on bestest_air for PI, thermostatic PPO, HDRL, MORL, and surrogate MPC."
     )
     parser.add_argument("--boptest-url", default=os.environ.get("BOPTEST_URL", "http://web:8000"))
     parser.add_argument("--testcase-id", default="bestest_air")
@@ -580,12 +719,17 @@ def main() -> None:
     parser.add_argument("--heating-threshold-c", type=float, default=12.0)
     parser.add_argument(
         "--controllers",
-        default="thermostatic,hdrl,surrogate_mpc",
-        help="Comma-separated list: thermostatic, hdrl, surrogate_mpc",
+        default="pi,thermostatic,hdrl,morl",
+        help="Comma-separated list: pi, thermostatic, hdrl, morl, surrogate_mpc",
     )
+    parser.add_argument("--obs-ablation", choices=sorted(SUPPORTED_TSUP_OBS_ABLATIONS), default="none")
+    parser.add_argument("--delta-feature-mode", choices=sorted(SUPPORTED_DELTA_FEATURE_MODES), default="raw")
+    parser.add_argument("--power-feature-mode", choices=sorted(SUPPORTED_POWER_FEATURE_MODES), default="raw")
+    parser.add_argument("--t-zone-feature-mode", choices=sorted(SUPPORTED_T_ZONE_FEATURE_MODES), default="raw")
     parser.add_argument("--thermostatic-model", default=resolve_existing_path(THERMOSTATIC_MODEL_CANDIDATES))
     parser.add_argument("--hdrl-winter-model", default=resolve_existing_path(HDRL_WINTER_MODEL_CANDIDATES))
     parser.add_argument("--hdrl-summer-model", default=resolve_existing_path(HDRL_SUMMER_MODEL_CANDIDATES))
+    parser.add_argument("--morl-model", default=resolve_existing_path(MORL_MODEL_CANDIDATES))
     parser.add_argument("--surrogate-model", default=resolve_existing_path(SURROGATE_MPC_MODEL_CANDIDATES))
     parser.add_argument("--mpc-horizon", type=int, default=4)
     parser.add_argument("--mpc-iters", type=int, default=25)
@@ -629,10 +773,31 @@ def main() -> None:
     controller_names = parse_controller_names(args.controllers)
     controllers: list[BaseController] = []
     for name in controller_names:
-        if name == "thermostatic":
-            controllers.append(ThermostaticController(args.thermostatic_model))
+        if name == "pi":
+            controllers.append(PIController())
+        elif name == "thermostatic":
+            controllers.append(
+                ThermostaticController(
+                    args.thermostatic_model,
+                    obs_ablation=args.obs_ablation,
+                    delta_feature_mode=args.delta_feature_mode,
+                    t_zone_feature_mode=args.t_zone_feature_mode,
+                    power_feature_mode=args.power_feature_mode,
+                )
+            )
         elif name == "hdrl":
-            controllers.append(HDRLController(args.hdrl_winter_model, args.hdrl_summer_model))
+            controllers.append(
+                HDRLController(
+                    args.hdrl_winter_model,
+                    args.hdrl_summer_model,
+                    obs_ablation=args.obs_ablation,
+                    delta_feature_mode=args.delta_feature_mode,
+                    t_zone_feature_mode=args.t_zone_feature_mode,
+                    power_feature_mode=args.power_feature_mode,
+                )
+            )
+        elif name == "morl":
+            controllers.append(MORLController(args.morl_model))
         elif name == "surrogate_mpc":
             controllers.append(
                 SurrogateMPCController(
@@ -686,7 +851,7 @@ def main() -> None:
             summary_rows.append(metrics)
             print(
                 f"  m_s={metrics['m_s']:.4f} | viol={metrics['violation_pct']:.1f}% | "
-                f"rmse22={metrics['rmse_22_c']:.3f} C | mean_power={metrics['mean_power_w']:.1f} W"
+                f"rmse_center={metrics['rmse_center_c']:.3f} C | mean_power={metrics['mean_power_w']:.1f} W"
             )
 
         plot_scenario_trace(
@@ -711,7 +876,7 @@ def main() -> None:
                 "scenario",
                 "m_s",
                 "violation_pct",
-                "rmse_22_c",
+                "rmse_center_c",
                 "mean_power_w",
                 "energy_kwh",
             ]

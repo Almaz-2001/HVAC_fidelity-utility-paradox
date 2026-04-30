@@ -17,5 +17,5 @@ defaults:
   finetune_steps: 100000
   finetune_learning_rate: 0.0001
   finetune_jitter_days: 3.0
-  eval_step_sec: 3600
+  eval_step_sec: 900
   eval_scenario_days: 14

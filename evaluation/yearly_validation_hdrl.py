@@ -17,10 +17,16 @@ import requests
 from gymnasium import spaces
 from stable_baselines3 import PPO
 
-sys.path.insert(0, "/app")
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 from envs.tsup_features import (
     EXTENDED_TSUP_OBS_DIM,
+    SUPPORTED_DELTA_FEATURE_MODES,
+    SUPPORTED_POWER_FEATURE_MODES,
+    SUPPORTED_TSUP_OBS_ABLATIONS,
+    SUPPORTED_T_ZONE_FEATURE_MODES,
     WeatherLookup,
     action_to_fan,
     action_to_t_supply,
@@ -46,11 +52,15 @@ EMERGENCY_T_ZONE = 20.0
 EMERGENCY_ACTION = np.array([1.0, 1.0], dtype=np.float32)
 
 T_LOW = 21.0
-T_HIGH = 25.0
+T_HIGH = 24.0
 T_SUPPLY_LOW = 18.0
 T_SUPPLY_HIGH = 35.0
 COOLING_SETPOINT_C = 40.0
 HEATING_SETPOINT_C = 15.0
+OBS_ABLATION = "none"
+DELTA_FEATURE_MODE = "raw"
+POWER_FEATURE_MODE = "raw"
+T_ZONE_FEATURE_MODE = "raw"
 
 SCENARIOS = {
     "Jan_Winter": 0,
@@ -158,6 +168,10 @@ def make_obs(payload, prev_action, prev_t_zone, weather):
         prev_action if prev_action is not None else np.zeros(2, dtype=np.float32),
         delta_t_zone,
         weather,
+        obs_ablation=OBS_ABLATION,
+        delta_feature_mode=DELTA_FEATURE_MODE,
+        t_zone_feature_mode=T_ZONE_FEATURE_MODE,
+        power_feature_mode=POWER_FEATURE_MODE,
     )
     return obs, t_c, p_total, t_amb, sim_time
 
@@ -323,6 +337,7 @@ def run_scenario(winter_model, summer_model, name, start_time):
 
 def main():
     global WINTER_MODEL, SUMMER_MODEL, OUTPUT_DIR, STEP_SEC, SCENARIO_DAYS, BOPTEST_URL, TESTCASE
+    global T_LOW, T_HIGH, OBS_ABLATION, DELTA_FEATURE_MODE, POWER_FEATURE_MODE, T_ZONE_FEATURE_MODE
 
     parser = argparse.ArgumentParser(description="Yearly BOPTEST validation for HDRL direct TSup control.")
     parser.add_argument("--winter-model", default=WINTER_MODEL)
@@ -332,6 +347,12 @@ def main():
     parser.add_argument("--scenario-days", type=int, default=SCENARIO_DAYS)
     parser.add_argument("--boptest-url", default=BOPTEST_URL)
     parser.add_argument("--testcase", default=TESTCASE)
+    parser.add_argument("--temp-low", type=float, default=T_LOW)
+    parser.add_argument("--temp-high", type=float, default=T_HIGH)
+    parser.add_argument("--obs-ablation", choices=sorted(SUPPORTED_TSUP_OBS_ABLATIONS), default=OBS_ABLATION)
+    parser.add_argument("--delta-feature-mode", choices=sorted(SUPPORTED_DELTA_FEATURE_MODES), default=DELTA_FEATURE_MODE)
+    parser.add_argument("--power-feature-mode", choices=sorted(SUPPORTED_POWER_FEATURE_MODES), default=POWER_FEATURE_MODE)
+    parser.add_argument("--t-zone-feature-mode", choices=sorted(SUPPORTED_T_ZONE_FEATURE_MODES), default=T_ZONE_FEATURE_MODE)
     args = parser.parse_args()
 
     WINTER_MODEL = args.winter_model
@@ -341,6 +362,12 @@ def main():
     SCENARIO_DAYS = int(args.scenario_days)
     BOPTEST_URL = args.boptest_url
     TESTCASE = args.testcase
+    T_LOW = float(args.temp_low)
+    T_HIGH = float(args.temp_high)
+    OBS_ABLATION = args.obs_ablation
+    DELTA_FEATURE_MODE = args.delta_feature_mode
+    POWER_FEATURE_MODE = args.power_feature_mode
+    T_ZONE_FEATURE_MODE = args.t_zone_feature_mode
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
