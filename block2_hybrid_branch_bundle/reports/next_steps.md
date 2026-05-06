@@ -14,10 +14,17 @@ The active control backend is:
 
 The current Block 2 branch combines both through `hybrid_v3_v35`.
 
-The canonical hybrid default is now:
+The controller-family defaults are now:
 
 - `lambda_temp_disagree = 0.10`
 - `lambda_power_disagree = 5e-5`
+
+for the closed thermostatic branch, and:
+
+- `lambda_temp_disagree = 0.00`
+- `lambda_power_disagree = 5e-5`
+
+for the current HDRL/MORL promotion branch.
 
 ## Block 1 Status
 
@@ -65,16 +72,17 @@ The previously partial Hou-and-Evins packaging items are now also closed by:
 
 ## Immediate Focus: Promote Canonical Hybrid Beyond Thermostatic
 
-The active benchmark is now:
+The active benchmark track is now:
 
 1. thermostatic `hybrid_v3_v35` is already closed
-2. selected canonical hybrid:
-   - `lambda_temp_disagree = 0.10`
+2. HDRL sweep is closed with winner:
+   - `lambda_temp_disagree = 0.00`
    - `lambda_power_disagree = 5e-5`
-3. next active branch:
-   - `HDRL hybrid_l010`
-4. next after that:
-   - `MORL hybrid_l010`
+3. MORL is now closed as:
+   - `hybrid_v3_v35`
+   - `lambda_temp_disagree = 0.00`
+   - `lambda_power_disagree = 5e-5`
+   - `17D TSup-style observation path`
 
 Thermostatic success criterion is now satisfied:
 
@@ -82,7 +90,8 @@ Thermostatic success criterion is now satisfied:
 - hybrid preserves energy advantage
 - hybrid transfer evidence is materially better than direct `v3.5`
 
-Therefore the next controller family should now be the active focus.
+Therefore the next active focus is no longer controller-family promotion inside Block 2.
+The next active focus is Block 3 cross-case transferability.
 
 ## Remaining Open Hou-and-Evins Items
 
@@ -125,10 +134,19 @@ For the paper, the key comparison is now:
 
 The next promotion path is now explicit:
 
-1. `HDRL hybrid_l010`
-2. `MORL hybrid_l010`
+1. `HDRL lambda sweep`
+   - complete
+   - winner: `l000`
+2. `MORL hybrid_v3_v35`
+   - closed with `17D power-only` canonical result
+3. `Block 3 cross-case transferability`
 
 ## Unified 15-Minute Benchmark Reference
+
+The HDRL sweep closure is now documented in:
+
+- [block2_hdrl_lambda_sweep_report.md](C:/Users/user/Desktop/HVAC_DRL_MORL/reports/block2_hdrl_lambda_sweep_report.md)
+- [block2_hdrl_lambda_sweep_summary.csv](C:/Users/user/Desktop/HVAC_DRL_MORL/reports/block2_hdrl_lambda_sweep_summary.csv)
 
 After model artifacts are ready, the unified benchmark entry point remains:
 
@@ -139,7 +157,7 @@ python evaluation/benchmark_bestest_air_article7_style.py --step-sec 900 --contr
 If explicit model paths are needed:
 
 ```powershell
-python evaluation/benchmark_bestest_air_article7_style.py --step-sec 900 --controllers pi,thermostatic,hdrl,morl --thermostatic-model models/ppo_thermostatic.zip --hdrl-winter-model models/ppo_winter_final.zip --hdrl-summer-model models/ppo_summer_final.zip --morl-model outputs/morl_surrogate_ppo_v35_15min/seed42/finetune_boptest/models/ppo_model.zip --output-dir outputs/block2_bestest_air_15min_unified
+python evaluation/benchmark_bestest_air_article7_style.py --step-sec 900 --controllers pi,thermostatic,hdrl,morl --thermostatic-model models/ppo_thermostatic.zip --hdrl-winter-model models/ppo_winter_final.zip --hdrl-summer-model models/ppo_summer_final.zip --morl-model outputs/morl_hybrid_v3_v35_power_only_17d/seed42/finetune_boptest/models/ppo_model.zip --output-dir outputs/block2_bestest_air_15min_unified
 ```
 
 ## Rollout Validation Reference

@@ -1,6 +1,6 @@
 # Structured Plan Status Update
 
-Date: 2026-04-30
+Date: 2026-05-06
 
 ## Central Q1 Axis
 
@@ -133,27 +133,70 @@ Interpretation:
 - hybrid remains better than pure `v3` on energy in both scenarios
 - hybrid disagreement is now explicitly bounded
 - transfer evidence is now closed against both pure `v3` and direct `v3.5`
-- the immediate next step is to transfer this exact default to the next controller family, not to continue thermostatic tuning
+- the thermostatic branch is no longer the active tuning target
 
-### 5. MORL Track
+### 5. HDRL Promotion Result
 
-Status: `architecturally ready, empirically pending`
+Status: `measured and closed as controller-family limit`
 
-Verified infrastructure:
+Reference report:
 
-- surrogate pretrain launcher exists
-- BOPTEST fine-tune launcher exists
-- yearly BOPTEST evaluation launcher exists
+- [block2_hdrl_lambda_sweep_report.md](C:/Users/user/Desktop/HVAC_DRL_MORL/reports/block2_hdrl_lambda_sweep_report.md)
+
+Measured result:
+
+- the HDRL sweep tested `lambda_temp_disagree = {0.00, 0.03, 0.05, 0.10}`
+- fixed settings:
+  - `lambda_power_disagree = 5e-5`
+  - `obs_ablation = no_delta_t`
+  - `power_feature_mode = clipped_log`
+  - `t_zone_feature_mode = raw`
+- winner:
+  - `l000`, i.e. `lambda_temp_disagree = 0.00`
 
 Interpretation:
 
-- MORL remains the final controller family for the paper.
-- The next defensible empirical path is:
-  - keep thermostatic hybrid as the closed reference branch
-  - promote the same methodology to HDRL
-  - then promote it to MORL
+- thermostatic and HDRL do not share the same optimal hybrid regularization.
+- the thermostatic-best default `lambda_temp_disagree = 0.10` does not transfer to HDRL.
+- HDRL performs best with no temperature disagreement penalty and only a soft power penalty.
 
-### 6. Hou-and-Evins Packaging
+### 6. MORL Track
+
+Status: `closed and promoted as canonical power-only branch`
+
+Canonical report:
+
+- [block2_morl_canonical_report.md](C:/Users/user/Desktop/HVAC_DRL_MORL/reports/block2_morl_canonical_report.md)
+
+Measured result:
+
+- the first `5D` MORL path failed badly on yearly BOPTEST validation
+- after promotion to the `17D TSup-style` observation path, MORL became viable on the same power-only hybrid backend
+- canonical settings:
+  - `surrogate_kind = hybrid_v3_v35`
+  - `lambda_temp_disagree = 0.00`
+  - `lambda_power_disagree = 5e-5`
+  - `obs_mode = extended`
+  - `obs_ablation = none`
+  - `delta_feature_mode = causal_smooth`
+  - `power_feature_mode = clipped_log`
+  - `t_zone_feature_mode = raw`
+- canonical yearly mean metrics:
+  - `rmse = 0.72 C`
+  - `mae = 0.56 C`
+  - `within_1C = 83%`
+  - `within_0.5C = 57%`
+  - `violation = 4.9%`
+  - `energy = 248.6 kWh`
+  - `m_s = 0.099`
+
+Interpretation:
+
+- the earlier MORL failure was primarily an observation-interface failure, not a backend failure
+- MORL now supports the same split-role hybrid interpretation as the rest of Block 2
+- Block 2 is now closed across thermostatic, HDRL, and MORL
+
+### 7. Hou-and-Evins Packaging
 
 Status: `thermostatic branch closed`
 
@@ -188,9 +231,10 @@ Positioning frozen:
 3. Run the hybrid `lambda_temp_disagree` sweep:
    - completed
    - winner: `0.10`
-4. Promote the same hybrid default to `HDRL`.
-5. If `HDRL` remains stable, promote the same hybrid default to `MORL`.
-6. Only if the next controller family regresses badly, revisit the surrogate split-role architecture.
+4. Treat the thermostatic hybrid branch as closed at `lambda_temp_disagree = 0.10`.
+5. Treat the HDRL sweep as closed with winner `lambda_temp_disagree = 0.00`.
+6. Treat MORL `17D power-only` as the canonical MORL result for Block 2.
+7. Open Block 3 cross-case transferability.
 
 ## Writing Position for the Paper
 
@@ -200,9 +244,11 @@ We can now state the surrogate result honestly:
 - rollout realism improves materially for both temperature and power
 - zero-shot closed-loop transfer is still not solved
 - direct `v3.5` warm-start is not sufficient for downstream RL
-- the current positive Block 2 direction is hybrid regularization: `v3` for controllability, `v3.5` for physical censorship
-- the current canonical hybrid setting is `lambda_temp_disagree = 0.10`
-- thermostatic evidence is now strong enough to justify promotion to `HDRL`
+- the current positive Block 2 direction is split-role hybridization: `v3` for controllability, `v3.5` for physical censorship
+- the thermostatic branch prefers `lambda_temp_disagree = 0.10`
+- the HDRL branch prefers `lambda_temp_disagree = 0.00`
+- the MORL branch becomes viable with `lambda_temp_disagree = 0.00`, `lambda_power_disagree = 5e-5`, and a `17D TSup-style` observation path
+- therefore hybrid regularization is controller-family specific, and richer observation design is essential for the final MORL branch
 
 ## Updated Core Hypothesis
 

@@ -8,6 +8,14 @@ import requests
 from gymnasium import spaces
 
 from envs.base_env import HVACBaseEnv
+from envs.tsup_features import (
+    BASIC_TSUP_OBS_DIM,
+    EXTENDED_TSUP_OBS_DIM,
+    WeatherLookup,
+    build_basic_tsup_obs,
+    build_tsup_obs,
+    resolve_weather_csv,
+)
 
 
 def c_to_k(c: float) -> float:
@@ -55,10 +63,21 @@ class BOPTESTBackend(HVACBaseEnv):
 
         self.control_mode = str(config.get("control_mode", "thermostat")).lower()
         if self.control_mode == "tsup_direct":
-            self._observation_space = spaces.Box(low=-1.0, high=1.0, shape=(5,), dtype=np.float32)
+            self.obs_mode = str(config.get("obs_mode", "basic")).lower()
+            self.obs_ablation = str(config.get("obs_ablation", "none")).lower()
+            self.delta_feature_mode = str(config.get("delta_feature_mode", "raw")).lower()
+            self.power_feature_mode = str(config.get("power_feature_mode", "raw")).lower()
+            self.t_zone_feature_mode = str(config.get("t_zone_feature_mode", "raw")).lower()
+            obs_dim = EXTENDED_TSUP_OBS_DIM if self.obs_mode == "extended" else BASIC_TSUP_OBS_DIM
+            self._observation_space = spaces.Box(low=-1.0, high=1.0, shape=(obs_dim,), dtype=np.float32)
             self._obs_low = _OBS_TSUP_LOW
             self._obs_high = _OBS_TSUP_HIGH
         elif self.control_mode == "thermostat":
+            self.obs_mode = "basic"
+            self.obs_ablation = "none"
+            self.delta_feature_mode = "raw"
+            self.power_feature_mode = "raw"
+            self.t_zone_feature_mode = "raw"
             self._observation_space = spaces.Box(low=-1.0, high=1.0, shape=(4,), dtype=np.float32)
             self._obs_low = _OBS_THERM_LOW
             self._obs_high = _OBS_THERM_HIGH
@@ -111,6 +130,10 @@ class BOPTESTBackend(HVACBaseEnv):
         self.testid: Optional[str] = None
         self.t = 0.0
         self._prev_t_supply = 0.5 * (self.t_supply_low + self.t_supply_high)
+        self._prev_action = np.zeros(2, dtype=np.float32)
+        self._last_t_zone = 22.0
+        self._delta_t_zone = 0.0
+        self.weather = WeatherLookup(config.get("weather_csv") or resolve_weather_csv())
 
         self.session = requests.Session()
         self.session.headers.update({"Content-Type": "application/json"})
@@ -225,6 +248,8 @@ class BOPTESTBackend(HVACBaseEnv):
         self._max_overshoot = 0.0
         self._max_undershoot = 0.0
         self._prev_t_supply = 0.5 * (self.t_supply_low + self.t_supply_high)
+        self._prev_action = np.zeros(2, dtype=np.float32)
+        self._delta_t_zone = 0.0
 
         try:
             self._select_and_warmup()
@@ -233,6 +258,7 @@ class BOPTESTBackend(HVACBaseEnv):
             self._recover()
             payload = self.advance({})
 
+        self._last_t_zone = float(self._make_obs_raw(payload)[0])
         obs = self._make_obs(payload)
         return obs, {"testid": self.testid, "time": self.t}
 
@@ -271,6 +297,10 @@ class BOPTESTBackend(HVACBaseEnv):
         self.t = self._get_val(payload, "time")
         if self.control_mode == "tsup_direct":
             self._prev_t_supply = t_supply
+            current_t_zone = float(self._make_obs_raw(payload)[0])
+            self._delta_t_zone = current_t_zone - self._last_t_zone
+            self._last_t_zone = current_t_zone
+            self._prev_action = np.array([a0, a1], dtype=np.float32)
 
         obs = self._make_obs(payload)
         rv = self._make_reward_vector(payload, t_supply=t_supply, fan_u=fan_u)
@@ -332,6 +362,37 @@ class BOPTESTBackend(HVACBaseEnv):
 
     def _make_obs(self, values: dict) -> np.ndarray:
         raw = self._make_obs_raw(values)
+        if self.control_mode == "tsup_direct":
+            if self.obs_mode == "extended":
+                sim_time = self._get_val(values, "time")
+                hour = (sim_time / 3600.0) % 24.0
+                day = (sim_time / 86400.0) % 365.0
+                return build_tsup_obs(
+                    float(raw[0]),
+                    float(raw[1]),
+                    float(raw[2]),
+                    float(raw[3]),
+                    float(raw[4]),
+                    float(hour),
+                    float(day),
+                    self._prev_action,
+                    float(self._delta_t_zone),
+                    self.weather,
+                    include_forecast=True,
+                    obs_ablation=self.obs_ablation,
+                    delta_feature_mode=self.delta_feature_mode,
+                    t_zone_feature_mode=self.t_zone_feature_mode,
+                    power_feature_mode=self.power_feature_mode,
+                )
+            return build_basic_tsup_obs(
+                float(raw[0]),
+                float(raw[1]),
+                float(raw[2]),
+                float(raw[3]),
+                float(raw[4]),
+                t_zone_feature_mode=self.t_zone_feature_mode,
+                power_feature_mode=self.power_feature_mode,
+            )
         obs = 2.0 * (raw - self._obs_low) / (self._obs_high - self._obs_low) - 1.0
         return np.clip(obs, -1.0, 1.0)
 

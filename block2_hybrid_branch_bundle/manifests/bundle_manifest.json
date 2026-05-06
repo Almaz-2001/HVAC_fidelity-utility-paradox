@@ -1,12 +1,32 @@
 {
   "bundle": "block2_hybrid_branch_bundle",
   "source_root": "C:\\Users\\user\\Desktop\\HVAC_DRL_MORL",
-  "item_count": 44,
+  "item_count": 57,
   "items": [
     {
       "type": "file",
       "source": "training\\train_thermostatic.py",
       "bundle_path": "code\\training\\train_thermostatic.py"
+    },
+    {
+      "type": "file",
+      "source": "training\\train_hdrl.py",
+      "bundle_path": "code\\training\\train_hdrl.py"
+    },
+    {
+      "type": "file",
+      "source": "training\\train_morl_surrogate.py",
+      "bundle_path": "code\\training\\train_morl_surrogate.py"
+    },
+    {
+      "type": "file",
+      "source": "training\\finetune_morl_boptest.py",
+      "bundle_path": "code\\training\\finetune_morl_boptest.py"
+    },
+    {
+      "type": "file",
+      "source": "training\\run_morl_surrogate_pipeline.py",
+      "bundle_path": "code\\training\\run_morl_surrogate_pipeline.py"
     },
     {
       "type": "file",
@@ -32,6 +52,16 @@
       "type": "file",
       "source": "evaluation\\benchmark_bestest_air_article7_style.py",
       "bundle_path": "code\\evaluation\\benchmark_bestest_air_article7_style.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\yearly_validation_morl.py",
+      "bundle_path": "code\\evaluation\\yearly_validation_morl.py"
+    },
+    {
+      "type": "file",
+      "source": "evaluation\\yearly_validation_hdrl.py",
+      "bundle_path": "code\\evaluation\\yearly_validation_hdrl.py"
     },
     {
       "type": "file",
@@ -105,8 +135,23 @@
     },
     {
       "type": "dir",
+      "source": "outputs\\block2_hdrl_hybrid_v3_v35_l000",
+      "bundle_path": "outputs\\block2_hdrl_hybrid_v3_v35_l000"
+    },
+    {
+      "type": "dir",
       "source": "outputs\\block2_thermostatic_warmstart_utility",
       "bundle_path": "outputs\\block2_thermostatic_warmstart_utility"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\morl_hybrid_v3_v35_power_only_500k",
+      "bundle_path": "outputs\\morl_hybrid_v3_v35_power_only_500k"
+    },
+    {
+      "type": "dir",
+      "source": "outputs\\morl_hybrid_v3_v35_power_only_17d",
+      "bundle_path": "outputs\\morl_hybrid_v3_v35_power_only_17d"
     },
     {
       "type": "dir",
@@ -157,6 +202,26 @@
       "type": "file",
       "source": "reports\\block2_hybrid_surrogate_metrics.csv",
       "bundle_path": "reports\\block2_hybrid_surrogate_metrics.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\block2_hdrl_lambda_sweep_report.md",
+      "bundle_path": "reports\\block2_hdrl_lambda_sweep_report.md"
+    },
+    {
+      "type": "file",
+      "source": "reports\\block2_hdrl_lambda_sweep_summary.csv",
+      "bundle_path": "reports\\block2_hdrl_lambda_sweep_summary.csv"
+    },
+    {
+      "type": "file",
+      "source": "reports\\block2_morl_canonical_report.md",
+      "bundle_path": "reports\\block2_morl_canonical_report.md"
+    },
+    {
+      "type": "file",
+      "source": "reports\\block2_morl_comparison_summary.csv",
+      "bundle_path": "reports\\block2_morl_comparison_summary.csv"
     },
     {
       "type": "file",

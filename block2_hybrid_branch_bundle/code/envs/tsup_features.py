@@ -288,6 +288,9 @@ def build_extended_tsup_obs(
     delta_t_zone: float,
     weather: WeatherLookup,
     obs_ablation: str | None = None,
+    delta_feature_mode: str = "raw",
+    t_zone_feature_mode: str = "raw",
+    power_feature_mode: str = "raw",
 ) -> np.ndarray:
     return build_tsup_obs(
         t_zone=t_zone,
@@ -302,6 +305,9 @@ def build_extended_tsup_obs(
         weather=weather,
         include_forecast=True,
         obs_ablation=obs_ablation,
+        delta_feature_mode=delta_feature_mode,
+        t_zone_feature_mode=t_zone_feature_mode,
+        power_feature_mode=power_feature_mode,
     )
 
 

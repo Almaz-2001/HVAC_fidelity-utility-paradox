@@ -31,6 +31,7 @@ from envs.tsup_features import (
     WeatherLookup,
     action_to_fan,
     action_to_t_supply,
+    build_basic_tsup_obs,
     build_tsup_obs,
     infer_tsup_model_obs_dim,
     resolve_weather_csv,
@@ -216,7 +217,7 @@ def load_ppo_model(path: str) -> tuple[PPO, int]:
 def load_morl_model(path: str) -> tuple[PPO, int]:
     with zipfile.ZipFile(path) as archive:
         data = json.loads(archive.read("data"))
-    obs_shape = data.get("observation_space", {}).get("_shape", [5])
+    obs_shape = data.get("observation_space", {}).get("_shape", [BASIC_TSUP_OBS_DIM])
     obs_dim = obs_shape[0] if isinstance(obs_shape, list) else int(obs_shape)
     custom_objects = {
         "action_space": spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32),
@@ -313,23 +314,51 @@ def make_morl_obs(
     payload: dict[str, Any],
     prev_action: np.ndarray,
     prev_t_zone: float | None,
+    weather: WeatherLookup,
+    obs_dim: int,
+    obs_ablation: str = "none",
+    delta_feature_mode: str = "raw",
+    t_zone_feature_mode: str = "raw",
+    power_feature_mode: str = "raw",
 ) -> tuple[np.ndarray, dict[str, float]]:
     state = parse_payload_state(payload, prev_action, prev_t_zone)
     prev_t_supply_c = action_to_t_supply(float(prev_action[0])) if prev_action is not None else 0.5 * (
         T_SUPPLY_LOW + T_SUPPLY_HIGH
     )
-    raw = np.array(
-        [
+    if obs_dim == BASIC_TSUP_OBS_DIM:
+        obs = build_basic_tsup_obs(
             state["t_zone"],
             state["co2_ppm"],
             state["p_total_w"],
             prev_t_supply_c,
             state["t_amb"],
-        ],
-        dtype=np.float32,
+            t_zone_feature_mode=t_zone_feature_mode,
+            power_feature_mode=power_feature_mode,
+        )
+        return obs, state
+    if obs_dim in SUPPORTED_TSUP_OBS_DIMS:
+        obs = build_tsup_obs(
+            state["t_zone"],
+            state["co2_ppm"],
+            state["p_total_w"],
+            prev_t_supply_c,
+            state["t_amb"],
+            state["hour"],
+            state["day"],
+            prev_action if prev_action is not None else np.zeros(2, dtype=np.float32),
+            state["delta_t_zone"],
+            weather,
+            include_forecast=(obs_dim == EXTENDED_TSUP_OBS_DIM),
+            obs_ablation=obs_ablation,
+            delta_feature_mode=delta_feature_mode,
+            t_zone_feature_mode=t_zone_feature_mode,
+            power_feature_mode=power_feature_mode,
+        )
+        return obs, state
+    raise RuntimeError(
+        f"Unsupported MORL observation dim {obs_dim}. "
+        f"Supported: {BASIC_TSUP_OBS_DIM}, {sorted(SUPPORTED_TSUP_OBS_DIMS)}."
     )
-    obs = 2.0 * (raw - STATE_LOW) / (STATE_HIGH - STATE_LOW) - 1.0
-    return np.clip(obs, -1.0, 1.0), state
 
 
 def compute_safety_metrics(trace_df: pd.DataFrame, step_sec: int) -> dict[str, float]:
@@ -541,8 +570,19 @@ class MORLController(BaseController):
     name = "morl"
     obs_mode = "morl"
 
-    def __init__(self, model_path: str) -> None:
+    def __init__(
+        self,
+        model_path: str,
+        obs_ablation: str = "none",
+        delta_feature_mode: str = "raw",
+        t_zone_feature_mode: str = "raw",
+        power_feature_mode: str = "raw",
+    ) -> None:
         self.model, self.obs_dim = load_morl_model(model_path)
+        self.obs_ablation = obs_ablation
+        self.delta_feature_mode = delta_feature_mode
+        self.t_zone_feature_mode = t_zone_feature_mode
+        self.power_feature_mode = power_feature_mode
 
     def act(self, obs: np.ndarray, state: dict[str, float]) -> tuple[np.ndarray, dict[str, Any]]:
         action, _ = self.model.predict(obs, deterministic=True)
@@ -559,7 +599,17 @@ def build_controller_obs(
     if getattr(controller, "obs_mode", "tsup") == "none":
         return None, parse_payload_state(payload, prev_action, prev_t_zone)
     if controller.obs_mode == "morl":
-        return make_morl_obs(payload, prev_action, prev_t_zone)
+        return make_morl_obs(
+            payload,
+            prev_action,
+            prev_t_zone,
+            weather,
+            getattr(controller, "obs_dim", BASIC_TSUP_OBS_DIM),
+            obs_ablation=getattr(controller, "obs_ablation", "none"),
+            delta_feature_mode=getattr(controller, "delta_feature_mode", "raw"),
+            t_zone_feature_mode=getattr(controller, "t_zone_feature_mode", "raw"),
+            power_feature_mode=getattr(controller, "power_feature_mode", "raw"),
+        )
     return make_tsup_obs(
         payload,
         prev_action,
@@ -797,7 +847,15 @@ def main() -> None:
                 )
             )
         elif name == "morl":
-            controllers.append(MORLController(args.morl_model))
+            controllers.append(
+                MORLController(
+                    args.morl_model,
+                    obs_ablation=args.obs_ablation,
+                    delta_feature_mode=args.delta_feature_mode,
+                    t_zone_feature_mode=args.t_zone_feature_mode,
+                    power_feature_mode=args.power_feature_mode,
+                )
+            )
         elif name == "surrogate_mpc":
             controllers.append(
                 SurrogateMPCController(
