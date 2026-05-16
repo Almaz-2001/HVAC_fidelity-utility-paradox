@@ -1,0 +1,434 @@
+selection_protocol: option_c_dual_canonical
+logged_at: 2026-05-14
+decision_logged_at: 2026-05-14
+decision: dual_canonical
+finalized_before_running_seeds: true
+
+pre_registered_canonical:
+  label: comfort_050_energy_050
+  preference_vector: [0.50, 0.50, 0.00]
+  designation: "Pre-registered neutral canonical"
+  w_comfort: 0.50
+  w_energy: 0.50
+  w_safety: 0.00
+  rationale: >
+    Neutral comfort-energy preference selected before inspecting the completed
+    five-point Pareto sweep. This point remains the pre-registered canonical
+    configuration for Table 3 reproducibility reporting.
+
+practical_deployment_canonical:
+  label: comfort_075_energy_025
+  preference_vector: [0.75, 0.25, 0.00]
+  designation: "Practical-deployment canonical"
+  w_comfort: 0.75
+  w_energy: 0.25
+  w_safety: 0.00
+  rationale: >
+    Post-sweep inspection showed that the neutral 0.50/0.50 point sits above
+    the practical 5% comfort-violation threshold, while the 0.75/0.25 point is
+    the first energy-aware preference point below that threshold. This point is
+    therefore reported as a practical-deployment operating point, with the
+    outcome-informed selection disclosed explicitly.
+
+planned_seed_extension:
+  status: superseded_by_seedfix_rerun_protocol
+  old_base_seed: 42
+  old_new_seeds: [43, 44]
+  run_for:
+    - comfort_050_energy_050
+    - comfort_075_energy_025
+  old_total_runs_planned: 4
+  reason: >
+    This original plan mixed an existing seed 42 run generated before the
+    seed-propagation fix with new runs generated after the fix. It is retained
+    only as an audit trail and is not used for the final N=3 canonical
+    statistics.
+
+seedfix_rerun_protocol:
+  status: active
+  reason: >
+    All canonical reproducibility statistics must be generated with the same
+    code path. The previous seed 42 Pareto result is therefore treated as an
+    exploratory pre-fix result and excluded from the final N=3 variance
+    analysis.
+  old_seed42_status: exploratory_pre_fix_archive_only
+  canonical_output_root: outputs/morl_pareto_hybrid_power_only_seedfix
+  seeds: [42, 43, 44]
+  run_for:
+    - comfort_050_energy_050
+    - comfort_075_energy_025
+  total_runs_planned: 6
+  required_for_table3: true
+  note: >
+    The final Table 3 MORL variance rows should use only seedfix outputs:
+    outputs/morl_pareto_hybrid_power_only_seedfix/<canonical>/seed42,
+    seed43, and seed44. The older outputs/morl_pareto_hybrid_power_only
+    seed42 runs remain valid for the single-seed Pareto exploration figure,
+    but not for canonical mean/std claims.
+
+stopping_rule:
+  primary: "sigma(m_s) / mean(m_s) > 0.30"
+  conjunction: "AND sigma(m_s) > 0.01"
+  trigger: "Extend only if both criteria are true for a canonical after N=3"
+  action: "Extend the failing canonical to N=5 seeds (45, 46)"
+  joint_trigger: "If both canonicals fail simultaneously, extend both"
+  if_still_high: "Report as high-variance regime and weaken claim to representative behavior"
+
+extension_policy:
+  N3_to_N5: "automatic if both stopping conditions are met"
+  N5_to_higher: >
+    Not automatic. High variance after N=5 is classified as a property of the
+    canonical point, not as insufficient sampling. Report as high-variance
+    regime in Results section 6.5 and Threats to Validity rather than chasing
+    additional seeds.
+
+stopping_rule_trigger_log:
+  date: 2026-05-15
+  canonical: "w=(0.50, 0.50, 0.00)"
+  observed:
+    n_seeds: 3
+    sigma_m_s: 0.0451
+    mean_m_s: 0.1456
+    ratio: 0.310
+    sigma_abs: 0.0451
+  both_conditions_met: true
+  action_taken: "extend this canonical to N=5 with seeds 45, 46"
+  block_b_status: "deferred until Phase A completes, per pre-registration"
+  note: >
+    The pre-registered neutral MORL canonical showed enough absolute and
+    relative m_s variance at N=3 to trigger the pre-specified extension rule.
+    The practical-deployment canonical w=(0.75, 0.25, 0.00) remains deferred
+    until the neutral canonical is either stabilized at N=5 or explicitly
+    reported as a high-variance regime.
+
+post_N5_classification:
+  date: 2026-05-15
+  canonical: "w=(0.50, 0.50, 0.00)"
+  observed:
+    n_seeds: 5
+    sigma_m_s: 0.0781
+    mean_m_s: 0.1869
+    ratio: 0.418
+    sigma_abs: 0.0781
+    min_m_s: 0.1032
+    max_m_s: 0.3103
+  high_variance_regime: true
+  bounded_extension_stop: true
+  reporting: "explicit high-variance label in Table 5 and Pareto/canonical figure caption"
+  paper_claim_adjustment:
+    from: "stable canonical reference"
+    to: "methodological reference; not a deployment recommendation"
+  interpretation: >
+    The neutral scalarization appears to sit near a boundary in the MORL
+    optimization landscape where comfort and energy gradients compete with
+    similar strength. The observed spread is treated as a publishable property
+    of the preference point, not as a failed run or a reason for unbounded
+    seed chasing.
+
+practical_canonical_expectations:
+  hypothesis_after_neutral_high_variance: >
+    The neutral canonical was destabilized by competing gradients from equally
+    weighted objectives. A comfort-leaning preference w=(0.75, 0.25, 0.00) is
+    expected to be more stable because the dominant comfort objective produces
+    a clearer optimization gradient. We will treat sigma(m_s)/mean(m_s) at
+    w=(0.75, 0.25, 0.00) as a falsification test of this hypothesis.
+  outcomes:
+    stable: >
+      ratio < 0.30 supports the boundary-instability interpretation of
+      w=(0.50, 0.50, 0.00) and strengthens the practical-deployment canonical.
+    also_high_variance: >
+      ratio > 0.30 indicates a broader MORL stability issue, not only a
+      neutral-boundary effect; weaken the Block 2 MORL claim to a pilot
+      preference-conditioned analysis rather than robust deployment evidence.
+
+practical_canonical_N3_result:
+  date: 2026-05-16
+  canonical: "w=(0.75, 0.25, 0.00)"
+  observed:
+    n_seeds: 3
+    mean_m_s: 0.0868
+    sigma_m_s: 0.0302
+    ratio: 0.348
+    sigma_abs: 0.0302
+    mean_improvement_vs_neutral_N5: "about 54% lower m_s"
+    sigma_reduction_vs_neutral_N5: "about 61% lower absolute sigma(m_s)"
+    ratio_reduction_vs_neutral_N5: "about 17% lower sigma/mean"
+  stopping_rule_triggered: true
+  hypothesis_status: >
+    Partially supported in absolute terms but falsified under the
+    pre-registered relative stability threshold. Comfort-leaning scalarization
+    improves the operating point and reduces absolute variance, but does not
+    yet pass the sigma(m_s)/mean(m_s) < 0.30 criterion.
+  diagnostic_plan_before_N5_extension:
+    monthly_breakdown: >
+      Decompose m_s by the 12 yearly scenarios for seeds 42, 43, and 44 to
+      determine whether variance is global or concentrated in a small number
+      of seasonal stress windows.
+    replay_determinism_test: >
+      Rerun the seed42 final checkpoint on the same yearly BOPTEST protocol
+      once, writing to a separate replay output directory, to estimate whether
+      BOPTEST RTE replay nondeterminism contributes materially to measured
+      variance.
+  N5_extension_status: "deferred until diagnostics complete"
+
+practical_canonical_monthly_variance_diagnostic:
+  date: 2026-05-16
+  source: reports/morl_practical_canonical_monthly_variance_diagnostic.csv
+  conclusion: >
+    Variance is not primarily a winter peak-heating bottleneck. The largest
+    m_s standard deviations occur in summer and transition windows, especially
+    Jun_Summer, Jul_Summer, Aug_Summer, May_Spring, Mar_Spring, and Oct_Autumn.
+    Feb_Winter and Dec_Winter are nearly deterministic across seeds.
+  top_sigma_months:
+    - {scenario: Jun_Summer, mean_m_s: 0.1041, sigma_m_s: 0.0930, cv: 0.8927}
+    - {scenario: Jul_Summer, mean_m_s: 0.1308, sigma_m_s: 0.0909, cv: 0.6950}
+    - {scenario: Aug_Summer, mean_m_s: 0.1621, sigma_m_s: 0.0791, cv: 0.4878}
+    - {scenario: May_Spring, mean_m_s: 0.0427, sigma_m_s: 0.0590, cv: 1.3832}
+    - {scenario: Mar_Spring, mean_m_s: 0.0713, sigma_m_s: 0.0468, cv: 0.6569}
+    - {scenario: Oct_Autumn, mean_m_s: 0.1198, sigma_m_s: 0.0439, cv: 0.3666}
+  interpretation_update: >
+    The practical canonical improves average control quality, but its seed
+    variance is concentrated around seasonal regime transitions and cooling-
+    season operation rather than winter heating extremes. This points toward
+    controller-interface or late-policy optimization sensitivity across regimes,
+    not simply a comfort-energy scalarization boundary.
+  next_diagnostic: "run seed42 yearly replay once to estimate BOPTEST RTE replay nondeterminism"
+
+practical_canonical_pre_run_predictions:
+  date: 2026-05-16
+  recorded_before:
+    - "seed42 yearly replay"
+    - "seed45/seed46 N=5 extension for w=(0.75, 0.25, 0.00)"
+  predictions:
+    replay_test_seed42:
+      expected: "nearly identical yearly m_s to the original seed42 evaluation"
+      tolerance_m_s: 0.0005
+      probability: 0.85
+      interpretation_if_confirmed: >
+        BOPTEST RTE replay nondeterminism is negligible; observed canonical
+        variance is attributable primarily to policy optimization seed effects.
+      interpretation_if_falsified: >
+        MORL variance must be decomposed into policy-seed variance and BOPTEST
+        replay variance before making reproducibility claims.
+    practical_N5_overall_variance:
+      expected: "sigma(m_s)/mean(m_s) remains in the 0.25-0.40 band"
+      probability: 0.70
+      interpretation_if_confirmed: >
+        Comfort-leaning scalarization improves mean performance but does not
+        fully stabilize MORL under the pre-registered relative threshold.
+    seasonal_variance_pattern:
+      expected: "summer/transition variance remains much larger than winter variance"
+      probability: 0.80
+      concrete_checks:
+        - "sigma_Feb_Winter(m_s) < 0.005"
+        - "sigma_Jun_Summer(m_s) > 0.05"
+      interpretation_if_confirmed: >
+        Stability is governed by operating-regime structure: saturated winter
+        heating is near-deterministic, while summer/transition regimes expose
+        meaningful action choices and local-optimum sensitivity.
+
+practical_canonical_replay_determinism_result:
+  date: 2026-05-16
+  source: reports/morl_practical_seed42_replay_determinism.csv
+  replay_output: outputs/morl_pareto_hybrid_power_only_seedfix/comfort_075_energy_025/seed42_replay1/yearly_eval
+  checkpoint: outputs/morl_pareto_hybrid_power_only_seedfix/comfort_075_energy_025/seed42/finetune_boptest/models/ppo_model.zip
+  observed:
+    original_mean_m_s: 0.056724151
+    replay_mean_m_s: 0.056724151
+    mean_m_s_diff: 0.0
+    max_abs_metric_diff_across_yearly_summary: 0.0
+  prediction_status: confirmed
+  conclusion: >
+    BOPTEST RTE replay nondeterminism is negligible for the fixed seed42
+    MORL checkpoint under the yearly protocol. The measured variance across
+    seeds should therefore be attributed to policy optimization seed effects
+    rather than simulator replay noise.
+
+boptest_replay_test:
+  date: 2026-05-16
+  seed_tested: 42
+  canonical_tested: "w=(0.75, 0.25, 0.00)"
+  result: "bit-identical across all 12 monthly scenarios; m_s_diff = 0.0"
+  consequence: >
+    Confirms BOPTEST RTE yearly protocol is deterministic at the precision of
+    our reported metrics. All observed seed variance in the canonical seed
+    analyses is attributable to RL training stochasticity, not to the simulator.
+    This rules out one major alternative explanation before the practical
+    canonical extension to N=5 is launched.
+
+neutral_canonical_monthly_variance_diagnostic:
+  date: 2026-05-16
+  source: reports/morl_neutral_canonical_monthly_variance_diagnostic.csv
+  n_seeds: 5
+  conclusion: >
+    The neutral canonical does not show the same winter-stable/summer-unstable
+    pattern observed in the practical canonical at N=3. Its variance is broader
+    and strongest in winter/spring/autumn scenarios, with seed46 producing
+    large m_s values across multiple months.
+  top_sigma_months:
+    - {scenario: Dec_Winter, mean_m_s: 0.2171, sigma_m_s: 0.1538, cv: 0.7084}
+    - {scenario: Feb_Winter, mean_m_s: 0.2132, sigma_m_s: 0.1429, cv: 0.6705}
+    - {scenario: Apr_Spring, mean_m_s: 0.1714, sigma_m_s: 0.1356, cv: 0.7913}
+    - {scenario: Nov_Autumn, mean_m_s: 0.1259, sigma_m_s: 0.1321, cv: 1.0497}
+    - {scenario: Jan_Winter, mean_m_s: 0.2789, sigma_m_s: 0.1140, cv: 0.4087}
+  comparison_to_practical_canonical: >
+    Practical w=(0.75, 0.25, 0.00) concentrates variance in summer and transition
+    regimes at N=3, while neutral w=(0.50, 0.50, 0.00) shows broad high variance,
+    especially in winter and spring/autumn, at N=5. Therefore the seasonal
+    pattern is preference-dependent rather than a universal MORL/BOPTEST
+    property.
+  interpretation_update: >
+    Preference weighting changes not only the mean operating point but also the
+    seasonal structure of policy variance. The neutral scalarization appears
+    globally unstable, whereas the practical scalarization shifts instability
+    toward regimes with meaningful cooling/transition choices.
+
+seasonal_variance_inversion_finding:
+  date: 2026-05-16
+  data_state: "neutral N=5, practical N=3 before practical seed45/seed46"
+  sources:
+    neutral: reports/morl_neutral_canonical_monthly_variance_diagnostic.csv
+    practical: reports/morl_practical_canonical_monthly_variance_diagnostic.csv
+  observation: >
+    Monthly m_s variance shows an inverted seasonal topology between MORL
+    preference weights, not merely a uniform amplitude change. The practical
+    comfort-leaning canonical w=(0.75, 0.25, 0.00) is near-deterministic in
+    winter and high-variance in summer/transition months. The neutral canonical
+    w=(0.50, 0.50, 0.00) is high-variance in winter and spring/autumn, while
+    summer is comparatively moderate.
+  key_examples:
+    - "Feb_Winter: neutral sigma(m_s) ~= 0.1429 vs practical ~= 0.0004 (>300x)"
+    - "Dec_Winter: neutral sigma(m_s) ~= 0.1538 vs practical ~= 0.0029 (>50x)"
+    - "Jan_Winter: neutral sigma(m_s) ~= 0.1140 vs practical ~= 0.0168 (~7x)"
+    - "Jun_Summer: practical sigma(m_s) ~= 0.0930, the largest practical-canonical month"
+  paper_interpretation: >
+    Preference weighting reshapes the seasonal localization of policy variance.
+    Therefore the MORL result should be reported as preference-dependent
+    variance topology rather than a single aggregate seed-variance number.
+
+mechanism_hypothesis:
+  name: "preference-induced action saturation"
+  formulation: >
+    Under the practical canonical, the dominant comfort gradient drives winter
+    heating toward action saturation, so all seeds converge to a nearly
+    identical saturated controller in cold months. In summer and transition
+    months the policy retains meaningful cooling/idle choices, so seed-dependent
+    local optima remain visible. Under the neutral canonical, comfort and energy
+    gradients are balanced, so winter heating does not saturate; multiple seeds
+    can select different heating-intensity trade-offs, producing high winter
+    variance.
+  status: "hypothesis before practical N=5 extension"
+  evidence_so_far: >
+    Supported by neutral N=5 and practical N=3 monthly variance diagnostics,
+    plus bit-identical BOPTEST replay for a fixed practical seed42 checkpoint.
+    Final support requires practical seed45/seed46.
+
+seasonal_inversion_falsification_test:
+  next_step: "run seed45 and seed46 for w=(0.75, 0.25, 0.00)"
+  expected_outcome: >
+    Practical N=5 retains low winter variance and high summer/transition
+    variance. Concrete checks: sigma(m_s | Feb_Winter) < 0.005 and
+    sigma(m_s | Jun_Summer) > 0.05.
+  if_supported: >
+    The action-saturation mechanism remains a defensible explanation for the
+    preference-dependent seasonal variance inversion.
+  if_falsified: >
+    If practical N=5 shows winter sigma(m_s) > 0.02 or loses the summer/transition
+    concentration, the action-saturation mechanism is not supported and the
+    MORL section must fall back to a weaker aggregate high-variance explanation.
+
+practical_canonical_n5_predictions:
+  date: 2026-05-16
+  pre_registered_before_seeds_45_46_launch: true
+  predictions:
+    aggregate_m_s_mean:
+      expected_range: [0.07, 0.11]
+      probability: 0.80
+    aggregate_sigma_ratio:
+      threshold: "sigma(m_s) / mean(m_s) at N=5"
+      expected: ">= 0.30, meaning the stopping rule retriggers"
+      probability: 0.75
+      interpretation_if_retriggered: >
+        Aggregate stability is bounded by summer/transition variance even at
+        N=5. This is now an expected property of the seasonal topology, not a
+        failed experiment.
+    seasonal_pattern_persistence:
+      feb_sigma_at_n5: "< 0.005"
+      jun_sigma_at_n5: "> 0.05"
+      probability: 0.90
+      falsification_action: >
+        If either condition fails, the action-saturation mechanism is not
+        supported at N=5; the Discussion section must use an alternative
+        interpretation.
+    seasonal_inversion_persistence:
+      neutral_to_practical_ratio_winter_min: "> 20x"
+      neutral_to_practical_ratio_summer_max: "< 0.5"
+      probability: 0.85
+      falsification_action: >
+        If ratios collapse toward 1.0, the inversion is not a robust property
+        of MORL preference geometry.
+
+main_paper_claim_post_n5:
+  if_predictions_supported: >
+    Preference scalarization re-localizes policy variance across the seasonal
+    landscape via the action-saturation mechanism, producing an inverted
+    variance topology between balanced and comfort-leaning canonicals.
+  if_predictions_falsified: >
+    Preference scalarization affects the mean operating point, but its
+    relationship to seasonal variance topology is not fully captured by action
+    saturation; additional factors require investigation before stronger MORL
+    stability claims can be made.
+
+aggregate_metric_status:
+  practical_canonical_N5_sigma_ratio: "secondary endpoint"
+  primary_endpoint_after_diagnostics: "seasonal variance topology"
+  rationale: >
+    Overall sigma(m_s)/mean(m_s) remains useful for stopping-rule reporting,
+    but it hides the main mechanism-level result: preference weights relocate
+    seed variance across seasons. The paper should therefore report both the
+    aggregate canonical statistics and the monthly variance heatmap.
+
+reporting:
+  canonical_seed_statistics: "mean +/- std; N=5 for neutral high-variance reference, N=3 for practical canonical unless its stopping rule triggers"
+  no_strict_ci_claim: true
+  noise_floor_for_other_pareto_points: >
+    Estimate the single-seed Pareto noise floor from the two canonical
+    three-seed variance measurements and report this in Methods section 4.4.
+  old_prefixed_seed42_usage: >
+    The old pre-fix seed42 results remain valid only as exploratory
+    single-seed Pareto points and must not be mixed with seedfix N=3
+    canonical statistics.
+
+block_ordering:
+  policy: "Block 2 must be fully closed before Block 3 opens"
+  rationale: >
+    Transferability experiments should not start until MORL canonical
+    variance, Pareto reporting, and Table 3 controller comparisons are fixed;
+    otherwise Block 2 and Block 3 findings may interact and weaken the
+    interpretation of both.
+
+seed_assignment:
+  seeds_per_canonical: [42, 43, 44]
+  extended_neutral_canonical_seeds: [45, 46]
+  total_runs_planned: 8
+  parallel_strategy:
+    pretrain: "May run in parallel because it is in-process surrogate computation"
+    finetune_yearly: "Sequential only because BOPTEST RTE HTTP lifecycle is fragile"
+
+seed_propagation:
+  required:
+    - "PYTHONHASHSEED inherited by subprocess"
+    - "random.seed(seed)"
+    - "numpy.random.seed(seed)"
+    - "torch.manual_seed(seed)"
+    - "torch.cuda.manual_seed_all(seed)"
+    - "env.reset(seed=seed)"
+    - "env.action_space.seed(seed)"
+    - "env.observation_space.seed(seed)"
+
+pi_baseline_verification:
+  status: verified_as_matched_to_morl_yearly_protocol
+  caveat: >
+    The built-in BOPTEST PI baseline performs poorly over the 12 seasonal
+    14-day yearly windows. It should be framed as the standard built-in
+    reference controller, not as a custom-tuned strong PI baseline.
