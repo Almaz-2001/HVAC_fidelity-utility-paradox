@@ -379,6 +379,70 @@ main_paper_claim_post_n5:
     saturation; additional factors require investigation before stronger MORL
     stability claims can be made.
 
+practical_canonical_post_N5_result:
+  date: 2026-05-17
+  canonical: "w=(0.75, 0.25, 0.00)"
+  pre_registration_anchor_commit: "93df9b364657ac77bbe3642e4bc277d1eb8a8b60"
+  sources:
+    yearly_summary: reports/morl_canonical_seedfix_yearly_summary.csv
+    monthly_diagnostic: reports/morl_practical_canonical_monthly_variance_diagnostic.csv
+    seasonal_heatmap: reports/figures/article_real/block2_morl_seasonal_variance_inversion.png
+    pareto_table: reports/morl_pareto_front_table.csv
+  observed:
+    n_seeds: 5
+    rmse_mean: 0.7995
+    rmse_std: 0.1003
+    mae_mean: 0.6371
+    mae_std: 0.0824
+    violation_pct_mean: 9.2336
+    violation_pct_std: 6.6718
+    energy_kwh_sum_mean: 2883.3740
+    energy_kwh_sum_std: 176.9015
+    mean_m_s: 0.1393
+    sigma_m_s: 0.0853
+    ratio: 0.6125
+    min_m_s: 0.0567
+    max_m_s: 0.2756
+  prediction_audit:
+    aggregate_m_s_mean:
+      expected_range: [0.07, 0.11]
+      observed: 0.1393
+      status: "falsified; seed45/46 moved the mean above the expected range"
+    aggregate_sigma_ratio:
+      expected: ">= 0.30"
+      observed: 0.6125
+      status: "supported"
+    feb_sigma_at_n5:
+      expected: "< 0.005"
+      observed: 0.1879
+      status: "falsified"
+    jun_sigma_at_n5:
+      expected: "> 0.05"
+      observed: 0.0746
+      status: "supported"
+    winter_neutral_to_practical_ratio:
+      expected: "> 20x"
+      observed_range: "about 0.76x to 0.95x for Jan/Feb/Dec"
+      status: "falsified; seasonal inversion collapsed"
+  hypothesis_status: "falsified"
+  interpretation: >
+    The N=3 seasonal inversion and action-saturation/capacity-binding
+    explanation do not survive the pre-registered N=5 extension. Both MORL
+    canonicals are therefore classified as high-variance regimes. The practical
+    canonical retains a lower mean m_s than the neutral canonical, but relative
+    seed variance increases rather than decreases.
+  paper_claim_adjustment: >
+    Report the N=3 to N=5 trajectory transparently as a methodological finding:
+    mechanism-level interpretations from N=3 MORL seasonal diagnostics can be
+    transient. The source of variance remains open and should not be attributed
+    to action saturation/capacity binding without additional targeted tests.
+  stabilization_future_work: >
+    Early stopping, validation-based checkpoint selection, and ensemble policy
+    selection are future-work stabilization methods. They are not applied in
+    the current Block 2 result because the pre-registered protocol fixes final-
+    epoch policy evaluation on the yearly BOPTEST scenario set.
+  block2_status: "closed with documented limitations"
+
 aggregate_metric_status:
   practical_canonical_N5_sigma_ratio: "secondary endpoint"
   primary_endpoint_after_diagnostics: "seasonal variance topology"
@@ -389,7 +453,7 @@ aggregate_metric_status:
     aggregate canonical statistics and the monthly variance heatmap.
 
 reporting:
-  canonical_seed_statistics: "mean +/- std; N=5 for neutral high-variance reference, N=3 for practical canonical unless its stopping rule triggers"
+  canonical_seed_statistics: "mean +/- sample std; N=5 for both neutral and practical canonical points"
   no_strict_ci_claim: true
   noise_floor_for_other_pareto_points: >
     Estimate the single-seed Pareto noise floor from the two canonical

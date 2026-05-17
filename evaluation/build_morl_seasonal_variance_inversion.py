@@ -42,20 +42,21 @@ def _load_monthly(path: Path, row_label: str, n_seeds: int) -> pd.DataFrame:
     if missing:
         raise ValueError(f"{path} is missing columns: {sorted(missing)}")
     out = df.loc[:, ["scenario", "ms_mean", "ms_std"]].copy()
-    out["display_label"] = row_label
-    out["n_seeds"] = n_seeds
+    seed_count = int(df["seed_count"].max()) if "seed_count" in df.columns else n_seeds
+    out["display_label"] = row_label.format(n=seed_count)
+    out["n_seeds"] = seed_count
     return out
 
 
 def build_table() -> pd.DataFrame:
     practical = _load_monthly(
         PRACTICAL_CSV,
-        "Practical w=(0.75, 0.25), N=3",
-        3,
+        "Practical w=(0.75, 0.25), N={n}",
+        5,
     )
     neutral = _load_monthly(
         NEUTRAL_CSV,
-        "Neutral w=(0.50, 0.50), N=5",
+        "Neutral w=(0.50, 0.50), N={n}",
         5,
     )
     combined = pd.concat([practical, neutral], ignore_index=True)
@@ -70,11 +71,11 @@ def build_table() -> pd.DataFrame:
     pivot = combined.pivot(index="scenario", columns="display_label", values="ms_std")
     if {
         "Neutral w=(0.50, 0.50), N=5",
-        "Practical w=(0.75, 0.25), N=3",
+        "Practical w=(0.75, 0.25), N=5",
     }.issubset(pivot.columns):
         ratio = (
             pivot["Neutral w=(0.50, 0.50), N=5"]
-            / pivot["Practical w=(0.75, 0.25), N=3"].replace(0.0, np.nan)
+            / pivot["Practical w=(0.75, 0.25), N=5"].replace(0.0, np.nan)
         )
         combined["neutral_over_practical_sigma_ratio"] = combined["scenario"].map(ratio)
     return combined
@@ -82,7 +83,7 @@ def build_table() -> pd.DataFrame:
 
 def plot_heatmap(table: pd.DataFrame) -> None:
     row_order = [
-        "Practical w=(0.75, 0.25), N=3",
+        "Practical w=(0.75, 0.25), N=5",
         "Neutral w=(0.50, 0.50), N=5",
     ]
     heat = (
@@ -100,7 +101,7 @@ def plot_heatmap(table: pd.DataFrame) -> None:
     ax.set_yticks(np.arange(len(row_order)))
     ax.set_yticklabels(row_order, fontsize=10)
     ax.set_title(
-        "MORL seasonal variance inversion across preference weights",
+        "MORL seasonal variance after N=5 falsification test",
         fontsize=13,
         pad=12,
     )
@@ -117,7 +118,7 @@ def plot_heatmap(table: pd.DataFrame) -> None:
 
     subtitle = (
         "Cells are computed from monthly yearly-evaluation CSVs. "
-        "Practical N=3 will be refreshed after seed45/seed46."
+        "The N=3 seasonal-inversion hypothesis does not survive practical N=5."
     )
     fig.text(0.5, -0.06, subtitle, ha="center", fontsize=9)
 
