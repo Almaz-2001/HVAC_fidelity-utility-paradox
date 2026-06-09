@@ -1,0 +1,4 @@
+evidence_layer,variant,obs_path,backend,seed,reproducibility_status,source,complete,rmse_c,mae_c,within_1c_pct,within_05c_pct,violation_pct,energy_kwh,m_s
+historical_frozen,MORL_5D_basic,basic_5d,hybrid_v3_v35,historical,frozen_csv_preserved,reports/block2_morl_comparison_summary.csv,True,4.96,4.17,19.0,9.0,74.5,121.0,1.046
+historical_frozen,MORL_17D_power_only,extended_17d,hybrid_v3_v35,historical,frozen_csv_preserved,reports/block2_morl_comparison_summary.csv,True,0.72,0.56,83.0,57.0,4.9,248.6,0.099
+current_reconstructed_rerun,MORL_5D_basic_reconstructed,basic_5d,hybrid_v3_v35,42,current_code_rerun,outputs/morl_5d_legacy_rerun/comfort_075_energy_025/seed42/yearly_eval/morl_yearly_summary.csv,True,2.721090064245232,1.7435726791695216,52.71577380952382,29.042658730158735,37.76661706349207,195.93128076804547,0.6801808714916927

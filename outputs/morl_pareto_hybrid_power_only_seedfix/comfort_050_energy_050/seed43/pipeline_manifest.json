@@ -1,0 +1,40 @@
+{
+  "mode": "eval",
+  "config_dir": "/app/configs/morl_surrogate_ppo",
+  "artifact_root": "/app/outputs/morl_pareto_hybrid_power_only_seedfix/comfort_050_energy_050",
+  "seed": 43,
+  "pipeline_config": {
+    "artifact_root": "outputs/morl_surrogate_ppo",
+    "subdirs": {
+      "pretrain": "pretrain",
+      "eram_pretrain": "eram_pretrain",
+      "finetune": "finetune_boptest",
+      "yearly_eval": "yearly_eval"
+    },
+    "defaults": {
+      "seed": 42,
+      "pretrain_steps": 2000000,
+      "eram_iterations": 20,
+      "eram_chunk_steps": 100000,
+      "eram_tau_w": 0.35,
+      "eram_adv_lr": 1.0,
+      "eram_init_weights": "0.34,0.33,0.33",
+      "finetune_steps": 100000,
+      "finetune_learning_rate": 0.0001,
+      "finetune_jitter_days": 3.0,
+      "eval_step_sec": 900,
+      "eval_scenario_days": 14
+    }
+  },
+  "paths": {
+    "seed_root": "/app/outputs/morl_pareto_hybrid_power_only_seedfix/comfort_050_energy_050/seed43",
+    "pretrain_out": "/app/outputs/morl_pareto_hybrid_power_only_seedfix/comfort_050_energy_050/seed43/pretrain",
+    "pretrain_model": "/app/outputs/morl_pareto_hybrid_power_only_seedfix/comfort_050_energy_050/seed43/pretrain/models/ppo_model.zip",
+    "eram_out": "/app/outputs/morl_pareto_hybrid_power_only_seedfix/comfort_050_energy_050/seed43/eram_pretrain",
+    "eram_model": "/app/outputs/morl_pareto_hybrid_power_only_seedfix/comfort_050_energy_050/seed43/eram_pretrain/models/ppo_model.zip",
+    "eram_weights": "/app/outputs/morl_pareto_hybrid_power_only_seedfix/comfort_050_energy_050/seed43/eram_pretrain/final_eram_weights.json",
+    "finetune_out": "/app/outputs/morl_pareto_hybrid_power_only_seedfix/comfort_050_energy_050/seed43/finetune_boptest",
+    "finetune_model": "/app/outputs/morl_pareto_hybrid_power_only_seedfix/comfort_050_energy_050/seed43/finetune_boptest/models/ppo_model.zip",
+    "yearly_eval_out": "/app/outputs/morl_pareto_hybrid_power_only_seedfix/comfort_050_energy_050/seed43/yearly_eval"
+  }
+}

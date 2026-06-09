@@ -1,0 +1,16 @@
+{
+  "boptest_url": "http://web:8000",
+  "testcase_id": "bestest_hydronic",
+  "model": "/app/models/ppo_thermostatic.zip",
+  "adapter_config": "/app/configs/block3_actuator_mapping_bestest_hydronic.yaml",
+  "step_sec": 900,
+  "scenario_days": 0.25,
+  "temp_low": 21.0,
+  "temp_high": 24.0,
+  "obs_ablation": "no_delta_t",
+  "delta_feature_mode": "raw",
+  "power_feature_mode": "clipped_log",
+  "t_zone_feature_mode": "raw",
+  "adapter_name": "hydronic_direct_supply_setpoint_adapter_v1",
+  "transfer_claim": "direct supply-setpoint transfer"
+}

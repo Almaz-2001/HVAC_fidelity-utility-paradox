@@ -1,0 +1,131 @@
+# Block 3 actuator-interface adapter pre-registration
+#
+# Logged before any bestest_hydronic live BOPTEST control run. This adapter is
+# distinct from the bestest_hydronic_heat_pump adapter: bestest_hydronic exposes
+# a direct supply-temperature setpoint override (oveTSetSup_u), so the
+# transferred TSup-style policy can be mapped more literally.
+
+protocol: block3_actuator_adapter_v1
+testcase: bestest_hydronic
+adapter_logged_at: 2026-05-18
+finalized_before_block3_control_runs: true
+
+source_manifest:
+  path: configs/block3_testcase_manifest.yaml
+  pre_registration_commit_sha: 1861e48dc0eacb2e2c466ba0e0d03502d9185723
+
+interface_inspection:
+  method: "Parse modelDescription.xml inside wrapped.fmu"
+  fmu_path: boptest_rte/testcases/bestest_hydronic/models/wrapped.fmu
+  inspected_before_control_runs: true
+  non_fixed_inputs:
+    - ovePum_activate
+    - ovePum_u
+    - oveTSetCoo_activate
+    - oveTSetCoo_u
+    - oveTSetHea_activate
+    - oveTSetHea_u
+    - oveTSetSup_activate
+    - oveTSetSup_u
+  relevant_outputs:
+    - oveTSetSup_y
+    - reaPPum_y
+    - reaQHea_y
+    - reaTRoo_y
+
+compatibility_verdict:
+  availability_runtime: PENDING
+  direct_supply_temperature_command: PASS
+  documented_override_mapping: PASS
+  final_status: PASS_PENDING_SMOKE
+  reason: |
+    Unlike bestest_hydronic_heat_pump, this testcase exposes
+    oveTSetSup_u, a direct supply-temperature setpoint override. The
+    transferred bestest_air TSup-style action can therefore be mapped to
+    the target actuator without reinterpretation as a zone setpoint.
+
+claim_boundary:
+  allowed_claim: |
+    Block 3 mode=none on bestest_hydronic is a direct supply-setpoint
+    transfer test with a documented pump-enable wrapper.
+  forbidden_claims:
+    - "No adapter is used at all"
+    - "Pump-enable logic is learned by the transferred policy"
+
+adapter_mapping:
+  name: hydronic_direct_supply_setpoint_adapter_v1
+  purpose: |
+    Send the transferred policy's temperature-like command directly to the
+    hydronic supply-temperature setpoint override and deterministically
+    enable or disable the circulation pump from the same heat-intensity
+    scalar.
+
+  input_from_transferred_policy:
+    policy_temperature_like_command_c:
+      expected_source_range_c: [18.0, 35.0]
+      output_variable: oveTSetSup_u
+      activation_variable: oveTSetSup_activate
+      units: K
+      formula: "oveTSetSup_u = policy_temperature_like_command_c + 273.15"
+
+  normalized_heat_intensity:
+    formula: "h = clip((policy_temperature_like_command_c - 18.0) / (35.0 - 18.0), 0.0, 1.0)"
+    interpretation: "0.0 = low/no heating request; 1.0 = maximum transferred TSup request"
+
+  comfort_context_overrides:
+    rationale: |
+      Zone heating/cooling setpoints are fixed to the same comfort band used
+      throughout Block 1/2/3 so that the supply-setpoint transfer is evaluated
+      under a reproducible demand context.
+    variables:
+      oveTSetHea_activate: 1
+      oveTSetHea_u: 294.15
+      oveTSetCoo_activate: 1
+      oveTSetCoo_u: 297.15
+
+  pump_enable_override:
+    activation_policy: "Always activate pump override during adapter-mediated controller evaluation"
+    variable: ovePum_u
+    activation_variable: ovePum_activate
+    threshold: 0.05
+    if_h_above_threshold: 1.0
+    if_h_at_or_below_threshold: 0.0
+
+smoke_test_protocol:
+  must_run_before_yearly_control_eval: true
+  step_sec: 900
+  start_time_sec: 0
+  horizon_steps_per_condition: 8
+  conditions:
+    baseline_no_override:
+      control_payload: {}
+    low_supply_override:
+      expected_payload:
+        oveTSetSup_activate: 1
+        oveTSetSup_u: 291.15
+        ovePum_activate: 1
+        ovePum_u: 0.0
+        oveTSetHea_activate: 1
+        oveTSetHea_u: 294.15
+        oveTSetCoo_activate: 1
+        oveTSetCoo_u: 297.15
+    high_supply_override:
+      expected_payload:
+        oveTSetSup_activate: 1
+        oveTSetSup_u: 308.15
+        ovePum_activate: 1
+        ovePum_u: 1.0
+        oveTSetHea_activate: 1
+        oveTSetHea_u: 294.15
+        oveTSetCoo_activate: 1
+        oveTSetCoo_u: 297.15
+  acceptance_checks:
+    - "high_supply_override should produce higher reaQHea_y than low_supply_override"
+    - "high_supply_override should not reduce reaTRoo_y relative to low_supply_override over the same short horizon"
+    - "oveTSetSup_y should track the commanded supply setpoint"
+
+audit:
+  adapter_commit_sha: 46fbaa9ef40e540c2ea2e68961031a92fc5b18d8
+  pushed_before_smoke_test: false
+  smoke_test_result_file: reports/block3_bestest_hydronic_adapter_smoke_summary.csv
+  smoke_test_result: PENDING

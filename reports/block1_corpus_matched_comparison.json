@@ -1,0 +1,60 @@
+{
+  "variants": [
+    {
+      "variant": "v3_hourly",
+      "corpus": "51,200 hourly transitions (boptest_v2_tsupply.csv)",
+      "step_sec": 3600,
+      "stage_abc": "n/a (control-oriented black box)",
+      "rmse_24h_c": 1.5571616098141303,
+      "mae_24h_c": 1.257357618465315,
+      "bias_24h_c": 0.4640006284750443,
+      "p95_24h_c": 2.85245409908942,
+      "role": "canonical v3 reported in \u00a71.3 of the paper"
+    },
+    {
+      "variant": "v3_15min_matched",
+      "corpus": "10,744 15-min transitions (boptest_block12_15min_prepared.csv)",
+      "step_sec": 900,
+      "stage_abc": "n/a (control-oriented black box)",
+      "rmse_24h_c": 0.8761156751667185,
+      "mae_24h_c": 0.7123976015768552,
+      "bias_24h_c": 0.07328899961924126,
+      "p95_24h_c": 1.5791702668333445,
+      "role": "corpus-matched v3 (reviewer mitigation, Tactic B)"
+    },
+    {
+      "variant": "v35_raw",
+      "corpus": "10,744 15-min transitions (boptest_block12_15min_prepared.csv)",
+      "step_sec": 900,
+      "stage_abc": "OFF (no Stage A/B/C)",
+      "rmse_24h_c": 1.466468866196516,
+      "mae_24h_c": NaN,
+      "bias_24h_c": NaN,
+      "p95_24h_c": NaN,
+      "role": "raw v3.5 baseline (architecture-only)"
+    },
+    {
+      "variant": "v35_calibrated",
+      "corpus": "10,744 15-min transitions (boptest_block12_15min_prepared.csv)",
+      "step_sec": 900,
+      "stage_abc": "FULL (Stage A + B + C, C_zon = 4.413e5 J/K)",
+      "rmse_24h_c": 0.64407034617221,
+      "mae_24h_c": NaN,
+      "bias_24h_c": NaN,
+      "p95_24h_c": NaN,
+      "role": "canonical calibrated v3.5"
+    }
+  ],
+  "decomposition": {
+    "delta_total_c": 0.9130912636419203,
+    "delta_corpus_c": 0.6810459346474118,
+    "delta_calibration_c": 0.23204532899450847,
+    "corpus_share_of_total_pct": 74.58684161876859,
+    "calibration_share_of_total_pct": 25.413158381231412,
+    "delta_corpus_plus_architecture_c_v35_path": 0.09069274361761437,
+    "delta_calibration_c_v35_path": 0.8223985200243059,
+    "corpus_plus_architecture_share_pct_v35_path": 9.932494946439506,
+    "calibration_share_pct_v35_path": 90.0675050535605,
+    "interpretation": "Matched-architecture path (paper primary): corpus shift explains 74.6% of the v3-hourly to calibrated-v3.5 RMSE drop; Stage A/B/C calibration at the matched corpus explains 25.4%. Alternative raw-v3.5 path: corpus + architecture together explain 9.9%; Stage A/B/C applied to the raw physical backbone explains 90.1%. The two paths give different attributions because corpus and architecture effects interact non-additively."
+  }
+}

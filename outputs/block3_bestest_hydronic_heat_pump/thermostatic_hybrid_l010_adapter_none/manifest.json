@@ -1,0 +1,16 @@
+{
+  "boptest_url": "http://web:8000",
+  "testcase_id": "bestest_hydronic_heat_pump",
+  "model": "models/ppo_thermostatic_hybrid_v3_v35_l010.zip",
+  "adapter_config": "/app/configs/block3_actuator_mapping_bestest_hydronic_heat_pump.yaml",
+  "step_sec": 900,
+  "scenario_days": 14.0,
+  "temp_low": 21.0,
+  "temp_high": 24.0,
+  "obs_ablation": "no_delta_t",
+  "delta_feature_mode": "raw",
+  "power_feature_mode": "clipped_log",
+  "t_zone_feature_mode": "raw",
+  "adapter_name": "hydronic_setpoint_enable_adapter_v1",
+  "transfer_claim": "adapter-mediated, not literal direct-TSup transfer"
+}

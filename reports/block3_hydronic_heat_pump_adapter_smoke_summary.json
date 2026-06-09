@@ -1,0 +1,35 @@
+[
+  {
+    "condition":"baseline_no_override",
+    "n_steps":8,
+    "t_zone_initial_c":20.0,
+    "t_zone_final_c":19.6409231572,
+    "t_zone_delta_c":-0.3590768428,
+    "mean_heat_pump_power_w":3005.0045039388,
+    "mean_fan_power_w":510.2040816327,
+    "mean_pump_power_w":20.4986442812,
+    "mean_t_supply_c":29.5634408028
+  },
+  {
+    "condition":"low_heat_override",
+    "n_steps":8,
+    "t_zone_initial_c":20.0,
+    "t_zone_final_c":18.4961720218,
+    "t_zone_delta_c":-1.5038279782,
+    "mean_heat_pump_power_w":0.0,
+    "mean_fan_power_w":0.0,
+    "mean_pump_power_w":0.0,
+    "mean_t_supply_c":20.0
+  },
+  {
+    "condition":"high_heat_override",
+    "n_steps":8,
+    "t_zone_initial_c":20.0,
+    "t_zone_final_c":19.6499775629,
+    "t_zone_delta_c":-0.3500224371,
+    "mean_heat_pump_power_w":3006.2079091104,
+    "mean_fan_power_w":510.2040816327,
+    "mean_pump_power_w":20.4986442812,
+    "mean_t_supply_c":29.603125226
+  }
+]

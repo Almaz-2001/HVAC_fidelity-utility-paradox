@@ -1,0 +1,18 @@
+param,value,source_file,justification
+active_v3_training_entrypoint,surrogate/train_surrogate_backbone.py,surrogate/train_surrogate_backbone.py,Canonical comfort-oriented direct-TSup v3 backbone training script currently present in active contour.
+legacy_train_surrogate_py,not present in active contour,surrogate/train_surrogate.py,The former generic entrypoint is not part of the current active contour; v3 training is reported through train_surrogate_backbone.py.
+epochs,500,surrogate/train_surrogate_backbone.py,Default CLI value; upper budget constrained by early stopping.
+batch_size,256,surrogate/train_surrogate_backbone.py,Default DataLoader batch size used for stable mini-batch estimates on the BOPTEST corpus.
+learning_rate,1e-3,surrogate/train_surrogate_backbone.py,Default AdamW learning rate for the v3 backbone.
+hidden_dim,64,surrogate/train_surrogate_backbone.py,Default hidden width used by RCNeuralODEv2 heat and power heads.
+optimizer,AdamW,surrogate/train_surrogate_backbone.py,Weight-decayed Adam optimizer stabilizes the black-box residual heads without changing the physical inputs.
+weight_decay,1e-4,surrogate/train_surrogate_backbone.py,Explicit optimizer regularization in the canonical v3 training loop.
+scheduler,CosineAnnealingLR(T_max=epochs),surrogate/train_surrogate_backbone.py,Smooth learning-rate decay over the configured epoch budget.
+early_stopping,patience=30; improvement_threshold=1e-6,surrogate/train_surrogate_backbone.py,Stops training when the selected validation metric no longer improves.
+checkpoint_metric,val_loss default; rollout_rmse optional,surrogate/train_surrogate_backbone.py,Default keeps one-step supervised fidelity; rollout_rmse was added for rollout-aware selection when explicitly requested.
+gradient_clip_norm,1.0,surrogate/train_surrogate_backbone.py,Limits unstable updates from multi-step rollout loss.
+multi_horizons,"[2, 4]",surrogate/train_surrogate_backbone.py,Default short rollout horizons for one-step-plus-local-rollout training.
+loss_lambda_temp,1.0,surrogate/train_surrogate_backbone.py,Primary temperature fidelity term.
+loss_lambda_power,0.1,surrogate/train_surrogate_backbone.py,Power-head term is normalized by P_MAX and weighted below the temperature term.
+loss_lambda_multi,0.5,surrogate/train_surrogate_backbone.py,Balances local rollout consistency against one-step fit.
+loss_lambda_physics,0.05,surrogate/train_surrogate_backbone.py,Penalizes implausibly large one-step temperature jumps.

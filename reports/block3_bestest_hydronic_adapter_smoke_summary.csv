@@ -1,0 +1,4 @@
+condition,n_steps,t_zone_initial_c,t_zone_final_c,t_zone_delta_c,mean_heat_power_w,mean_fan_power_w,mean_pump_power_w,mean_t_supply_c
+baseline_no_override,8,20.0,21.16185976117174,1.1618597611717405,2732.340391905835,0.0,12.248233915608973,0.0
+low_supply_override,8,20.0,17.577073462658007,-2.4229265373419935,0.0,0.0,0.0,0.0
+high_supply_override,8,20.0,19.568217266260604,-0.43178273373939646,1384.8666562024696,0.0,12.248233915608973,0.0

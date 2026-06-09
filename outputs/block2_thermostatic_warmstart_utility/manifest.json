@@ -1,0 +1,15 @@
+{
+  "artifact_root": "/app/outputs/block2_thermostatic_warmstart_utility",
+  "surrogate_summary_json": "/app/outputs/surrogate_v35_inverse_boptest_15min_power_head_only/calibration_summary_boptest_v35.json",
+  "pretrained_model": "/app/models/ppo_thermostatic_v35_block2_warmstart.zip",
+  "scratch_finetune_dir": "/app/outputs/block2_thermostatic_warmstart_utility/scratch_finetune",
+  "warmstart_finetune_dir": "/app/outputs/block2_thermostatic_warmstart_utility/warmstart_finetune",
+  "scratch_eval_dir": "/app/outputs/block2_thermostatic_warmstart_utility/scratch_eval",
+  "warmstart_eval_dir": "/app/outputs/block2_thermostatic_warmstart_utility/warmstart_eval",
+  "comparison_summary_csv": "/app/outputs/block2_thermostatic_warmstart_utility/comparison_summary.csv",
+  "step_sec": 900,
+  "episode_days": 14,
+  "steps_thermostatic": 120000,
+  "learning_rate": 0.0001,
+  "ppo_epochs": 5
+}

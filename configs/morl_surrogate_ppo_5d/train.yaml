@@ -1,0 +1,9 @@
+total_timesteps: 2000000
+seed: 42
+
+morl_csv: true
+output_dir: outputs/morl_surrogate_ppo_5d
+morl_csv_name: morl_log.csv
+
+save_model: true
+save_path: outputs/morl_surrogate_ppo_5d/models

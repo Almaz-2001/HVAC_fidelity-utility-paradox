@@ -1,0 +1,27 @@
+{
+  "boptest_url": "http://web:8000",
+  "testcase_id": "bestest_air",
+  "step_sec": 900,
+  "duration_days": 14,
+  "thermostatic_model": "models/ppo_thermostatic_v35_15min_no_delta_t_powerlog_tzone.zip",
+  "summary_json": "outputs/surrogate_v35_inverse_boptest_15min_power_head_only/calibration_summary_boptest_v35.json",
+  "weather_csv": "/app/data/surrogate_v2/boptest_v2_tsupply.csv",
+  "scenarios": [
+    {
+      "name": "peak_heat_window",
+      "label": "Peak heat window",
+      "start_day_index": 3,
+      "start_time_sec": 259200.0,
+      "duration_days": 14,
+      "daily_mean_t_amb_c": -24.4
+    },
+    {
+      "name": "typical_heat_window",
+      "label": "Typical heat window",
+      "start_day_index": 37,
+      "start_time_sec": 3196800.0,
+      "duration_days": 14,
+      "daily_mean_t_amb_c": 2.4
+    }
+  ]
+}

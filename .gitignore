@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Note: outputs/ here holds ONLY the small audit/calibration/manifest artefacts
+# referenced by roadmap.md (the ~7 GB of raw per-seed run data is NOT shipped).
+
+# Compiled manuscript PDFs (figures under docs/**/figures are kept)
+docs/paper_combined/main_paper.pdf
+docs/paper_combined/supplementary.pdf
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Regenerated per-section figures (canonical set is in docs/paper_combined/figures)
+docs/results1_digital_twin_overleaf/figures/
+docs/results2_control_overleaf/figures/
+docs/results3_transferability_overleaf/figures/
+
+# Generator intermediates (full per-section bodies; not needed in the repo)
+docs/results1_digital_twin_overleaf/section_body.tex
+docs/results2_control_overleaf/section_body.tex
+docs/results3_transferability_overleaf/section_body.tex

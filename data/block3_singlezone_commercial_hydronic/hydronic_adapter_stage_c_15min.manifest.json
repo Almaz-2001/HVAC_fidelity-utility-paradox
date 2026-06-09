@@ -1,0 +1,18 @@
+{
+  "boptest_url": "http://web:8000",
+  "testcase_id": "singlezone_commercial_hydronic",
+  "adapter_config": "/app/configs/block3_actuator_mapping_singlezone_commercial_hydronic.yaml",
+  "adapter_name": "commercial_hydronic_supply_valve_adapter_v1",
+  "output_csv": "/app/data/block3_singlezone_commercial_hydronic/hydronic_adapter_stage_c_15min.csv",
+  "step_sec": 900,
+  "steps_per_episode": 96,
+  "episodes_per_scenario": 3,
+  "policies": [
+    "random",
+    "low_high",
+    "comfort_probe"
+  ],
+  "rows": 10368,
+  "transfer_regime": "partial",
+  "stage": "target telemetry collection for Stage C-only recalibration"
+}

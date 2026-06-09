@@ -1,0 +1,10 @@
+variant,obs_ablation,delta_feature_mode,power_feature_mode,t_zone_feature_mode,peak_m_s,typical_m_s,peak_violation_pct,typical_violation_pct,peak_first_divergence_step,typical_first_divergence_step,peak_action_gap_norm,typical_action_gap_norm,peak_top_feature,typical_top_feature,decision
+with_power_raw,none,raw,raw,raw,1.269802648634541,1.2900910829186416,83.48214285714286,85.86309523809523,1,1,2.0,2.0,p_total_norm,p_total_norm,reference-only
+no_power,no_power,raw,raw,raw,1.2814149613989985,1.2895471095148812,83.70535714285714,85.86309523809523,1,1,2.0,2.0,delta_t_zone_norm,delta_t_zone_norm,rejected
+no_delta_t,no_delta_t,raw,raw,raw,1.0360754018760974,1.1207874007253746,74.62797619047619,82.58928571428571,1,1,2.00123268987481,2.0,p_total_norm,p_total_norm,retained-as-direction
+no_power_no_delta_t,no_power_no_delta_t,raw,raw,raw,1.0622488277531337,1.1230747451230931,76.86011904761905,83.18452380952381,1,1,2.0,2.0,t_zone_norm,t_zone_norm,rejected
+no_prev_action,no_prev_action,raw,raw,raw,1.258779696165528,1.2798514744545653,83.85416666666666,86.75595238095238,1,1,2.0,2.0,p_total_norm,p_total_norm,rejected
+no_temp_history,no_temp_history,raw,raw,raw,1.0847824609265608,1.1485028224599,76.78571428571429,82.88690476190477,1,1,2.0027677171413827,2.0007400216194724,p_total_norm,p_total_norm,rejected
+causal_smooth,none,causal_smooth,raw,raw,1.1287887697541783,1.1869338148428052,80.20833333333334,85.9375,1,1,2.0,2.0,p_total_norm,p_total_norm,rejected
+no_delta_t_powerlog,no_delta_t,raw,clipped_log,raw,1.0899852412341824,1.1195575273275042,81.17559523809523,84.15178571428571,1,1,2.0,2.000005368396317,t_zone_norm,t_zone_norm,retained-intermediate
+no_delta_t_powerlog_tzone,no_delta_t,raw,clipped_log,comfort_centered,1.046450541612129,1.1019814764225575,77.08333333333334,82.36607142857143,1,1,2.0,2.0141635596351484,t_zone_norm,t_zone_norm,retained-diagnostic

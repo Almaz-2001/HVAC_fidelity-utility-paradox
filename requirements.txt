@@ -1,0 +1,21 @@
+# Reinforcement-learning core
+stable-baselines3==2.1.0
+torch
+gymnasium
+
+# Numerical / data stack
+numpy<2.0.0
+pandas
+scipy
+matplotlib
+
+# Config / IO
+pyyaml>=6.0
+
+# Experiment logging (optional)
+tensorboard
+wandb
+
+# BOPTEST is a separate open-source project and is NOT installed via pip.
+# Run it from https://github.com/ibpsa/project1-boptest (Docker recommended)
+# and point the environments in envs/ and configs/ at your local runtime.

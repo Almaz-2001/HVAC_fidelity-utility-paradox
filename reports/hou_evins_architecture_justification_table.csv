@@ -1,0 +1,4 @@
+variant,role,explicit_physics,explicit_c_zon,block1_temp_alignment_rmse_c,block1_rollout_24h_rmse_c,peak_control_m_s,typical_control_m_s,peak_energy_kwh,typical_energy_kwh,peak_transfer_temp_rmse_c,typical_transfer_temp_rmse_c,peak_first_divergence_step,typical_first_divergence_step,article_position
+v3,control-oriented direct-TSup surrogate,no,no,,,0.0725414745675612,0.0946512633969405,322.1923954821765,368.27408274517103,0.8941642013732883,0.7447362867475804,1,1,best pure control baseline
+v35_calibrated,physics-oriented calibrated twin,yes,yes,0.2318961173295974,0.64407034617221,1.046450541612129,1.1019814764225575,556.1857282985895,580.5092169390758,4.3199246804867295,4.401375481286122,1,1,"best physical baseline, poor control surrogate"
+hybrid_l010,v3 dynamics regularized by calibrated v3.5,partial,regularizer-only,,,0.0866490367949334,0.0410662616735334,305.2760616596851,352.80317330491005,0.6327132760235985,0.6118410034605274,1,16,best verified compromise

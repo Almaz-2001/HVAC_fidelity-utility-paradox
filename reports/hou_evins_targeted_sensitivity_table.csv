@@ -1,0 +1,4 @@
+sensitivity_axis,tested_values,selection_metric,winner,numerical_reason,positioning
+observation_ablation,"none,no_power,no_delta_t,no_power_no_delta_t,no_prev_action,no_temp_history",thermostatic transfer/control stability,no_delta_t,Best direct v3.5 diagnostic row was no_delta_t with peak m_s=1.0361 and typical m_s=1.1208.,targeted_sensitivity_analysis
+feature_encoding,"raw,causal_smooth,clipped_log,comfort_centered",reduced transfer-gap without reopening full model search,"power=clipped_log,t_zone=raw,delta=removed",Encoding tests were evaluated through direct v3.5 transfer diagnostics and then reused in the canonical hybrid branch instead of running a global architecture search.,targeted_sensitivity_analysis
+hybrid_lambda_temp_disagree,"0.05,0.10,0.15",mean thermostatic m_s across peak/typical,l010,lambda 0.010 achieved the best mean m_s among the tested values (0.0639).,targeted_sensitivity_analysis

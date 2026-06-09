@@ -1,0 +1,173 @@
+# Block 3 actuator-interface adapter pre-registration
+#
+# Logged after N=2 hydronic-family evidence and before any
+# singlezone_commercial_hydronic live BOPTEST control run. This stretch
+# testcase has a different commercial hydronic interface, so it requires its
+# own documented adapter rather than reusing the residential hydronic mapping.
+
+protocol: block3_actuator_adapter_v1
+testcase: singlezone_commercial_hydronic
+adapter_logged_at: 2026-05-19
+finalized_before_block3_control_runs: true
+
+source_manifest:
+  path: configs/block3_testcase_manifest.yaml
+  pre_registration_commit_sha: 1861e48dc0eacb2e2c466ba0e0d03502d9185723
+
+interface_inspection:
+  method: "Parse modelDescription.xml inside wrapped.fmu"
+  fmu_path: boptest_rte/testcases/singlezone_commercial_hydronic/models/wrapped.fmu
+  inspected_before_control_runs: true
+  non_fixed_inputs:
+    - ahu_oveFanRet_activate
+    - ahu_oveFanRet_u
+    - ahu_oveFanSup_activate
+    - ahu_oveFanSup_u
+    - dh_oveTSupSetHea_activate
+    - dh_oveTSupSetHea_u
+    - oveCO2ZonSet_activate
+    - oveCO2ZonSet_u
+    - ovePum_activate
+    - ovePum_u
+    - oveTSupSetAir_activate
+    - oveTSupSetAir_u
+    - oveTZonSet_activate
+    - oveTZonSet_u
+    - oveValCoi_activate
+    - oveValCoi_u
+    - oveValRad_activate
+    - oveValRad_u
+  relevant_outputs:
+    - ahu_reaPFanExt_y
+    - ahu_reaPFanSup_y
+    - ahu_reaTSupAir_y
+    - dh_oveTSupSetHea_y
+    - dh_reaTSupHyd_y
+    - oveTSupSetAir_y
+    - oveTZonSet_y
+    - reaPPum_y
+    - reaQHea_y
+    - reaTZon_y
+
+compatibility_verdict:
+  availability_runtime: PASS
+  direct_supply_temperature_command: CONDITIONAL_PASS
+  documented_override_mapping: PASS
+  final_status: PASS
+  reason: |
+    The testcase exposes hydronic supply-temperature setpoint override
+    dh_oveTSupSetHea_u and valve/pump override inputs, but the actuator
+    interface is more complex than bestest_hydronic because heating valves
+    and AHU-related setpoints are present. The transferred TSup-style action
+    is mapped to hydronic supply setpoint plus deterministic valve/pump
+    enable signals.
+
+claim_boundary:
+  allowed_claim: |
+    Block 3 mode=none on singlezone_commercial_hydronic is a documented
+    commercial-hydronic adapter transfer test, not a native controller
+    trained for this actuator topology.
+  forbidden_claims:
+    - "Commercial hydronic actuator interface is identical to bestest_air"
+    - "Valve and pump commands are learned by the transferred policy"
+
+adapter_mapping:
+  name: commercial_hydronic_supply_valve_adapter_v1
+  purpose: |
+    Send the transferred policy's temperature-like command to the district
+    hydronic supply-temperature setpoint and deterministically open/close
+    heating valves and pump from the same heat-intensity scalar.
+
+  input_from_transferred_policy:
+    policy_temperature_like_command_c:
+      expected_source_range_c: [18.0, 35.0]
+      output_variable: dh_oveTSupSetHea_u
+      activation_variable: dh_oveTSupSetHea_activate
+      units: K
+      formula: "dh_oveTSupSetHea_u = policy_temperature_like_command_c + 273.15"
+
+  normalized_heat_intensity:
+    formula: "h = clip((policy_temperature_like_command_c - 18.0) / (35.0 - 18.0), 0.0, 1.0)"
+    interpretation: "0.0 = low/no heating request; 1.0 = maximum transferred TSup request"
+
+  zone_and_air_context_overrides:
+    variables:
+      oveTZonSet_activate: 1
+      oveTZonSet_u: 294.15
+      oveTSupSetAir_activate: 1
+      oveTSupSetAir_u: "policy_temperature_like_command_c + 273.15"
+    rationale: |
+      Zone and air-supply setpoints are fixed to reproducible context values
+      so the transferred hydronic supply command is evaluated under a stable
+      demand context. This is an adapter rule, not a learned component.
+
+  valve_and_pump_overrides:
+    activation_policy: "Always activate these overrides during adapter-mediated controller evaluation"
+    threshold: 0.05
+    if_h_above_threshold:
+      ovePum_u: 50000.0
+      oveValCoi_u: 1.0
+      oveValRad_u: 1.0
+    if_h_at_or_below_threshold:
+      ovePum_u: 0.0
+      oveValCoi_u: 0.0
+      oveValRad_u: 0.0
+    activation_variables:
+      ovePum_activate: 1
+      oveValCoi_activate: 1
+      oveValRad_activate: 1
+
+  fan_overrides:
+    rationale: |
+      Fan commands are left to the testcase default controller. The transferred
+      bestest_air thermal policy does not provide a defensible commercial AHU
+      fan-control signal.
+    ahu_oveFanRet_activate: 0
+    ahu_oveFanSup_activate: 0
+
+smoke_test_protocol:
+  must_run_before_yearly_control_eval: true
+  step_sec: 900
+  start_time_sec: 0
+  horizon_steps_per_condition: 8
+  conditions:
+    baseline_no_override:
+      control_payload: {}
+    low_supply_override:
+      expected_payload:
+        dh_oveTSupSetHea_activate: 1
+        dh_oveTSupSetHea_u: 291.15
+        ovePum_activate: 1
+        ovePum_u: 0.0
+        oveTSupSetAir_activate: 1
+        oveTSupSetAir_u: 288.15
+        oveValCoi_activate: 1
+        oveValCoi_u: 0.0
+        oveValRad_activate: 1
+        oveValRad_u: 0.0
+        oveTZonSet_activate: 1
+        oveTZonSet_u: 294.15
+    high_supply_override:
+      expected_payload:
+        dh_oveTSupSetHea_activate: 1
+        dh_oveTSupSetHea_u: 308.15
+        ovePum_activate: 1
+        ovePum_u: 50000.0
+        oveTSupSetAir_activate: 1
+        oveTSupSetAir_u: 308.15
+        oveValCoi_activate: 1
+        oveValCoi_u: 1.0
+        oveValRad_activate: 1
+        oveValRad_u: 1.0
+        oveTZonSet_activate: 1
+        oveTZonSet_u: 294.15
+  acceptance_checks:
+    - "high_supply_override should produce higher reaQHea_y than low_supply_override"
+    - "high_supply_override should not reduce reaTZon_y relative to low_supply_override over the same short horizon"
+    - "dh_reaTSupHyd_y or dh_oveTSupSetHea_y should reflect the commanded high/low supply setpoint"
+
+audit:
+  adapter_commit_sha: 645626e5ca8d8e6e456885569c244996a0ac5c3b
+  pushed_before_smoke_test: false
+  smoke_test_result_file: reports/block3_singlezone_commercial_hydronic_adapter_smoke_summary.csv
+  smoke_test_result: PASS

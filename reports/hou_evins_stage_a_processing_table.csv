@@ -1,0 +1,6 @@
+stage_a_operation,implementation,parameter_or_rule,selection_criterion,purpose
+latency compensation search,_undo_delay_array over candidate lags,"lag in [0, max_latency_search]",choose lag minimizing surrogate one-step RMSE against observed next-step temperature,undo thermostat/telemetry delay before calibration
+temperature bias removal,median residual offset subtraction,bias_est = median(t_obs_next - t_pred),center residual distribution before Stage B/C calibration,avoid fitting static sensor bias as building physics
+power affine normalization,least-squares fit p_obs ≈ scale * p_pred + bias,"scale_est, bias_p_est from linear solve",reduce power-channel mismatch before nonlinear head refinement,separate systematic meter scaling from dynamic error
+rolling denoise,rolling median + exponential moving average,smooth_window = 5,suppress high-frequency telemetry noise without changing regime identity,stabilize downstream inverse calibration
+causal delta recomputation,delta_t = t_zone_next - t_zone after preprocessing,derived from corrected current and next temperature,preserve state-transition consistency after artifact correction,avoid propagating artifact-driven temperature-history features

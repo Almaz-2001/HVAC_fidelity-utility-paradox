@@ -1,0 +1,15 @@
+{
+  "boptest_url": "http://localhost:8000",
+  "testcase_id": "bestest_hydronic_heat_pump",
+  "adapter_config": "C:\\Users\\user\\Desktop\\HVAC_DRL_MORL\\configs\\block3_actuator_mapping_bestest_hydronic_heat_pump.yaml",
+  "output_csv": "C:\\Users\\user\\Desktop\\HVAC_DRL_MORL\\data\\block3_bestest_hydronic_heat_pump\\hydronic_adapter_stage_c_15min_smoke.csv",
+  "step_sec": 900,
+  "steps_per_episode": 2,
+  "episodes_per_scenario": 1,
+  "policies": [
+    "low_high"
+  ],
+  "rows": 24,
+  "transfer_regime": "partial",
+  "stage": "target telemetry collection for Stage C-only recalibration"
+}

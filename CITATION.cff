@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software or its results, please cite the manuscript below."
+title: "The Fidelity–Utility Paradox in Surrogate-Based Reinforcement Learning for HVAC Control"
+authors:
+  - family-names: "Sapargali"
+    given-names: "Almaz"
+# Add co-authors here.
+preferred-citation:
+  type: article
+  title: "The Fidelity–Utility Paradox in Surrogate-Based Reinforcement Learning for HVAC Control"
+  authors:
+    - family-names: "Sapargali"
+      given-names: "Almaz"
+  journal: "Results in Engineering"
+  year: 2026
+  notes: "Under review"
+license: MIT

@@ -1,0 +1,15 @@
+variable,context,scaling_method,parameters,source_file,justification
+surrogate_t_zone,v3/v3.5 surrogate input,"affine min-max to [-1, 1]",min=15 C; max=35 C,surrogate/rc_node_v2.py; surrogate/rc_node_v35.py,Keeps the learned thermal state within the training support used by the direct-TSup surrogate.
+surrogate_t_amb,v3/v3.5 surrogate input,"affine min-max to [-1, 1]",min=-10 C; max=40 C,surrogate/rc_node_v2.py; surrogate/rc_node_v35.py,Normalizes outdoor-air temperature for the heat and power heads.
+hour,v3/v3.5 surrogate input and TSup controller observation,cyclic sine/cosine,sin(2*pi*hour/24); cos(2*pi*hour/24),surrogate/rc_node_v2.py; envs/tsup_features.py,Avoids discontinuity between hour 23 and hour 0.
+day,v3/v3.5 surrogate input and TSup controller observation,cyclic sine/cosine,sin(2*pi*day/365); cos(2*pi*day/365),surrogate/rc_node_v2.py; envs/tsup_features.py,Represents seasonal phase without an artificial year-end jump.
+a0_raw,direct supply-temperature action,native action domain,"[-1, 1] maps to 18..35 C supply temperature",envs/tsup_features.py,Preserves the PPO action coordinate while keeping physical supply-temperature bounds explicit.
+a1_raw,direct fan action,native action domain,"[-1, 1] maps to 0..1 fan command",envs/tsup_features.py,Keeps fan modulation aligned with the controller action range.
+p_total,"TSup controller observation, raw mode","affine min-max to [-1, 1]",min=0 W; max=5500 W,envs/tsup_features.py,Raw power normalization for ablation baselines.
+p_total,canonical TSup controller observation,"clipped log transform to [-1, 1]",clip at 2500 W; 2*log1p(p)/log1p(2500)-1,envs/tsup_features.py,Compresses high-power tails and improved transfer in the canonical hybrid branch.
+delta_t,"TSup controller observation, raw mode",linear clipping,"clip(delta_t/5 C, -1, 1)",envs/tsup_features.py,Baseline delta-temperature history encoding.
+delta_t,MORL 17D TSup-style observation,causal smooth tanh,clip to +/-1.5 C; tanh(delta/1.25),envs/tsup_features.py,Reduces action discontinuities from noisy short-step temperature changes.
+controller_t_zone,"TSup controller observation, raw mode","affine min-max to [-1, 1]",min=5 C; max=40 C,envs/tsup_features.py,Wide physical range for controller-side temperature observation.
+controller_t_zone,"TSup controller observation, comfort-centered ablation",comfort-centered clipping,"clip((T_zone-22.5 C)/3 C, -1, 1)",envs/tsup_features.py,"Ablation tested a comfort-local coordinate, but canonical thermostatic hybrid uses raw mode."
+power_head_output,v3 surrogate output,Softplus multiplied by P_MAX,P_MAX=5500 W,surrogate/rc_node_v2.py,Guarantees non-negative predicted HVAC power.
+C_zon,v3.5 physics backbone,positive reparameterization,softplus(log_c_zon)+c_min; c_min=5e4 J/K,surrogate/rc_node_v35.py,Constrains the identified thermal capacitance to physically meaningful positive values.

@@ -1,0 +1,21 @@
+model,horizon,horizon_steps_15min,RMSE_T,MAE_T,R2_T,RMSE_P,MAE_P,n_windows,n_power_steps,lambda_temp_disagree,lambda_power_disagree,source_note
+v3,1h,4,1.4709810018539429,1.2004718780517578,-0.9824447164760735,1227.559326171875,815.4730224609375,10712,42848,,,direct-TSup v3 primary dynamics
+v3,4h,16,1.5785892009735107,1.2736707925796509,-1.303279318547117,1218.20458984375,814.4027099609375,10616,169856,,,direct-TSup v3 primary dynamics
+v3,8h,32,1.5792924165725708,1.2736321687698364,-1.354566670622206,1201.72314453125,807.1172485351562,10488,335616,,,direct-TSup v3 primary dynamics
+v3,24h,96,1.557518482208252,1.2577065229415894,-1.4114033281552683,1187.580810546875,805.0213623046875,9976,957696,,,direct-TSup v3 primary dynamics
+v3.5_calibrated,1h,4,0.32133665680885315,0.21972621977329254,0.9053964371912081,688.7836303710938,480.675048828125,10712,42848,,,calibrated v3.5 physical backbone and power head
+v3.5_calibrated,4h,16,0.575187087059021,0.42374229431152344,0.6942076777042934,679.7848510742188,475.27581787109375,10616,169856,,,calibrated v3.5 physical backbone and power head
+v3.5_calibrated,8h,32,0.6377658843994141,0.4760308265686035,0.6160201556724638,664.6846923828125,468.0131530761719,10488,335616,,,calibrated v3.5 physical backbone and power head
+v3.5_calibrated,24h,96,0.6441305875778198,0.48173820972442627,0.5875690543759058,648.2194213867188,462.5470275878906,9976,957696,,,calibrated v3.5 physical backbone and power head
+hybrid_l010,1h,4,1.4709810018539429,1.2004718780517578,-0.9824447164760735,1227.559326171875,815.4730224609375,10712,42848,0.10,5e-5,v3 primary rollout dynamics; calibrated v3.5 disagreement regularizer used during control training
+hybrid_l010,4h,16,1.5785892009735107,1.2736707925796509,-1.303279318547117,1218.20458984375,814.4027099609375,10616,169856,0.10,5e-5,v3 primary rollout dynamics; calibrated v3.5 disagreement regularizer used during control training
+hybrid_l010,8h,32,1.5792924165725708,1.2736321687698364,-1.354566670622206,1201.72314453125,807.1172485351562,10488,335616,0.10,5e-5,v3 primary rollout dynamics; calibrated v3.5 disagreement regularizer used during control training
+hybrid_l010,24h,96,1.557518482208252,1.2577065229415894,-1.4114033281552683,1187.580810546875,805.0213623046875,9976,957696,0.10,5e-5,v3 primary rollout dynamics; calibrated v3.5 disagreement regularizer used during control training
+v3_15min_matched,1h,4,0.8745673276257631,0.7100585561987967,,,,10720,,,,corpus-matched v3 (Tactic B reviewer mitigation): same v3 architecture trained on 10744 15-min transitions; temperature-only
+v3_15min_matched,4h,16,0.8735689528694857,0.7098819703373948,,,,10624,,,,corpus-matched v3 (Tactic B reviewer mitigation): same v3 architecture trained on 10744 15-min transitions; temperature-only
+v3_15min_matched,8h,32,0.8730632013697223,0.7097691358951713,,,,10496,,,,corpus-matched v3 (Tactic B reviewer mitigation): same v3 architecture trained on 10744 15-min transitions; temperature-only
+v3_15min_matched,24h,96,0.8761156751667185,0.7123976015768552,,,,9984,,,,corpus-matched v3 (Tactic B reviewer mitigation): same v3 architecture trained on 10744 15-min transitions; temperature-only
+raw_v35,1h,4,1.4908158757481413,1.235866623571486,,,,10720,,,,raw v3.5 physical backbone (no Stage A/B/C calibration; Path B decomposition baseline)
+raw_v35,4h,16,1.4912848981522377,1.235539980305441,,,,10624,,,,raw v3.5 physical backbone (no Stage A/B/C calibration; Path B decomposition baseline)
+raw_v35,8h,32,1.490777902127833,1.2355257005360918,,,,10496,,,,raw v3.5 physical backbone (no Stage A/B/C calibration; Path B decomposition baseline)
+raw_v35,24h,96,1.466468866196516,1.2207894030921147,,,,9984,,,,raw v3.5 physical backbone (no Stage A/B/C calibration; Path B decomposition baseline)

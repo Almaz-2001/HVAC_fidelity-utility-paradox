@@ -1,0 +1,5 @@
+variant,corpus,step_sec,stage_abc,rmse_24h_c,mae_24h_c,bias_24h_c,p95_24h_c,role
+v3_hourly,"51,200 hourly transitions (boptest_v2_tsupply.csv)",3600,n/a (control-oriented black box),1.5571616098141303,1.257357618465315,0.4640006284750443,2.85245409908942,canonical v3 reported in §1.3 of the paper
+v3_15min_matched,"10,744 15-min transitions (boptest_block12_15min_prepared.csv)",900,n/a (control-oriented black box),0.8761156751667185,0.7123976015768552,0.07328899961924126,1.5791702668333445,"corpus-matched v3 (reviewer mitigation, Tactic B)"
+v35_raw,"10,744 15-min transitions (boptest_block12_15min_prepared.csv)",900,OFF (no Stage A/B/C),1.466468866196516,nan,nan,nan,raw v3.5 baseline (architecture-only)
+v35_calibrated,"10,744 15-min transitions (boptest_block12_15min_prepared.csv)",900,"FULL (Stage A + B + C, C_zon = 4.413e5 J/K)",0.64407034617221,nan,nan,nan,canonical calibrated v3.5

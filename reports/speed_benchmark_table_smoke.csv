@@ -1,0 +1,4 @@
+backend,status,episodes_requested,steps_per_episode,steps_completed,step_sec,total_time_sec,env_steps_per_sec,mean_raw_step_ms,median_raw_step_ms,p95_raw_step_ms,mean_episode_time_sec,device,torch_num_threads,boptest_url,notes,speedup_vs_boptest_rte
+v3_surrogate,ok,1,2,2,900,0.000894299941137433,2236.386147421927,0.3081000177189708,0.3081000177189708,0.3485100110992789,0.0008577000116929412,cpu,1,http://web:8000,in-process CPU surrogate rollout; model load and warmup excluded,
+v35_calibrated_surrogate,ok,1,2,2,900,0.0011854000622406602,1687.1941074640838,0.5241999751888216,0.5241999751888216,0.5269899440463632,0.0011605999898165464,cpu,1,http://web:8000,in-process CPU surrogate rollout; model load and warmup excluded,
+hybrid_v3_v35_surrogate,ok,1,2,2,900,0.0018350000027567148,1089.9182544934094,0.8303499198518693,0.8303499198518693,0.8706249122042209,0.001805999898351729,cpu,1,http://web:8000,in-process CPU surrogate rollout; model load and warmup excluded,

@@ -1,0 +1,183 @@
+# Block 3 actuator-interface adapter pre-registration
+#
+# This file is logged AFTER the Block 3 testcase manifest and BEFORE any
+# live BOPTEST control-evaluation run on bestest_hydronic_heat_pump. It does
+# not modify the Block 3 hypotheses. It resolves the manifest compatibility
+# criterion:
+#
+#   "actuator interface compatible with direct supply-temperature command
+#    OR overridable with documented mapping"
+#
+# Finding from FMU modelDescription.xml inspection:
+#   - No direct supply-temperature actuator input exists.
+#   - reaTSup_y is an output measurement, not a controllable input.
+#   - The available controllable inputs are oveTSet_u, oveHeaPumY_u,
+#     ovePum_u, and oveFan_u, each with an *_activate switch.
+
+protocol: block3_actuator_adapter_v1
+testcase: bestest_hydronic_heat_pump
+adapter_logged_at: 2026-05-18
+finalized_before_block3_control_runs: true
+
+source_manifest:
+  path: configs/block3_testcase_manifest.yaml
+  pre_registration_commit_sha: 1861e48dc0eacb2e2c466ba0e0d03502d9185723
+  audit_sha_record_commit_sha: 2f9d596
+
+interface_inspection:
+  method: "Parse modelDescription.xml inside wrapped.fmu"
+  fmu_path: boptest_rte/testcases/bestest_hydronic_heat_pump/models/wrapped.fmu
+  inspected_before_control_runs: true
+
+  non_fixed_inputs:
+    - oveFan_activate
+    - oveFan_u
+    - oveHeaPumY_activate
+    - oveHeaPumY_u
+    - ovePum_activate
+    - ovePum_u
+    - oveTSet_activate
+    - oveTSet_u
+
+  relevant_outputs:
+    - reaCOP_y
+    - reaPFan_y
+    - reaPHeaPum_y
+    - reaPPumEmi_y
+    - reaQFloHea_y
+    - reaQHeaPumCon_y
+    - reaQHeaPumEva_y
+    - reaTRet_y
+    - reaTSetCoo_y
+    - reaTSetHea_y
+    - reaTSup_y
+    - reaTZon_y
+
+compatibility_verdict:
+  availability_runtime: PASS
+  direct_supply_temperature_command: FAIL
+  documented_override_mapping: CONDITIONAL_PASS
+  final_status: CONDITIONAL_PASS
+  reason: |
+    The testcase is available and initializes with step_sec=900, but the FMU
+    does not expose a direct supply-temperature override such as oveTSup_u.
+    Therefore, frozen bestest_air controllers cannot be described as direct
+    TSup-transfer controllers on this testcase. They can only be evaluated
+    through the documented adapter below, which maps the policy's
+    temperature-like command to hydronic zone-setpoint and plant enable
+    overrides.
+
+claim_boundary:
+  allowed_claim: |
+    Block 3 mode=none on bestest_hydronic_heat_pump is an adapter-mediated
+    transfer test across actuator topology, not a literal direct-TSup actuator
+    transfer.
+  forbidden_claims:
+    - "Direct supply-temperature actuator transfer to bestest_hydronic_heat_pump"
+    - "The hydronic heat-pump testcase exposes the same action interface as bestest_air"
+    - "reaTSup_y is controlled directly by the transferred policy"
+
+adapter_mapping:
+  name: hydronic_setpoint_enable_adapter_v1
+  purpose: |
+    Convert the transferred policy's temperature-like action into a
+    hydronic-compatible zone setpoint and deterministic plant-enable signals.
+    This preserves the policy ordering of colder-to-warmer commands while
+    respecting the target testcase's actual actuator interface.
+
+  input_from_transferred_policy:
+    policy_temperature_like_command_c:
+      description: |
+        The scalar command previously interpreted as supply-air temperature in
+        bestest_air. On this hydronic testcase it is reinterpreted only as a
+        heat-intensity index.
+      expected_source_range_c: [18.0, 35.0]
+
+  normalized_heat_intensity:
+    formula: "h = clip((policy_temperature_like_command_c - 18.0) / (35.0 - 18.0), 0.0, 1.0)"
+    interpretation: "0.0 = no heating demand from transferred policy; 1.0 = maximum heating demand"
+
+  hydronic_zone_setpoint_override:
+    output_variable: oveTSet_u
+    activation_variable: oveTSet_activate
+    units: K
+    formula: "oveTSet_u = 288.15 + h * (297.15 - 288.15)"
+    equivalent_celsius_range: [15.0, 24.0]
+    rationale: |
+      oveTSet_u is a zone-temperature setpoint override, not a supply
+      temperature. The adapter therefore maps the transferred command to a
+      conservative zone-setpoint band rather than sending 35 C as a room
+      setpoint. The upper bound 24 C matches the Block 1/2 comfort-high value.
+      The lower bound 15 C gives a reproducible no-heat/low-heat state without
+      claiming cooling control.
+
+  plant_enable_overrides:
+    activation_policy: "Always activate these overrides during adapter-mediated controller evaluation"
+    variables:
+      oveHeaPumY_activate: 1
+      ovePum_activate: 1
+      oveFan_activate: 1
+    control_policy:
+      threshold: 0.05
+      if_h_above_threshold:
+        oveHeaPumY_u: 1.0
+        ovePum_u: 1.0
+        oveFan_u: 1.0
+      if_h_at_or_below_threshold:
+        oveHeaPumY_u: 0.0
+        ovePum_u: 0.0
+        oveFan_u: 0.0
+    rationale: |
+      The hydronic plant has explicit heat-pump, pump, and fan override inputs.
+      The transferred bestest_air action does not provide native hydronic
+      plant-enable commands, so these signals are generated deterministically
+      from the same heat-intensity scalar. This is an adapter rule, not a
+      learned controller component.
+
+smoke_test_protocol:
+  must_run_before_yearly_control_eval: true
+  step_sec: 900
+  start_time_sec: 0
+  horizon_steps_per_condition: 8
+  conditions:
+    baseline_no_override:
+      description: "Do not send adapter overrides; record native response."
+      control_payload: {}
+    low_heat_override:
+      description: "Adapter h=0.0: low setpoint and plant disabled."
+      expected_payload:
+        oveTSet_activate: 1
+        oveTSet_u: 288.15
+        oveHeaPumY_activate: 1
+        oveHeaPumY_u: 0.0
+        ovePum_activate: 1
+        ovePum_u: 0.0
+        oveFan_activate: 1
+        oveFan_u: 0.0
+    high_heat_override:
+      description: "Adapter h=1.0: comfort-high setpoint and plant enabled."
+      expected_payload:
+        oveTSet_activate: 1
+        oveTSet_u: 297.15
+        oveHeaPumY_activate: 1
+        oveHeaPumY_u: 1.0
+        ovePum_activate: 1
+        ovePum_u: 1.0
+        oveFan_activate: 1
+        oveFan_u: 1.0
+  acceptance_checks:
+    - "high_heat_override should produce higher reaPHeaPum_y than low_heat_override"
+    - "high_heat_override should not reduce reaTZon_y relative to low_heat_override over the same short horizon"
+    - "reaTSup_y is logged only as a response variable, never as a command"
+  if_failed: |
+    Do not run Block 3 mode=none control evaluation on this testcase. Classify
+    actuator mapping as incompatible and mark bestest_hydronic_heat_pump as
+    interface-failed under mode=none until a revised adapter is pre-registered
+    in a separate commit.
+
+audit:
+  adapter_commit_sha: eb7091e25492cae7d4291fab100e2d19bf74bd24
+  pushed_before_smoke_test: true
+  smoke_test_result_file: reports/block3_hydronic_heat_pump_adapter_smoke_summary.csv
+  smoke_test_result: PASS
+  control_eval_started_after_adapter_commit: false

@@ -1,0 +1,41 @@
+{
+  "boptest_url": "http://localhost:8000",
+  "testcase_id": "bestest_air",
+  "thermostatic_model": "models/ppo_thermostatic_hybrid_v3_v35_l010.zip",
+  "surrogate_kind": "hybrid_v3_v35",
+  "surrogate_legacy_model": "outputs/surrogate_v2/rc_node_v3_tsupply.pt",
+  "summary_json": "outputs/surrogate_v35_inverse_boptest_15min_power_head_only/calibration_summary_boptest_v35.json",
+  "step_sec": 900,
+  "duration_days": 14,
+  "action_gap_threshold": 0.25,
+  "obs_dim": 17,
+  "delta_feature_mode": "raw",
+  "t_zone_feature_mode": "raw",
+  "power_feature_mode": "clipped_log",
+  "feature_names": [
+    "t_zone_norm",
+    "co2_norm",
+    "p_total_norm",
+    "t_supply_prev_norm",
+    "t_amb_norm",
+    "hour_sin",
+    "hour_cos",
+    "day_sin",
+    "day_cos",
+    "forecast_t_amb_1h_norm",
+    "forecast_t_amb_3h_norm",
+    "forecast_t_amb_6h_norm",
+    "forecast_t_amb_12h_norm",
+    "forecast_t_amb_24h_norm",
+    "prev_a0",
+    "prev_a1",
+    "delta_t_zone_norm"
+  ],
+  "history_features": [
+    "t_supply_prev_norm",
+    "prev_a0",
+    "prev_a1",
+    "delta_t_zone_norm"
+  ],
+  "weather_csv": "C:\\Users\\user\\Desktop\\HVAC_DRL_MORL\\data\\surrogate_v2\\boptest_v2_tsupply.csv"
+}
