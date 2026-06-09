@@ -1,0 +1,7 @@
+Highlights
+
+- A more accurate building surrogate can be a worse RL training environment.
+- Training directly on the calibrated twin fails; a black-box surrogate works.
+- A hybrid (black-box rollouts + frozen-twin reward censor) recovers control.
+- The optimal physics-censor weight is controller-family specific.
+- Calibration transfers across testcases; frozen-policy transfer is regime-bound.

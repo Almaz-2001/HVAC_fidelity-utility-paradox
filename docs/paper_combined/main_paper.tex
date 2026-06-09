@@ -1,31 +1,15 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[a4paper,fleqn]{cas-sc}
 
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{lmodern}
-\usepackage{microtype}
-\usepackage{geometry}
-\usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage{tabularx}
-\usepackage{array}
-\usepackage{amsmath}
-\usepackage{amssymb}
+% cas-sc already loads amsmath, amssymb, array, booktabs, graphicx, hyperref,
+% xcolor, etc.; only the extra packages our bodies need are added here.
+\usepackage[numbers,sort&compress]{natbib}
 \usepackage{siunitx}
-\usepackage{xcolor}
-\usepackage{caption}
-\usepackage{subcaption}
-\usepackage{enumitem}
+\usepackage{tabularx}
 \usepackage{longtable}
+\usepackage{enumitem}
 \usepackage{float}
 \usepackage{placeins}
-\usepackage[numbers,sort&compress]{natbib}
-\usepackage{hyperref}
-
-\geometry{margin=2.0cm}
 \graphicspath{{figures/}}
-\hypersetup{colorlinks=true, linkcolor=blue!55!black, citecolor=blue!55!black, urlcolor=blue!55!black}
-\captionsetup{font=small, labelfont=bf}
 
 % Macros shared by all three Results bodies (their own \newcommand lines were
 % stripped with the section preambles).
@@ -34,26 +18,46 @@
 \newcommand{\Czon}{\ensuremath{C_{\mathrm{zon}}}}
 \newcommand{\Tsupply}{\ensuremath{T_{\mathrm{sup}}}}
 \newcommand{\That}{\ensuremath{\widehat{T}}}
-% fixed pointer to a table in the separate Supplementary Material PDF
+% fixed pointer to a float in the separate Supplementary Material PDF
 \newcommand{\suppref}[1]{#1}
 
-\title{The Fidelity--Utility Paradox in Surrogate-Based
-Reinforcement Learning for HVAC Control}
-\author{TODO authors}
-\date{}
-
 \begin{document}
-\maketitle
+\let\WriteBookmarks\relax
+
+\shorttitle{The Fidelity--Utility Paradox in Surrogate-Based RL for HVAC Control}
+\shortauthors{Author One et~al.}
+
+\title[mode=title]{The Fidelity--Utility Paradox in Surrogate-Based Reinforcement Learning for HVAC Control}
+
+% ==== TODO authors: replace placeholders with real author data ====
+\author[1]{Author One}[orcid=0000-0000-0000-0000]
+\cormark[1]
+\ead{corresponding.author@example.edu}
+\credit{Conceptualization, Methodology, Software, Validation, Formal analysis, Investigation, Writing -- original draft, Writing -- review and editing}
+\affiliation[1]{organization={Department, University/Institution},
+                city={City},
+                postcode={00000},
+                country={Country}}
+\cortext[cor1]{Corresponding author}
+% ==================================================================
 
 \begin{abstract}
-Deep reinforcement-learning (DRL) controllers for HVAC systems are usually trained against fast neural-network surrogates, on the natural assumption that a predictively more accurate surrogate is a better training environment. Testing this assumption on the BOPTEST \texttt{bestest\_air} testcase, we report a negative result --- the \emph{fidelity--utility paradox}: the surrogate with the lower predictive error can be the worse environment for policy-gradient search. A grey-box resistance--capacitance surrogate with a neural residual heat-flow head (v3.5; effective zone capacitance $C_{\mathrm{zon}} = 4.413\times10^{5}$~J/K) reaches a 24-hour rollout RMSE of $0.644\,^{\circ}$C against $1.557\,^{\circ}$C for a black-box control-oriented surrogate (v3); yet used directly as the training environment it collapses on the live BOPTEST runtime ($m_s = 1.046$, comfort violation $>77\%$), whereas the predictively weaker v3 trains a usable controller ($m_s = 0.073$/$0.095$ on the peak/typical winter windows).
-
-We resolve the paradox with a role-separating hybrid: v3 supplies the smooth rollout dynamics while a frozen v3.5 acts as a per-step reward-shaping censor (an $L_1$ prediction-disagreement penalty, weights $\lambda_{\mathrm{temp}} = 0.10$, $\lambda_{\mathrm{pwr}} = 5\times10^{-5}$). The hybrid is the best controller overall: although pure v3 marginally wins the peak window ($m_s = 0.073$ vs $0.087$), only the hybrid keeps comfort violation below $5\%$ on \emph{both} windows at lower energy, with the best typical-window score ($m_s = 0.041$), while running ${\sim}85\times$ faster than the live simulator. The optimal censor weight is controller-family specific ($\lambda_{\mathrm{temp}} = 0.10$ for thermostatic PPO but $0$ for the hierarchical and multi-objective controllers), so no single regularization strength serves all controllers.
-
-Under a commit-anchored, version-locked audit protocol (publicly archived), a transferability study on three hydronic testcases shows that the inverse-calibration pipeline generalizes ($60.2$--$87.8\%$ rollout-RMSE reduction; $C_{\mathrm{zon}}$ re-identified at $1.918\pm0.032\times$ the baseline as an effective parameter, despite an order-of-magnitude variation in zone volume), whereas frozen-policy transfer is regime-dependent --- the residential cases miss the $1.25\times$ PI comfort-safety threshold while the commercial case passes it at a $35.3\%$ energy penalty. The contribution is thus a precise, component-level transferability boundary rather than a universal generalization claim, with every reported number linked to a versioned, publicly archived audit anchor.
+Deep reinforcement-learning (RL) controllers for HVAC systems are usually trained against fast neural-network surrogates, on the assumption that a more accurate surrogate is a better training environment. Testing this on the BOPTEST \texttt{bestest\_air} testcase, we report a negative result --- the \emph{fidelity--utility paradox}: the surrogate with the lower predictive error can be the worse environment for policy-gradient search. A grey-box resistance--capacitance surrogate with a neural residual heat-flow head (v3.5) attains a 24-hour rollout RMSE of $0.644\,^{\circ}$C versus $1.557\,^{\circ}$C for a black-box surrogate (v3); yet used directly for training it collapses on the live runtime (maintenance score $m_s = 1.046$, comfort violation $>77\%$), whereas the weaker v3 trains a usable controller ($m_s = 0.073$/$0.095$ on peak/typical winter windows). We resolve the paradox with a role-separating hybrid: v3 supplies smooth rollout dynamics while a frozen v3.5 acts as a per-step reward-shaping censor. The hybrid is best overall --- sub-$5\%$ comfort violation on both windows and the lowest typical-window score ($m_s = 0.041$), at ${\sim}85\times$ live-simulator throughput --- and the optimal censor weight is controller-family specific. A transferability study on three hydronic testcases shows the inverse-calibration pipeline generalizes ($60.2$--$87.8\%$ rollout-RMSE reduction; effective zone capacitance re-identified at $1.918\pm0.032\times$ the baseline), whereas frozen-policy transfer is regime-dependent. The contribution is a precise, component-level transferability boundary rather than a universal generalization claim.
 \end{abstract}
 
-\textbf{Keywords:} reinforcement learning; HVAC control; building energy; digital twin; surrogate model; grey-box RC model; physics-informed calibration; transfer learning; BOPTEST; reproducible audit protocol.
+\begin{highlights}
+\item A more accurate building surrogate can be a worse RL training environment.
+\item Training directly on the calibrated twin fails; a black-box surrogate works.
+\item A hybrid (black-box rollouts + frozen-twin reward censor) recovers control.
+\item The optimal physics-censor weight is controller-family specific.
+\item Calibration transfers across testcases; frozen-policy transfer is regime-bound.
+\end{highlights}
+
+\begin{keywords}
+reinforcement learning \sep HVAC control \sep surrogate model \sep digital twin \sep physics-informed calibration \sep transfer learning \sep BOPTEST
+\end{keywords}
+
+\maketitle
 
 \section*{Nomenclature}
 \renewcommand{\arraystretch}{1.15}
@@ -643,6 +647,19 @@ pairing the transferable calibration pipeline with light policy adaptation inste
 of zero-shot reuse; and, ultimately, closing the remaining sim-to-real gap through
 deployment on a physical building.
 
+\section*{CRediT authorship contribution statement}
+% TODO: list every author with their CRediT roles; placeholder for the corresponding author below.
+\textbf{Author One:} Conceptualization, Methodology, Software, Validation, Formal analysis, Investigation, Data curation, Writing -- original draft, Writing -- review and editing, Visualization.
+
+\section*{Declaration of competing interest}
+The authors declare that they have no known competing financial interests or
+personal relationships that could have appeared to influence the work reported in
+this paper.
+
+\section*{Funding}
+This research did not receive any specific grant from funding agencies in the
+public, commercial, or not-for-profit sectors. % TODO: replace if any funding applies.
+
 \section*{Data availability}
 The source code, configurations, trained controller checkpoints, calibration and
 training data, result tables, and all artefacts required to regenerate the figures
@@ -670,6 +687,10 @@ the author(s) reviewed and edited the content as needed and take full responsibi
 for the content of the published article. No generative AI tool was used to generate,
 analyse, or interpret the research data, or to produce the scientific findings and
 conclusions, which are the work of the author(s).
+
+\section*{Acknowledgements}
+% TODO: add any people/institutions to thank, or state "None.".
+The authors thank the developers of the open-source BOPTEST framework. % adjust as needed.
 
 \bibliographystyle{unsrtnat}
 \bibliography{references}
