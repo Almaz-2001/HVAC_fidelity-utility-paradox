@@ -198,7 +198,10 @@ MASTER = r"""\documentclass[a4paper,fleqn]{cas-sc}
 \usepackage{tabularx}
 \usepackage{longtable}
 \usepackage{enumitem}
-\usepackage{float}
+% NB: do NOT load the float package here. The CAS class redefines the figure/table
+% environments via expl3 and parses the optional [...] as a key-value list; loading
+% float on top hijacks \@float and forces every float to the document end. Placement
+% is controlled through the CAS pos key instead (see [pos={!ht}] in the bodies).
 \usepackage{placeins}
 \graphicspath{{figures/}}
 
@@ -1028,6 +1031,17 @@ def main() -> None:
     for i, (section_dir, _) in enumerate(SECTIONS, start=1):
         d = DOCS / section_dir
         body = header + strip_to_body((d / "main.tex").read_text(encoding="utf-8"))
+        # The CAS class redefines figure/table via expl3 and reads the optional
+        # [...] as a key-value list, so the float package's [H] is meaningless and
+        # (with float loaded) every float is pushed to the document end, which also
+        # broke the "Page x of y" total. Drive CAS's own placement key instead:
+        # pos={!ht} -> fps@figure/@table = "!ht" (here/top, fraction limits relaxed),
+        # keeping figures/tables next to their text and pagination stable.
+        body = body.replace(r"\begin{figure}[H]", r"\begin{figure}[pos={!ht}]")
+        body = body.replace(r"\begin{table}[H]", r"\begin{table}[pos={!ht}]")
+        # In case an earlier run already rewrote [H] to the interim [!ht] form.
+        body = body.replace(r"\begin{figure}[!ht]", r"\begin{figure}[pos={!ht}]")
+        body = body.replace(r"\begin{table}[!ht]", r"\begin{table}[pos={!ht}]")
         body = annotate_figures(body)  # add 'Data: <path>' provenance under figures
         (d / "section_body.tex").write_text(body, encoding="utf-8")  # full copy
         body_combined, moved = extract_supp_tables(body)

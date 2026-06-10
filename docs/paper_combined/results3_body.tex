@@ -58,7 +58,7 @@ The three targets differ in heat source, distribution path, and actuator set, bu
 \end{equation}
 where $\dot{Q}_{\mathrm{hyd}}$ is the delivered hydronic heat (whose actuation path --- heat pump, boiler/radiator, or district valve --- changes per testcase), $R_{\mathrm{env}}$ the envelope resistance, and $\dot{Q}_{\mathrm{gain}}$ the internal/solar gains. Transfer changes the \emph{delivery path} $\dot{Q}_{\mathrm{hyd}}$ and the actuator interface, but $C_{\mathrm{zon}}$ is the shared physical invariant that Stage~B re-identifies --- which is why its re-identified value transfers (Section~\ref{ssec:czon}).
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.97\linewidth]{fig_block3_topology.pdf}
   \caption{Comparative HVAC topology of the source case and the three hydronic targets (source $\to$ distribution $\to$ zone). Transfer changes the heat source, distribution path, and actuator set, while the zone energy balance \eqref{eq:hydronic_balance} and $C_{\mathrm{zon}}$ are shared.}
@@ -69,7 +69,7 @@ where $\dot{Q}_{\mathrm{hyd}}$ is the delivered hydronic heat (whose actuation p
 
 Table~\ref{tab:physics} summarizes the architecture and the identified physics. The equivalent thermal mass $C_{\mathrm{zon}}/c_{p,\mathrm{air}}$ (with $c_{p,\mathrm{air}}=1005$~J\,kg$^{-1}$K$^{-1}$) is roughly $2\times$ the \texttt{bestest\_air} value for every hydronic case, consistent with the added water-loop and surface thermal mass. The mean delivered power exposes the operating regime: it is of order $10^3$~W for the residential cases (envelope-conduction / slow-hydronic dominated) but two orders of magnitude larger for the commercial case (roughly $28\times$), because that zone is ventilation/AHU-dominated. This ventilation dominance is the physical reason the commercial controller passes the comfort threshold yet overshoots energy by $+35.3\%$; it also makes a conduction-only time constant ill-defined from total power for that case.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \small
 \caption{Testcase architecture and identified physics. $C_{\mathrm{zon}}$ in $10^5$~J/K; equivalent mass $=C_{\mathrm{zon}}/c_{p,\mathrm{air}}$; mean delivered power from the Stage-C telemetry.}
@@ -112,7 +112,7 @@ Two-axis reporting ($m_s$ threshold and $\Delta E$) is necessary because the com
 
 Table~\ref{tab:transfer_matrix} is the compact evidence summary and contains two distinct stories. The surrogate component transfers strongly: full Stage A/B/C improves RMSE by $60.2$--$87.8\%$ on all three target testcases. The frozen controller does not transfer uniformly: the two residential hydronic cases fail the pre-specified $1.25\times$ PI threshold, while the commercial stretch case passes the threshold but pays a $+35.3\%$ energy penalty.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \scriptsize
 \caption{Block 3 transfer matrix. Threshold $=1.25\,m_{s,\mathrm{PI}}$ per testcase; data sources in roadmap Section 15. $^\dagger$ threshold PASS, not deployment-ready (see $\Delta E$).}
@@ -128,7 +128,7 @@ commercial hydronic & 0.431 & 0.628 & 0.785 & PASS$^\dagger$ & 35.3 & 1.952 & 0.
 \end{tabular}
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.84\linewidth]{final17_fig13_block3_controller_transfer_heatmap.pdf}
   \caption{Controller-transfer verdict heatmap. Residential hydronic cases fail the controller threshold; the commercial case passes the threshold but carries a separate energy caveat.}
@@ -137,7 +137,7 @@ commercial hydronic & 0.431 & 0.628 & 0.785 & PASS$^\dagger$ & 35.3 & 1.952 & 0.
 {\footnotesize\itshape Data: \texttt{reports/\allowbreak block3\_\allowbreak transfer\_\allowbreak matrix.csv}}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.84\linewidth]{block3_q1_polish_deployment_quadrants.pdf}
   \caption{Comfort--energy deployment plane. The residential cases save energy but fail the comfort/safety threshold; the commercial case passes the threshold but moves into the energy-penalty quadrant.}
@@ -146,7 +146,7 @@ commercial hydronic & 0.431 & 0.628 & 0.785 & PASS$^\dagger$ & 35.3 & 1.952 & 0.
 {\footnotesize\itshape Data: \texttt{reports/\allowbreak block3\_\allowbreak transfer\_\allowbreak matrix.csv}}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.80\linewidth]{fig_block3_controller_bar.pdf}
   \caption{Controller-side transfer: frozen-hybrid $m_s^{\mathrm{RL}}$ against the PI baseline $m_s^{\mathrm{PI}}$ and the pre-specified threshold $\tau_k=1.25\,m_s^{\mathrm{PI}}$ (dashed). The two residential cases exceed the threshold (FAIL); the commercial case is below it (PASS, with the separate energy caveat).}
@@ -183,7 +183,7 @@ Full Stage A/B/C improves target rollout RMSE on all three testcases (gains $60.
 \end{equation}
 The calibrated thermal capacitance is thus more closely associated with hydronic-family physics than with the obvious commercial zone-size proxy: despite the stretch testcase having an order-of-magnitude larger zone volume, its ratio sits within $\pm2\%$ of the family mean. This generalizes the calibration component of the v3.5 surrogate beyond a single building. The uniformity claim is, however, established on $N=3$ single-zone hydronic cases and is therefore a hydronic-family observation rather than a statistically powered law; it is not asserted for radiant, VRF, multi-zone, or cross-climate cases (Section~\ref{ssec:b3lim}).
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \small
 \caption{$C_{\mathrm{zon}}$ re-identification across the \texttt{bestest\_air} baseline and the three hydronic testcases (data: roadmap Section 15).}
@@ -202,7 +202,7 @@ hydronic-family mean $\pm$ std & --- & 1.918 $\pm$ 0.032 \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.84\linewidth]{final17_fig15_full_stage_transfer_rmse_improvement.pdf}
   \caption{Full Stage A/B/C transfer RMSE improvement on the three hydronic-family target testcases.}
@@ -217,7 +217,7 @@ hydronic-family mean $\pm$ std & --- & 1.918 $\pm$ 0.032 \\
 
 Table~\ref{tab:hypothesis} closes the pre-specified hypotheses. The methodological point is that Block 3 does not collapse the evidence into a single label: surrogate transfer and controller transfer diverge.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \small
 \caption{Pre-specified hypothesis closure (manifest \texttt{hypothesis\_status\_final}, audit anchor \texttt{7ada793}).}
@@ -235,7 +235,7 @@ hierarchy & Verdict is monotone in recalibration depth. & SUPPORTED & Controller
 \end{tabularx}
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.88\linewidth]{final17_fig17_hypothesis_closure_matrix.pdf}
   \caption{Hypothesis closure matrix: Block 3 supports surrogate-side transferability but falsifies deployment-ready frozen-controller transfer.}

@@ -7,7 +7,10 @@
 \usepackage{tabularx}
 \usepackage{longtable}
 \usepackage{enumitem}
-\usepackage{float}
+% NB: do NOT load the float package here. The CAS class redefines the figure/table
+% environments via expl3 and parses the optional [...] as a key-value list; loading
+% float on top hijacks \@float and forces every float to the document end. Placement
+% is controlled through the CAS pos key instead (see [pos={!ht}] in the bodies).
 \usepackage{placeins}
 \graphicspath{{figures/}}
 

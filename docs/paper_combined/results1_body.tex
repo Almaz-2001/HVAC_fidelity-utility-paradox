@@ -36,7 +36,7 @@ and every surrogate exposes the same transition signature
 \end{equation}
 with \(\widehat{P}\ge 0\) enforced by a Softplus output and capped at \(P_{\max}=5500~\mathrm{W}\). A single adapter wraps four interchangeable backends behind \eqref{eq:tsup-signature}---legacy v3, raw v3.5, calibrated v3.5, and the hybrid pairing---which is what makes the like-for-like fidelity comparisons in this section well posed: only the internal dynamics change, never the control interface or the observation map.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \small
 \caption{Modelling assumptions of the direct-\Tsupply{} control interface.}
@@ -59,7 +59,7 @@ Interface invariance & All four backends obey \eqref{eq:tsup-signature}; only th
 
 The v3 surrogate is a compact control-oriented direct-\Tsupply{} model. Its role is not to be the most accurate long-horizon forecaster; its role is to provide smooth and fast rollout dynamics for downstream PPO experiments. In contrast, v3.5 is a physics-informed extension whose Stage B parameter is interpretable as the zone thermal capacitance \(\Czon\).
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \small
 \caption{Block 1 data corpora referenced by the roadmap.}
@@ -77,7 +77,7 @@ v3.5 calibration corpus & 10,744 & 900 & hdrl, thermostatic & peak\_heat\_window
 
 
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \scriptsize
 \caption{Architecture and calibration summary for the two Block 1 surrogate roles.}
@@ -171,7 +171,7 @@ Beyond the point estimate, two complementary uncertainty checks apply. The optim
 
 
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=\linewidth]{\detokenize{rie_fig03_stage_abc_diagnostics.pdf}}
   \caption{Stage A/B/C calibration diagnostics. Panel (a) shows physical-parameter convergence inside the prior band; panel (b) shows the measured improvement in temperature and power fidelity.}
@@ -180,7 +180,7 @@ Beyond the point estimate, two complementary uncertainty checks apply. The optim
 {\footnotesize\itshape Data: \texttt{outputs/\allowbreak surrogate\_\allowbreak v35\_\allowbreak inverse\_\allowbreak boptest\_\allowbreak 15min\_\allowbreak episodeaware/\allowbreak stage\_\allowbreak b\_\allowbreak history\_\allowbreak v35.csv}}
 \end{figure}
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \small
 \caption{Stage A/B/C calibration summary from the canonical JSON and rollout artifacts.}
@@ -197,7 +197,7 @@ $\Czon$ ($\times 10^5$ J/K) & 4.200 & 4.413 & +5.1\% \\
 \end{tabular}
 \end{table}
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \small
 \caption{Key design choices for the v3/v3.5 surrogate family and their engineering rationale. A formal sensitivity sweep over these settings is identified as future work in Section~\ref{ssec:block1-limitations}.}
@@ -237,7 +237,7 @@ The coefficient of determination follows the standard definition \(R^2 = 1 - \ma
 
 The calibrated v3.5 surrogate reaches a 24 h rollout \(\RMSE_T=0.644\)~$^\circ$C, compared with raw v3.5 at 1.466~$^\circ$C and the canonical v3 hourly reference at 1.557~$^\circ$C.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \small
 \caption{Multi-horizon teacher-forced rollout fidelity from the Hou-and-Evins predictive-validity table. Cells are temperature RMSE (\(^\circ\)C) at each horizon; the final column is the 24 h temperature \(R^2\) (n/a where not computed for the auxiliary baselines).}
@@ -265,7 +265,7 @@ The episode-level diagnostic is important because a low aggregate RMSE can hide 
 
 The roadmap includes a corpus-matched v3 retraining step because the original v3 and canonical v3.5 artifacts use different data resolutions. This is not a cosmetic check: without it, a reviewer could correctly attribute the v3.5 gain to the 15-minute corpus rather than Stage A/B/C calibration.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \small
 \caption{Corpus-matched comparison.}
@@ -282,7 +282,7 @@ calibrated v3.5 & 900 & FULL (Stage A + B + C, C\_zon = 4.413e5 J/K) & 0.644 \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=\linewidth]{\detokenize{rie_fig05_matched_corpus_attribution.pdf}}
   \caption{Matched-corpus attribution. The v3-to-v3.5 gain is split into the 15-minute corpus contribution and the Stage A/B/C calibration contribution.}
@@ -305,7 +305,7 @@ which holds exactly because the matched-architecture path is constructed to be a
 
 The final Block 1 roadmap command builds the speed benchmark. The benchmark compares the same BOPTEST RTE HTTP loop used by the paper against local surrogate stepping under a 900 s control step. The result is not a controller claim; it only establishes feasibility for downstream policy optimization.
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.82\linewidth]{\detokenize{rie_fig06_runtime_feasibility.pdf}}
   \caption{Runtime feasibility benchmark. The hybrid reference is included only to demonstrate downstream feasibility; controller utility is evaluated in Block 2.}
@@ -314,7 +314,7 @@ The final Block 1 roadmap command builds the speed benchmark. The benchmark comp
 {\footnotesize\itshape Data: \texttt{reports/\allowbreak speed\_\allowbreak benchmark\_\allowbreak table.csv}}
 \end{figure}
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \small
 \caption{Backend throughput under the 900 s control protocol from the speed-benchmark artifact (single CPU thread, BOPTEST reached through the same HTTP-Docker interface used in training).}

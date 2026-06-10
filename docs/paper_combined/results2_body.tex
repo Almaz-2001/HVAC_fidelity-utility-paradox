@@ -24,7 +24,7 @@ Artifact provenance and rebuild commands for every table and figure are catalogu
 
 
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \caption{Targeted-window and yearly scenario definitions (data: roadmap Section 11.1).}
 \label{tab:scenarios}
@@ -42,7 +42,7 @@ yearly evaluation & 12 months & --- & 14/mo & varied & MORL + PI yearly summary 
 
 Block 2 is structured as a sequence of falsifiable hypotheses, each tied to a roadmap section and resolved against live BOPTEST evidence (Table~\ref{tab:hypotheses}). This pre-specification-style framing is what lets the negative results (direct v3.5, HDRL over-regularization, MORL seed variance) be read as decisions rather than tuning accidents.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \caption{Block 2 falsifiable-hypothesis ledger. Each hypothesis is tested on the live BOPTEST RTE in the indicated roadmap section.}
 \label{tab:hypotheses}
@@ -131,7 +131,7 @@ The hybrid backend changes the role of the calibrated physical surrogate. Instea
 \end{align}
 For the canonical thermostatic hybrid, $\lambda_T=0.10$ and $\lambda_P=5.0\times 10^{-5}$; PPO otherwise computes the advantage $A_t = r^{\mathrm{hyb}}_t + \gamma V(s_{t+1}) - V(s_t)$ unchanged. Thus v3.5 is neither a second policy loss nor a direct dynamics model: it is a frozen physics-informed censor that discourages the policy from entering state-action regions where the smooth v3 rollout and the calibrated physical model disagree. Across the canonical hybrid traces (\texttt{reports/hybrid\_disagreement\_summary.csv}, overall), the mean temperature disagreement is $0.969\,^\circ$C (p95 $2.52\,^\circ$C) and the mean power disagreement is $708$ W (p95 $1236$ W) --- large enough to shape learning, bounded enough to stay informative.
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.90\linewidth]{fig_block2_reward_shaping.pdf}
   \caption{Hybrid reward-shaping mechanism. v3 supplies rollout dynamics; frozen v3.5 supplies a disagreement penalty on the same state-action transition.}
@@ -144,7 +144,7 @@ For the canonical thermostatic hybrid, $\lambda_T=0.10$ and $\lambda_P=5.0\times
 
 Table~\ref{tab:main_kpi} and Figure~\ref{fig:live_kpi} summarize the main Block 2 controller result. Pure v3 PPO is already usable ($m_s=0.073$ peak, $0.095$ typical). Direct v3.5 PPO fails catastrophically despite v3.5's superior Block 1 predictive fidelity: live violation reaches 77.1\% on peak and 82.4\% on typical, with RMSE above $4.3\,^\circ$C. The hybrid backend resolves the conflict: $m_s=0.087$ on peak and $0.041$ on typical, with violation below $5\%$ on both windows and lower energy than pure v3 on the peak window.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \caption{Canonical Block 2 live BOPTEST controller comparison on the targeted 14-day windows. Data sources for every row are catalogued in roadmap Section 11.1.}
 \label{tab:main_kpi}
@@ -163,7 +163,7 @@ hybrid $\lambda_T=0.10$ & typical & 0.041 & 2.38 & 0.633 & 352.8 \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.96\linewidth]{final17_fig06_live_boptest_controller_comparison.pdf}
   \caption{Live BOPTEST KPI comparison for pure v3, direct v3.5, and hybrid PPO. Direct v3.5 is a negative control: higher predictive fidelity does not imply a useful RL training environment.}
@@ -174,7 +174,7 @@ hybrid $\lambda_T=0.10$ & typical & 0.041 & 2.38 & 0.633 & 352.8 \\
 
 \paragraph{Reading $m_s$ step by step.} The decomposition $m_s=r_{\mathrm{time}}+r_{\mathrm{sev}}$ (Eq.~\ref{eq:ms}) exposes the failure structure directly (Figure~\ref{fig:ms_decomp}). Direct v3.5's peak $m_s=1.046$ is dominated by $r_{\mathrm{time}}\approx 0.77$ (out of band 77\% of the time) plus a large worst-case severity $r_{\mathrm{sev}}\approx 0.28$; the hybrid's peak $m_s=0.087$ is almost entirely a small $r_{\mathrm{sev}}$ with $r_{\mathrm{time}}<0.05$. The hybrid therefore does not merely lower the average error --- it removes the sustained band departures that dominate the direct-v3.5 score.
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.82\linewidth]{fig_block2_ms_decomposition.pdf}
   \caption{Data-driven decomposition $m_s=r_{\mathrm{time}}+r_{\mathrm{sev}}$ on the live BOPTEST windows. Direct v3.5 fails through sustained violation ($r_{\mathrm{time}}$); pure v3 and the hybrid keep both terms small.}
@@ -185,7 +185,7 @@ hybrid $\lambda_T=0.10$ & typical & 0.041 & 2.38 & 0.633 & 352.8 \\
 
 The time-series and action diagnostics in Figures~\ref{fig:closed_loop_traces} and~\suppref{S8} explain the mechanism. Direct v3.5 learns a bang-bang-like control law that drives the live simulator outside the comfort band; in phase space it places extreme actions in temperature-error regimes the live building does not support. We note explicitly that this destabilization mechanism is \emph{hypothesized} (higher advantage-estimator variance under sharper surrogate predictions, and/or overfitting to sub-step physical structure unusable at the 15-min cadence) and is not directly measured here; discriminating the two is deferred to future work.
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.96\linewidth]{block2_q1_polish_closed_loop_disturbance.pdf}
   \caption{Closed-loop BOPTEST traces with ambient disturbance, comfort band, and physical actuator limits.}
@@ -206,7 +206,7 @@ A second negative control tests whether v3.5 is useful as a policy \emph{initial
 
 
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.82\linewidth]{block2_warmstart_negative_eval_kpis.pdf}
   \caption{Warm-start negative control. Pretraining on direct v3.5 and then fine-tuning on the hybrid backend is inferior to training the hybrid policy from scratch.}
@@ -230,7 +230,7 @@ the action-gap norm $g_a$, and the first divergence step (earliest 15-min step w
 
 Direct v3.5 has the largest transfer mismatch ($|\Delta m_s|\approx 0.9$--$1.0$, $g_a\approx 2.0$, live RMSE$_T>4.3\,^\circ$C), and its top divergence driver is $t_{\mathrm{zone}}$: its sharp temperature dynamics produce live actions unlike the surrogate rollout. Hybrid $\lambda_T=0.10$ has the smallest gap ($|\Delta m_s|\approx 0.02$) and, on the typical window, holds the BOPTEST-consistent action for 16 steps before drifting (Table~\ref{tab:transfer}). The action-gap norm is the most diagnostic column: $g_a=2.0$ for direct v3.5 means the policy sits at the opposite action bound from what BOPTEST would choose throughout the episode, i.e.\ a learned bang-bang exploit of the surrogate.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \caption{Transfer diagnostics across three backends. $\Delta m_s=$ surrogate $-$ live (negative $\Rightarrow$ surrogate optimistic); Temp gap is the live closed-loop RMSE$_T$ (data: roadmap Section 11.1).}
 \label{tab:transfer}
@@ -255,7 +255,7 @@ direct v3.5 & typical & 4.401 & -1.014 & 2.014 & 1 & t\_zone\_norm \\
 
 HDRL here is a \emph{seasonal} hierarchy. A high-level seasonal selector routes control to one of two low-level PPO setpoint specialists --- a winter agent (trained 5M steps on cold-season day ranges with cold-biased comfort shaping) and a summer agent (7M steps on warm-season ranges) --- each acting on the same 17D observation and supply-temperature action. Formally the controller is $\pi(a_t\mid s_t)=\pi_{k(t)}(a_t\mid s_t)$ with the high-level gate $k(t)\in\{\text{winter},\text{summer}\}$ chosen by season; the hierarchy supplies regime-aware temporal abstraction, so each low-level specialist solves a narrower, better-conditioned control problem than a single global policy (Figure~\ref{fig:hdrl_arch}).
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.96\linewidth]{fig_block2_hdrl_architecture.pdf}
   \caption{HDRL architecture: a high-level seasonal gate $k(t)$ routes the 17D observation to one of two low-level PPO setpoint specialists (winter / summer). Because the low level is already comfort-aware, the v3.5 temperature censor over-regularizes it.}
@@ -266,7 +266,7 @@ HDRL here is a \emph{seasonal} hierarchy. A high-level seasonal selector routes 
 
 The HDRL experiment asks whether the thermostatic hybrid setting $\lambda_T=0.10$ transfers to this hierarchical controller. It does not (Table~\ref{tab:hdrl}). The mechanism is over-regularization: because each seasonal specialist already encodes comfort-aware structure (season-tuned shaping plus the high-level gate), the additional v3.5 temperature-disagreement censor constrains an already comfort-aware low-level loop, biasing it toward conservative under-heating; performance therefore degrades monotonically with $\lambda_T$, and the correct transfer keeps only the power channel ($\lambda_T=0$). HDRL performs best at $\lambda_T=0.00$ on both windows and degrades monotonically as temperature-disagreement regularization is increased. This shows the correct physical-censor strength depends on the controller family and its action decomposition, not on a universal weight.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \caption{HDRL sweep over $\lambda_T$ on the targeted windows; best is $\lambda_T=0$, and performance degrades monotonically as the temperature censor strengthens (data: roadmap Section 11.1).}
 \label{tab:hdrl}
@@ -289,7 +289,7 @@ $\lambda_T$ & Scenario & $m_s$ & Violation (\%) & RMSE$_T$ ($^\circ$C) & Energy 
 
 \paragraph{Engineering reading.} As $\lambda_T$ rises, energy falls slightly (the censor biases the low-level loop toward conservative under-heating, e.g. $329.6\to300.4$ kWh on peak) but comfort collapses --- peak violation roughly quadruples ($6.1\%\to23.0\%$) and RMSE$_T$ nearly doubles. HDRL already supplies comfort-aware temporal abstraction through its scheduler, so an additional temperature-disagreement censor is redundant and over-constrains the setpoint controller; the correct transfer of the Block 1 recipe to HDRL keeps only the power channel ($\lambda_T=0$, $\lambda_P=5\times10^{-5}$).
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.88\linewidth]{block2_hdrl_lambda_sweep_sensitivity.pdf}
   \caption{HDRL $\lambda_T$ sensitivity. The thermostatic regularization weight does not transfer; the best HDRL policy uses no temperature-disagreement term.}
@@ -306,7 +306,7 @@ MORL uses a four-stage pipeline that differs from the single-stage PPO families 
 
 MORL initially failed with a 5D observation (zone temperature, ambient, hour, day, occupancy). Under the current code path, a reconstructed 5D rerun obtains RMSE$_T=2.721\,^\circ$C, violation $37.8\%$, and $m_s=0.680$; the originally frozen 5D artifact was even worse (RMSE$_T=4.96\,^\circ$C, $m_s=1.046$) and is retained only as an audit artifact. Replacing the observation with the 17D TSup-style vector recovers a usable policy: RMSE$_T=0.720\,^\circ$C, violation $4.9\%$, $m_s=0.099$ (Table~\ref{tab:morl5d17d}). The dominant MORL bottleneck was the observation geometry, not the reward scalarization alone.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \caption{MORL observation-interface ablation. The backend is hybrid in both cases; only the observation interface changes. The current-code reconstructed 5D rerun is the reproducible main-paper evidence (roadmap Section 11.1).}
 \label{tab:morl5d17d}
@@ -321,7 +321,7 @@ MORL 17D power-only (canonical) & 17 & 0.720 & 4.9 & 0.099 \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.84\linewidth]{final17_fig09_morl_5d_failure_17d_success.pdf}
   \caption{MORL 5D failure and 17D recovery. The observation interface, not only the scalarized reward, determines whether MORL is viable.}
@@ -336,7 +336,7 @@ MORL 17D power-only (canonical) & 17 & 0.720 & 4.9 & 0.099 \\
 
 The MORL Pareto sweep varies comfort/energy weights with safety weight zero (Table~\ref{tab:morl_pareto_seed}). Energy-only control collapses comfort ($m_s=1.588$, violation $86.8\%$); comfort-leaning settings are far more stable. The single-seed (seed 42) Pareto points are reported separately from the $N=5$ canonical extensions, because the seed analysis is the central audit result: the neutral 50/50 canonical has $m_s=0.187\pm0.078$ (CV $0.42$, 95\% $t$-CI $[0.090,0.284]$) and the practical 75/25 canonical has $m_s=0.139\pm0.085$ (CV $0.61$, 95\% $t$-CI $[0.033,0.245]$). Seed 46 is an outlier in both groups (Table~\suppref{S13}). Because the replay audit produced bit-identical BOPTEST trajectories for a fixed policy, this variance is attributed to PPO/ERAM training stochasticity, not simulator noise. The single-seed canonical ($m_s\approx0.10$) is therefore the \emph{best} of five, not the median.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \caption{MORL Pareto (seed 42) and N=5 canonical seed analysis (data: roadmap Section 11.1).}
 \label{tab:morl_pareto_seed}
@@ -356,7 +356,7 @@ Preference / statistic & RMSE$_T$ ($^\circ$C) & Violation (\%) & $m_s$ & Interpr
 
 \paragraph{Engineering reading.} The front is strongly asymmetric. Energy-only control (0/100) collapses to a degenerate non-heating policy ($86.8\%$ violation, $m_s=1.588$): minimizing energy simply means not heating. Comfort-only (100/0) is the best single-seed $m_s$ but the most energy-hungry, and the practical 75/25 point recovers near-comfort-only comfort at lower energy --- the recommended deployment compromise. The crucial caveat is the seed dimension: the single-seed front overstates reliability, because the $N=5$ extension turns both canonicals into wide distributions (CV $0.42$--$0.61$), so the Pareto curve should be read as a best-seed envelope, not a deployment guarantee.
 
-\begin{figure}[H]
+\begin{figure}[pos={!ht}]
   \centering
   \includegraphics[width=0.86\linewidth]{block2_q1_polish_morl_pareto_ellipses.pdf}
   \caption{MORL comfort--energy Pareto front with N=5 confidence ellipses for the two canonical points. Non-canonical points are seed-42 only.}
@@ -381,7 +381,7 @@ The BOPTEST built-in PI controller is a reproducible reference, not a tuned stro
 
 Table~\ref{tab:ms_decomp} consolidates the maintenance-score decomposition across every controller family. It makes the cross-family pattern explicit: usable controllers (pure v3, hybrid, MORL 17D) keep both $r_{\mathrm{time}}$ and $r_{\mathrm{sev}}$ small, whereas the failures (direct v3.5, PI) carry a large $r_{\mathrm{time}}$ --- they spend a large fraction of the horizon outside the band. PI is the mirror image of direct v3.5: both have $r_{\mathrm{time}}$ near or above $0.6$, but PI fails by chronic under-heating while direct v3.5 fails by saturated overshoot.
 
-\begin{table}[H]
+\begin{table}[pos={!ht}]
 \centering
 \caption{Cross-controller maintenance-score decomposition $m_s = r_{\mathrm{time}} + r_{\mathrm{sev}}$ (Eq.~\ref{eq:ms}). $r_{\mathrm{time}}$ = fraction of steps outside the band; $r_{\mathrm{sev}}$ = worst relative band exceedance. Thermostatic/HDRL rows are 14-day windows; MORL/PI rows are 12-month yearly means.}
 \label{tab:ms_decomp}
