@@ -505,6 +505,29 @@ reproduced from the archived artefacts.
 
 \section{Discussion}\label{sec:discussion}
 
+Before discussing the results in detail we separate the paper's primary claim from
+its secondary findings, because they rest on different strengths of evidence. The
+\emph{primary} claim is the fidelity--utility paradox and its mechanism: on the
+\texttt{bestest\_air} testcase, increasing a surrogate's predictive fidelity can
+remove the temporal smoothing that makes it a useful policy-gradient training
+substrate. This claim is the load-bearing contribution and carries the strongest
+evidence --- three matched-configuration comparisons scored on the live emulator
+(direct v3.5, the matched-resolution v3 ablation of
+Section~\ref{sec:results2-control}, and the canonical hourly v3), which together
+isolate the fidelity/smoothing trade-off from the surrogate model class. The
+remaining results are \emph{secondary}: they operationalise or bound the primary
+claim rather than establish it. The hybrid role-separation recipe and the
+controller-family-specific censor weight show \emph{one} engineering resolution of
+the paradox; the MORL preference and seed-stability analysis characterises a third
+controller family under a deliberately narrowed, audit-protected claim; and the
+transferability study reports a component-level boundary on a hydronic family. These
+secondary findings rest on narrower evidence (single-seed mechanistic comparisons, a
+single PI baseline, simulation only) and are framed accordingly; the limitations that
+bound each are collected in Section~\ref{ssec:b3lim}. A reader interested only in the
+core result can read Sections~\ref{sec:results1-digital-twin}--\ref{sec:results2-control}
+and the first subsection below; the transferability and MORL material extends rather
+than supports the central paradox.
+
 \subsection{Predictive validity versus RL training utility}
 The central finding is that predictive fidelity and training utility are distinct,
 and over part of the range opposed. The calibrated physical twin v3.5 is the better
