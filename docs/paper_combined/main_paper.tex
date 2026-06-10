@@ -45,7 +45,7 @@
 % ==================================================================
 
 \begin{abstract}
-Deep reinforcement-learning (RL) controllers for HVAC systems are usually trained against fast neural-network surrogates, on the assumption that a more accurate surrogate is a better training environment. Testing this on the BOPTEST \texttt{bestest\_air} testcase, we report a negative result --- the \emph{fidelity--utility paradox}: the surrogate with the lower predictive error can be the worse environment for policy-gradient search. A grey-box resistance--capacitance surrogate with a neural residual heat-flow head (v3.5) attains a 24-hour rollout RMSE of $0.644\,^{\circ}$C versus $1.557\,^{\circ}$C for a black-box surrogate (v3); yet used directly for training it collapses on the live runtime (maintenance score $m_s = 1.046$, comfort violation $>77\%$), whereas the weaker v3 trains a usable controller ($m_s = 0.073$/$0.095$ on peak/typical winter windows). We resolve the paradox with a role-separating hybrid: v3 supplies smooth rollout dynamics while a frozen v3.5 acts as a per-step reward-shaping censor. The hybrid is best overall --- sub-$5\%$ comfort violation on both windows and the lowest typical-window score ($m_s = 0.041$), at ${\sim}85\times$ live-simulator throughput --- and the optimal censor weight is controller-family specific. A transferability study on three hydronic testcases shows the inverse-calibration pipeline generalizes ($60.2$--$87.8\%$ rollout-RMSE reduction; effective zone capacitance re-identified at $1.918\pm0.032\times$ the baseline), whereas frozen-policy transfer is regime-dependent. The contribution is a precise, component-level transferability boundary rather than a universal generalization claim.
+Deep reinforcement-learning (RL) controllers for HVAC systems are usually trained against fast neural-network surrogates, on the assumption that a more accurate surrogate is a better training environment. Testing this on the BOPTEST \texttt{bestest\_air} testcase, we report a negative result --- the \emph{fidelity--utility paradox}: the surrogate with the lower predictive error can be the worse environment for policy-gradient search. A grey-box resistance--capacitance surrogate with a neural residual heat-flow head (v3.5) attains a 24-hour rollout RMSE of $0.644\,^{\circ}$C versus $1.557\,^{\circ}$C for a black-box surrogate (v3); yet used directly for training it collapses on the live runtime (maintenance score $m_s = 1.046$, comfort violation $>77\%$), whereas the weaker v3 trains a usable controller ($m_s = 0.073$/$0.095$ on peak/typical winter windows). We resolve the paradox with a role-separating hybrid: v3 supplies smooth rollout dynamics while a frozen v3.5 acts as a per-step reward-shaping censor. The hybrid provides the best cross-window robustness --- sub-$5\%$ comfort violation on both windows and the lowest typical-window score ($m_s = 0.041$), at ${\sim}85\times$ live-simulator throughput --- and the optimal censor weight is controller-family specific. A transferability study on three hydronic testcases shows the inverse-calibration pipeline generalizes ($60.2$--$87.8\%$ rollout-RMSE reduction; effective zone capacitance re-identified at $1.918\pm0.032\times$ the baseline), whereas frozen-policy transfer is regime-dependent. The contribution is a precise, component-level transferability boundary rather than a universal generalization claim.
 \end{abstract}
 
 \begin{highlights}
@@ -410,13 +410,16 @@ we therefore always report the \emph{live}-emulator score, never only the
 surrogate-internal score. For transferability we adopt a commit-anchored, version-locked
 protocol: each hypothesis (H1--H4 of Section~\ref{sec:related}), pass threshold, and
 recalibration adapter is fixed in a version-locked source-control commit
-\emph{before} the corresponding runs, and these commits are publicly archived
-(Section~\ref{sec:conclusion}, Data availability), providing timestamped, immutable
-verifiability of the analysis plan in lieu of formal pre-registration on an external
-registry. Cross-test-case transfer is realised through a light recalibration adapter
+\emph{before} the corresponding runs, and these commits are publicly available in
+the open-source repository (Section~\ref{sec:conclusion}, Data availability),
+providing timestamped, immutable verifiability of the analysis plan in lieu of
+formal pre-registration on an external registry. Cross-test-case transfer is realised through a light recalibration adapter
 rather than assumed zero-shot, following the evidence that transfer is
-source-dependent \citep{Hou2024MultiSource}. All controller scores are reported as the mean over
-$N=5$ random seeds with the seed variance stated explicitly; the full statistical
+source-dependent \citep{Hou2024MultiSource}. Controller scores are reported with
+seed statistics wherever repeated-seed runs are available: MORL is evaluated over
+the five fixed seeds $\{42,43,44,45,46\}$, whereas the thermostatic PPO and HDRL
+targeted-window experiments are deterministic single-seed mechanistic comparisons,
+a limitation stated explicitly in Section~\ref{ssec:b3lim}. The full statistical
 and audit protocol is given in Section~\ref{sec:setup} and the results in
 Sections~\ref{sec:results1-digital-twin}--\ref{sec:results3-transfer}.
 
@@ -470,8 +473,11 @@ censor-weight sweep are reported with the corresponding results in
 Section~\ref{sec:results2-control}.
 
 \subsection{Statistical and audit protocol}\label{ssec:s-audit}
-Every controller score is reported as the mean over $N=5$ random seeds with the
-seed-to-seed variance stated explicitly, and is benchmarked against BOPTEST's
+Controller scores are reported with seed statistics where repeated-seed runs are
+available: the MORL family is evaluated over $N=5$ fixed seeds with the
+seed-to-seed variance stated explicitly, while the thermostatic PPO and HDRL
+targeted-window experiments are deterministic single-seed mechanistic comparisons
+(Section~\ref{ssec:b3lim}); every controller is benchmarked against BOPTEST's
 built-in PI controller; the predictive-fidelity and control-utility metrics
 themselves (CV(\RMSE), NMBE, and the maintenance score $m_s$ of
 Eq.~\eqref{eq:m-ms} \citep{Wang2025SafeDRL}) are defined once in
@@ -485,7 +491,9 @@ table are listed under Data availability.
 \paragraph{Software environment.} Controllers are trained with Stable-Baselines3
 2.1.0 (PyTorch) under Python~3.11; the reference environment is the
 \texttt{ibpsa/project1-boptest} BOPTEST Docker image, driven through its HTTP API.
-All reported runs use the five fixed seeds $\{42,43,44,45,46\}$. The released
+The MORL runs use the five fixed seeds $\{42,43,44,45,46\}$, while the
+thermostatic-PPO and HDRL targeted-window comparisons are deterministic
+single-seed (seed~42) evaluations. The released
 repository pins these package versions, the controller and surrogate checkpoints,
 the per-seed configurations, and the random seeds, so that every result can be
 reproduced from the archived artefacts.
