@@ -305,6 +305,29 @@ The time-series and action diagnostics in Figures~\ref{fig:closed_loop_traces} a
   \label{fig:action_phase}
 \end{figure}
 
+\subsection{Temporal-coarse-graining ablation: matched-resolution v3 (roadmap \S4.6)}
+
+The direct-v3.5 failure could be dismissed as an artefact of the grey-box / physics-informed model class rather than of fidelity itself. We close this confound with a matched-config control: we retrain the \emph{same black-box} v3 architecture on the matched fifteen-minute corpus---making it a strictly \emph{more accurate} predictor (24\,h rollout RMSE $0.876\,^\circ$C vs $1.557\,^\circ$C for the canonical hourly v3)---and train a PPO controller on it under the \emph{identical} recipe as the canonical pure-v3 baseline, changing only the surrogate's training resolution. The result is unambiguous (Table~\ref{tab:coarse_graining}): the more accurate matched-resolution v3 \emph{collapses} in closed loop ($m_s=1.142$/$1.211$, 85.6/91.4\% violation on peak/typical), on a par with the direct-v3.5 failure and far worse than the hourly-trained controller.
+
+\begin{table}[H]
+\centering
+\caption{Matched-resolution closed-loop ablation. Increasing v3's temporal resolution improves its predictive RMSE yet destroys its downstream control utility, isolating temporal coarse-graining---not the black-box versus grey-box model class---as the operative variable in this comparison. All $m_s$ and violation cells are live BOPTEST on the two targeted 14-day windows (peak / typical).}
+\label{tab:coarse_graining}
+\small
+\begin{tabular}{llrrlll}
+\toprule
+Training backend & Architecture & Step (s) & 24\,h RMSE & $m_s$ (pk/typ) & Viol.\ \% (pk/typ) & Verdict \\
+\midrule
+canonical v3 & black-box & 3600 & 1.557 & 0.073 / 0.095 & 1.5 / 4.4 & useful \\
+matched v3 & black-box & 900 & 0.876 & 1.142 / 1.211 & 85.6 / 91.4 & collapse \\
+calibrated v3.5 & grey-box RC & 900 & 0.644 & 1.046 / 1.102 & 77.1 / 82.4 & collapse \\
+hybrid & v3 + v3.5 censor & 900 & --- & 0.087 / 0.041 & 4.7 / 2.4 & robust \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This ablation resolves the timestep confound directly: improving v3's temporal resolution and predictive RMSE does not improve downstream control utility---it destroys it. The useful property of the canonical v3 is therefore not its black-box architecture alone, but the optimization-friendly smoothing induced by temporal coarse-graining. Read across the three single-model backends the pattern is near-monotonic in fidelity: the least accurate surrogate (hourly v3) is the only usable training environment, while the more accurate matched v3 and the most accurate calibrated v3.5 both fail. This reframes the hybrid as an explicit \emph{architectural separation of smoothing and fidelity}: v3 supplies the coarse, optimization-friendly rollout dynamics while the frozen v3.5 supplies a physical-plausibility signal as a censor, so policy-gradient training keeps the smoothing it needs while regaining physical grounding. The broader principle is that PPO needs not only accurate predictions but an optimization-friendly training landscape.
+
 \paragraph{Hybrid $\lambda_T$ sweep and canonical selection (roadmap \S5).} The canonical hybrid operating point was selected by a thermostatic sweep over the temperature-disagreement weight $\lambda_T\in\{0.05,0.10,0.15\}$ at fixed $\lambda_P=5\times10^{-5}$ (Table~\ref{tab:hybrid_sweep}). The mid setting $\lambda_T=0.10$ (\texttt{hybrid\_l010}) is canonical: per the roadmap selection rule it retains the energy advantage over pure v3 while avoiding the stronger comfort degradation seen at the weaker ($0.05$) and stronger ($0.15$) censor settings. Only the canonical point's live-BOPTEST KPIs are retained as a frozen artifact; the bracketing points served selection only.
 
 \begin{table}[H]
@@ -574,7 +597,7 @@ PI (yearly) & 0.910 & 0.636 & 0.274 \\
 \end{tabular}
 \end{table}
 
-Block 2 establishes four controller-side claims. First, predictive fidelity and RL training utility are not equivalent: direct v3.5 is the more accurate twin yet fails as a rollout environment (live violation $>77\%$). Second, role separation works --- v3 provides smooth rollout dynamics while frozen v3.5 acts as a physical censor through disagreement shaping --- giving the canonical hybrid ($m_s=0.087$ peak, $0.041$ typical). Third, the censor strength is controller-family specific: HDRL rejects $\lambda_T=0.10$ and is best at $\lambda_T=0$. Fourth, MORL is viable only with the 17D interface, and its N=5 analysis reveals high seed variance and falsifies the N=3 seasonal-inversion mechanism. The engineering implication is that hybrid surrogate RL is a role-allocation problem --- rollout smoothness, physical censoring, observation geometry, controller family, and seed stabilization are separate design axes. This is the bridge to Block 3, where the fixed \texttt{bestest\_air} recipe is transferred to the hydronic BOPTEST family.
+Block 2 establishes four controller-side claims. First, predictive fidelity and RL training utility are not equivalent: direct v3.5 is the more accurate twin yet fails as a rollout environment (live violation $>77\%$), and the matched-resolution ablation (Table~\ref{tab:coarse_graining}) shows the \emph{same black-box} v3 also collapses once its temporal resolution---and predictive accuracy---is increased, isolating the fidelity/smoothing trade-off rather than the model class. Second, role separation works --- v3 provides smooth rollout dynamics while frozen v3.5 acts as a physical censor through disagreement shaping --- giving the canonical hybrid ($m_s=0.087$ peak, $0.041$ typical). Third, the censor strength is controller-family specific: HDRL rejects $\lambda_T=0.10$ and is best at $\lambda_T=0$. Fourth, MORL is viable only with the 17D interface, and its N=5 analysis reveals high seed variance and falsifies the N=3 seasonal-inversion mechanism. The engineering implication is that hybrid surrogate RL is a role-allocation problem --- rollout smoothness, physical censoring, observation geometry, controller family, and seed stabilization are separate design axes. This is the bridge to Block 3, where the fixed \texttt{bestest\_air} recipe is transferred to the hydronic BOPTEST family.
 
 \subsection{Limitations}
 

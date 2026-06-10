@@ -191,6 +191,33 @@ def table_main_kpi(d: dict) -> str:
     return "\n".join(rows)
 
 
+def table_coarse_graining_ablation(d: dict) -> str:
+    # Matched-resolution closed-loop ablation (roadmap 4.6). Live BOPTEST m_s and
+    # violation cells are data-driven; the 24h predictive RMSE column reuses the
+    # canonical, version-locked Block 1 rollout numbers cited throughout the paper.
+    cg = read_csv("reports/block2_v3_15min_closed_loop_comparison.csv")
+
+    def mv(window, col):
+        return cg[(cg.variant == "pure_v3_15min") & (cg.window == window)].iloc[0][col]
+
+    arch = d["arch"]
+    tr = d["transfer"]
+    v35 = arch[arch.variant == "v35_calibrated"].iloc[0]
+    pv_p = _scen_row(d["pure"], "peak_heat_window", controller="thermostatic")
+    pv_t = _scen_row(d["pure"], "typical_heat_window", controller="thermostatic")
+    hy_p = _scen_row(d["hybrid"], "peak_heat_window")
+    hy_t = _scen_row(d["hybrid"], "typical_heat_window")
+    dvv_p = tr[(tr.variant == "direct_v35") & (tr.scenario == "peak_heat_window")].iloc[0]["boptest_violation_pct"]
+    dvv_t = tr[(tr.variant == "direct_v35") & (tr.scenario == "typical_heat_window")].iloc[0]["boptest_violation_pct"]
+    rows = [
+        f"canonical v3 & black-box & 3600 & 1.557 & {f(pv_p.m_s)} / {f(pv_t.m_s)} & {f(pv_p.violation_pct,1)} / {f(pv_t.violation_pct,1)} & useful \\\\",
+        f"matched v3 & black-box & 900 & 0.876 & {f(mv('peak_heat_window','m_s'))} / {f(mv('typical_heat_window','m_s'))} & {f(mv('peak_heat_window','violation_pct'),1)} / {f(mv('typical_heat_window','violation_pct'),1)} & collapse \\\\",
+        f"calibrated v3.5 & grey-box RC & 900 & 0.644 & {f(v35['peak_control_m_s'])} / {f(v35['typical_control_m_s'])} & {f(dvv_p,1)} / {f(dvv_t,1)} & collapse \\\\",
+        f"hybrid & v3 + v3.5 censor & 900 & --- & {f(hy_p.m_s)} / {f(hy_t.m_s)} & {f(hy_p.violation_pct,1)} / {f(hy_t.violation_pct,1)} & robust \\\\",
+    ]
+    return "\n".join(rows)
+
+
 def table_warmstart(d: dict) -> str:
     w = d["warm"]
     rows = []
@@ -722,6 +749,26 @@ The time-series and action diagnostics in Figures~\ref{{fig:closed_loop_traces}}
   \label{{fig:action_phase}}
 \end{{figure}}
 
+\subsection{{Temporal-coarse-graining ablation: matched-resolution v3 (roadmap \S4.6)}}
+
+The direct-v3.5 failure could be dismissed as an artefact of the grey-box / physics-informed model class rather than of fidelity itself. We close this confound with a matched-config control: we retrain the \emph{{same black-box}} v3 architecture on the matched fifteen-minute corpus---making it a strictly \emph{{more accurate}} predictor (24\,h rollout RMSE $0.876\,^\circ$C vs $1.557\,^\circ$C for the canonical hourly v3)---and train a PPO controller on it under the \emph{{identical}} recipe as the canonical pure-v3 baseline, changing only the surrogate's training resolution. The result is unambiguous (Table~\ref{{tab:coarse_graining}}): the more accurate matched-resolution v3 \emph{{collapses}} in closed loop ($m_s={ctx['cg_mv_peak']}$/${ctx['cg_mv_typ']}$, {ctx['cg_mvv_peak']}/{ctx['cg_mvv_typ']}\% violation on peak/typical), on a par with the direct-v3.5 failure and far worse than the hourly-trained controller.
+
+\begin{{table}}[H]
+\centering
+\caption{{Matched-resolution closed-loop ablation. Increasing v3's temporal resolution improves its predictive RMSE yet destroys its downstream control utility, isolating temporal coarse-graining---not the black-box versus grey-box model class---as the operative variable in this comparison. All $m_s$ and violation cells are live BOPTEST on the two targeted 14-day windows (peak / typical).}}
+\label{{tab:coarse_graining}}
+\small
+\begin{{tabular}}{{llrrlll}}
+\toprule
+Training backend & Architecture & Step (s) & 24\,h RMSE & $m_s$ (pk/typ) & Viol.\ \% (pk/typ) & Verdict \\
+\midrule
+{ctx['table_coarse_graining']}
+\bottomrule
+\end{{tabular}}
+\end{{table}}
+
+This ablation resolves the timestep confound directly: improving v3's temporal resolution and predictive RMSE does not improve downstream control utility---it destroys it. The useful property of the canonical v3 is therefore not its black-box architecture alone, but the optimization-friendly smoothing induced by temporal coarse-graining. Read across the three single-model backends the pattern is near-monotonic in fidelity: the least accurate surrogate (hourly v3) is the only usable training environment, while the more accurate matched v3 and the most accurate calibrated v3.5 both fail. This reframes the hybrid as an explicit \emph{{architectural separation of smoothing and fidelity}}: v3 supplies the coarse, optimization-friendly rollout dynamics while the frozen v3.5 supplies a physical-plausibility signal as a censor, so policy-gradient training keeps the smoothing it needs while regaining physical grounding. The broader principle is that PPO needs not only accurate predictions but an optimization-friendly training landscape.
+
 \paragraph{{Hybrid $\lambda_T$ sweep and canonical selection (roadmap \S5).}} The canonical hybrid operating point was selected by a thermostatic sweep over the temperature-disagreement weight $\lambda_T\in\{{0.05,0.10,0.15\}}$ at fixed $\lambda_P=5\times10^{{-5}}$ (Table~\ref{{tab:hybrid_sweep}}). The mid setting $\lambda_T=0.10$ (\texttt{{hybrid\_l010}}) is canonical: per the roadmap selection rule it retains the energy advantage over pure v3 while avoiding the stronger comfort degradation seen at the weaker ($0.05$) and stronger ($0.15$) censor settings. Only the canonical point's live-BOPTEST KPIs are retained as a frozen artifact; the bracketing points served selection only.
 
 \begin{{table}}[H]
@@ -952,7 +999,7 @@ Controller (window/eval) & $m_s$ & $r_{{\mathrm{{time}}}}$ & $r_{{\mathrm{{sev}}
 \end{{tabular}}
 \end{{table}}
 
-Block 2 establishes four controller-side claims. First, predictive fidelity and RL training utility are not equivalent: direct v3.5 is the more accurate twin yet fails as a rollout environment (live violation $>77\%$). Second, role separation works --- v3 provides smooth rollout dynamics while frozen v3.5 acts as a physical censor through disagreement shaping --- giving the canonical hybrid ($m_s={ctx['hyb_peak_ms']}$ peak, ${ctx['hyb_typ_ms']}$ typical). Third, the censor strength is controller-family specific: HDRL rejects $\lambda_T=0.10$ and is best at $\lambda_T=0$. Fourth, MORL is viable only with the 17D interface, and its N=5 analysis reveals high seed variance and falsifies the N=3 seasonal-inversion mechanism. The engineering implication is that hybrid surrogate RL is a role-allocation problem --- rollout smoothness, physical censoring, observation geometry, controller family, and seed stabilization are separate design axes. This is the bridge to Block 3, where the fixed \texttt{{bestest\_air}} recipe is transferred to the hydronic BOPTEST family.
+Block 2 establishes four controller-side claims. First, predictive fidelity and RL training utility are not equivalent: direct v3.5 is the more accurate twin yet fails as a rollout environment (live violation $>77\%$), and the matched-resolution ablation (Table~\ref{{tab:coarse_graining}}) shows the \emph{{same black-box}} v3 also collapses once its temporal resolution---and predictive accuracy---is increased, isolating the fidelity/smoothing trade-off rather than the model class. Second, role separation works --- v3 provides smooth rollout dynamics while frozen v3.5 acts as a physical censor through disagreement shaping --- giving the canonical hybrid ($m_s={ctx['hyb_peak_ms']}$ peak, ${ctx['hyb_typ_ms']}$ typical). Third, the censor strength is controller-family specific: HDRL rejects $\lambda_T=0.10$ and is best at $\lambda_T=0$. Fourth, MORL is viable only with the 17D interface, and its N=5 analysis reveals high seed variance and falsifies the N=3 seasonal-inversion mechanism. The engineering implication is that hybrid surrogate RL is a role-allocation problem --- rollout smoothness, physical censoring, observation geometry, controller family, and seed stabilization are separate design axes. This is the bridge to Block 3, where the fixed \texttt{{bestest\_air}} recipe is transferred to the hydronic BOPTEST family.
 
 \subsection{{Limitations}}
 
@@ -1017,6 +1064,11 @@ def main() -> None:
     dv_peak_v = tr[(tr.variant == "direct_v35") & (tr.scenario == "peak_heat_window")].iloc[0]["boptest_violation_pct"]
     dv_typ_v = tr[(tr.variant == "direct_v35") & (tr.scenario == "typical_heat_window")].iloc[0]["boptest_violation_pct"]
 
+    _cg_df = read_csv("reports/block2_v3_15min_closed_loop_comparison.csv")
+
+    def _cg(window, col):
+        return _cg_df[(_cg_df.variant == "pure_v3_15min") & (_cg_df.window == window)].iloc[0][col]
+
     ctx = {
         "table_nomenclature": table_nomenclature(),
         "table_ms_decomp": table_ms_decomp(d),
@@ -1031,6 +1083,7 @@ def main() -> None:
         "n50_ci_lo": f(float(n50.ms_mean) - ci50, 3), "n50_ci_hi": f(float(n50.ms_mean) + ci50, 3),
         "n75_ci_lo": f(float(n75.ms_mean) - ci75, 3), "n75_ci_hi": f(float(n75.ms_mean) + ci75, 3),
         "table_main_kpi": kpi,
+        "table_coarse_graining": table_coarse_graining_ablation(d),
         "table_warmstart": table_warmstart(d),
         "table_transfer": table_transfer(d),
         "table_hdrl": table_hdrl(d),
@@ -1040,6 +1093,8 @@ def main() -> None:
         "pure_peak_ms": f(pure_peak.m_s), "pure_typ_ms": f(pure_typ.m_s),
         "hyb_peak_ms": f(hyb_peak.m_s), "hyb_typ_ms": f(hyb_typ.m_s),
         "dv_peak_viol": f(dv_peak_v, 1), "dv_typ_viol": f(dv_typ_v, 1),
+        "cg_mv_peak": f(_cg("peak_heat_window", "m_s")), "cg_mv_typ": f(_cg("typical_heat_window", "m_s")),
+        "cg_mvv_peak": f(_cg("peak_heat_window", "violation_pct"), 1), "cg_mvv_typ": f(_cg("typical_heat_window", "violation_pct"), 1),
         "m5_rmse": f(r5.rmse_c), "m5_viol": f(r5.violation_pct, 1), "m5_ms": f(r5.m_s, 3),
         "m5frozen_rmse": f(frozen5.rmse_c, 2), "m5frozen_ms": f(frozen5.m_s, 3),
         "m17_rmse": f(r17.rmse_c), "m17_viol": f(r17.violation_pct, 1), "m17_ms": f(r17.m_s, 3),

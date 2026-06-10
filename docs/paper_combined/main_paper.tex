@@ -50,7 +50,7 @@ Deep reinforcement-learning (RL) controllers for HVAC systems are usually traine
 
 \begin{highlights}
 \item A more accurate building surrogate can be a worse RL training environment.
-\item Training directly on the calibrated twin fails; a black-box surrogate works.
+\item Temporal coarse-graining, not black-box structure alone, makes a surrogate useful.
 \item A hybrid (black-box rollouts + frozen-twin reward censor) recovers control.
 \item The optimal physics-censor weight is controller-family specific.
 \item Calibration transfers across testcases; frozen-policy transfer is regime-bound.
@@ -522,9 +522,9 @@ mostly an artefact of sampling rate rather than physics. A direct closed-loop
 control settles the obvious confound: retraining the \emph{same} black-box v3 at the
 matched fifteen-minute resolution produces a strictly \emph{more accurate} predictor
 yet an unusable training environment ($m_s = 1.14$/$1.21$ live, $>85\%$ comfort
-violation; Section~\ref{ssec:b3lim}), so the operative variable is predictive
-fidelity itself --- realised here through temporal resolution --- and not the
-black-box parameterisation per se. We read the paradox as a
+violation; Section~\ref{ssec:b3lim}), so the operative variable in this comparison
+is the fidelity/smoothing trade-off induced by temporal resolution, not merely the
+black-box versus grey-box parameterisation. We read the paradox as a
 distribution-shift phenomenon \citep{Quinonero2009DatasetShift,RiahiSamani2026OOD}:
 a policy that exploits the sharply physics-constrained surface of v3.5 saturates
 into a near bang-bang law that does not survive transfer to the live plant. The
