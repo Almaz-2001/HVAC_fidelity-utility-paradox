@@ -45,7 +45,7 @@
 % ==================================================================
 
 \begin{abstract}
-Deep reinforcement-learning (RL) controllers for HVAC systems are usually trained against fast neural-network surrogates, on the assumption that a more accurate surrogate is a better training environment. Testing this on the BOPTEST \texttt{bestest\_air} testcase, we report a negative result --- the \emph{fidelity--utility paradox}: the surrogate with the lower predictive error can be the worse environment for policy-gradient search. A grey-box resistance--capacitance surrogate with a neural residual heat-flow head (v3.5) attains a 24-hour rollout RMSE of $0.644\,^{\circ}$C versus $1.557\,^{\circ}$C for a black-box surrogate (v3); yet used directly for training it collapses on the live runtime (maintenance score $m_s = 1.046$, comfort violation $>77\%$), whereas the weaker v3 trains a usable controller ($m_s = 0.073$/$0.095$ on peak/typical winter windows). Retraining the black-box surrogate at the finer control step makes it \emph{more} accurate yet unusable for training ($m_s > 1.1$), so the paradox tracks fidelity, not model class. We resolve the paradox with a role-separating hybrid: v3 supplies smooth rollout dynamics while a frozen v3.5 acts as a per-step reward-shaping censor. The hybrid provides the best cross-window robustness --- sub-$5\%$ comfort violation on both windows and the lowest typical-window score ($m_s = 0.041$), at ${\sim}85\times$ live-simulator throughput --- and the optimal censor weight is controller-family specific. A transferability study on three hydronic testcases shows the inverse-calibration pipeline generalizes ($60.2$--$87.8\%$ rollout-RMSE reduction; effective zone capacitance re-identified at $1.918\pm0.032\times$ the baseline), whereas frozen-policy transfer is regime-dependent. The contribution is a precise, component-level transferability boundary rather than a universal generalization claim.
+Deep reinforcement-learning (RL) controllers for HVAC systems are usually trained against fast neural-network surrogates, on the assumption that a more accurate surrogate is a better training environment. Testing this on the BOPTEST \texttt{bestest\_air} testcase, we report a negative result --- the \emph{fidelity--utility paradox}: the surrogate with the lower predictive error can be the worse environment for policy-gradient search. A grey-box resistance--capacitance surrogate with a neural residual heat-flow head (v3.5) attains a 24-hour rollout RMSE of $0.644\,^{\circ}$C versus $1.557\,^{\circ}$C for a black-box surrogate (v3); yet used directly for training it collapses on the live runtime (maintenance score $m_s = 1.046$, comfort violation $>77\%$), whereas the weaker v3 trains a usable controller ($m_s = 0.073$/$0.095$ on peak/typical windows). Retraining the black-box surrogate at finer resolution makes it \emph{more} accurate yet unusable for training ($m_s > 1.1$), so the paradox tracks a fidelity/smoothing trade-off, not model class alone. We resolve the paradox with a role-separating hybrid: v3 supplies smooth rollout dynamics while a frozen v3.5 acts as a per-step reward-shaping censor. The hybrid provides the best cross-window robustness --- sub-$5\%$ comfort violation on both windows and the lowest typical-window score ($m_s = 0.041$), at ${\sim}85\times$ live-simulator throughput --- and the optimal censor weight is controller-family specific. A transferability study on three hydronic testcases shows the inverse-calibration pipeline generalizes ($60.2$--$87.8\%$ rollout-RMSE reduction; effective zone capacitance re-identified at $1.918\pm0.032\times$ the baseline), whereas frozen-policy transfer is regime-dependent. The contribution is a precise, component-level transferability boundary, not a universal generalization claim.
 \end{abstract}
 
 \begin{highlights}
@@ -153,7 +153,7 @@ We organize the investigation around four pre-specified, falsifiable hypotheses:
 As reported below, H1 and H3 are \emph{falsified}, H2 is supported, and H4 resolves into a component-level boundary --- the calibration pipeline transfers while frozen-controller transfer does not. Each hypothesis and its verdict are bound to a versioned audit anchor, so that every outcome was predictable but not predicted before the corresponding runs.
 
 \subsection{Results summary}
-The evidence answers these questions concretely. Calibrated v3.5 reduces the 24-hour rollout RMSE to $0.644\,^{\circ}$C (versus $1.557\,^{\circ}$C for v3), yet used directly it yields $m_s=1.046$ live; the predictively weaker v3 yields a usable controller ($m_s=0.073$/$0.095$). The hybrid backend recovers the best controller ($m_s=0.087$/$0.041$, violation below $5\%$) while sustaining $85.0\times$ the BOPTEST throughput. The optimal disagreement weight is controller-family specific ($\lambda_{\mathrm{temp}}=0.10$ for thermostatic PPO, $\lambda_{\mathrm{temp}}=0$ for HDRL and the $17$D MORL). On the hydronic family, the inverse calibration transfers ($60.2$--$87.8\%$ rollout-RMSE reduction; $\Czon$ re-identified at $1.918\pm0.032$ times the source value), whereas frozen-policy transfer is regime-dependent.
+The evidence answers these questions concretely. Calibrated v3.5 reduces the 24-hour rollout RMSE to $0.644\,^{\circ}$C (versus $1.557\,^{\circ}$C for v3), yet used directly it yields $m_s=1.046$ live; the predictively weaker v3 yields a usable controller ($m_s=0.073$/$0.095$). The hybrid backend recovers the best cross-window robustness profile ($m_s=0.087$/$0.041$, violation below $5\%$ on both windows) while sustaining $85.0\times$ the BOPTEST throughput. The optimal disagreement weight is controller-family specific ($\lambda_{\mathrm{temp}}=0.10$ for thermostatic PPO, $\lambda_{\mathrm{temp}}=0$ for HDRL and the $17$D MORL). On the hydronic family, the inverse calibration transfers ($60.2$--$87.8\%$ rollout-RMSE reduction; $\Czon$ re-identified at $1.918\pm0.032$ times the source value), whereas frozen-policy transfer is regime-dependent.
 
 \subsection{Contributions}
 This paper makes three commit-anchored, version-locked contributions, organized as the project's three evidence blocks:
@@ -522,14 +522,14 @@ mostly an artefact of sampling rate rather than physics. A direct closed-loop
 control settles the obvious confound: retraining the \emph{same} black-box v3 at the
 matched fifteen-minute resolution produces a strictly \emph{more accurate} predictor
 yet an unusable training environment ($m_s = 1.14$/$1.21$ live, $>85\%$ comfort
-violation; Section~\ref{ssec:b3lim}), so the operative variable in this comparison
-is the fidelity/smoothing trade-off induced by temporal resolution, not merely the
-black-box versus grey-box parameterisation. We read the paradox as a
+violation; Section~\ref{sec:results2-control}, Table~\ref{tab:coarse_graining}), so
+the operative variable in this comparison is the fidelity/smoothing trade-off induced
+by temporal resolution, not merely the black-box versus grey-box parameterisation. We read the paradox as a
 distribution-shift phenomenon \citep{Quinonero2009DatasetShift,RiahiSamani2026OOD}:
 a policy that exploits the sharply physics-constrained surface of v3.5 saturates
 into a near bang-bang law that does not survive transfer to the live plant. The
 hybrid resolution --- v3 for smooth dynamics, a frozen v3.5 as a reward-shaping
-censor --- recovers the best controller overall ($m_s = 0.087$/$0.041$ on the
+censor --- recovers the best cross-window robustness ($m_s = 0.087$/$0.041$ on the
 peak/typical windows): although pure v3 edges it on the peak-window score alone
 ($0.073$ vs $0.087$), the hybrid is the only backend with sub-$5\%$ comfort
 violation on \emph{both} windows, the lowest typical-window score ($0.041$), and
@@ -606,17 +606,17 @@ RL algorithms is open. Second, the black-box v3 is trained at a one-hour step bu
 used at the fifteen-minute control step, raising the question of whether v3's
 \emph{training} utility stems from its black-box nature or partly from this timestep
 mismatch. We resolved this confound directly with a matched-config closed-loop
-control: we retrained v3 on the fifteen-minute corpus---a strictly \emph{more
-accurate} predictor ($0.876\,^{\circ}$C vs $1.557\,^{\circ}$C 24\,h rollout
-RMSE)---and trained a PPO controller on it under the \emph{identical} configuration
-as the canonical pure-v3 baseline, changing only the surrogate resolution. On the
-live emulator this matched-resolution controller \emph{collapses}
-($m_s = 1.14$/$1.21$ with $85.6$/$91.4\%$ comfort violation on the peak/typical
-windows), comparable to the direct-v3.5 failure and far worse than the
-hourly-trained controller ($m_s = 0.073$/$0.095$). v3's training utility is
-therefore attributable to its \emph{coarser temporal resolution}, not to its
-black-box parameterisation: the same architecture at the finer, more faithful
-resolution is an unusable training environment. This sharpens the paradox into a
+control, reported in full as the temporal-coarse-graining ablation of
+Section~\ref{sec:results2-control} (Table~\ref{tab:coarse_graining}): the \emph{same}
+black-box v3 retrained on the fifteen-minute corpus is a strictly \emph{more accurate}
+predictor ($0.876\,^{\circ}$C vs $1.557\,^{\circ}$C 24\,h rollout RMSE) yet, trained
+under the \emph{identical} pure-v3 recipe, \emph{collapses} on the live emulator
+($m_s = 1.14$/$1.21$, $85.6$/$91.4\%$ comfort violation), comparable to the
+direct-v3.5 failure and far worse than the hourly-trained controller
+($m_s = 0.073$/$0.095$). v3's training utility is therefore attributable to its
+\emph{coarser temporal resolution}, not to its black-box class alone: the same
+architecture at the finer, more faithful resolution is an unusable training
+environment. This sharpens the paradox into a
 near-monotonic statement along the fidelity axis---the least accurate surrogate
 (hourly v3) trains a usable controller, while the more accurate matched-resolution
 v3 and the most accurate calibrated v3.5 both fail---and is consistent with the
@@ -651,15 +651,20 @@ We asked whether a surrogate with higher predictive fidelity is automatically a
 better environment in which to train a reinforcement-learning HVAC controller, and
 tested the question across three controller families and a hydronic family of
 transfer testcases under a commit-anchored, version-locked protocol. The answer is
-no. The most accurate physical twin (v3.5; $0.644\,^{\circ}$C 24-hour rollout
-\RMSE) trains the worst controller ($m_s = 1.046$, comfort violation above $77\%$),
-while a weaker black-box surrogate trains a usable one --- a fidelity--utility
-paradox (H1 falsified) that a matched-corpus ablation shows is, moreover, $74.6\%$
-data-resolution and only $25.4\%$ physical calibration. Separating the two roles
-resolves it: using the black-box surrogate for smooth rollout dynamics and a frozen
-physical twin as a reward-shaping censor (H2 supported) recovers the best
-controller of the study ($m_s = 0.041$, violation below $5\%$) at an $85\times$
-training speed-up. The censor strength is controller-family specific
+no. Only the temporally coarse, hourly-trained black-box surrogate (v3) trains a
+usable controller: the most accurate physical twin (v3.5; $0.644\,^{\circ}$C 24-hour
+rollout \RMSE) collapses ($m_s = 1.046$, comfort violation above $77\%$), and the
+\emph{same} black-box architecture retrained at the finer $900$\,s resolution becomes
+a \emph{more} accurate predictor ($0.876\,^{\circ}$C) yet also fails as a training
+environment ($m_s = 1.14$/$1.21$, violation above $85\%$) --- a fidelity--utility
+paradox (H1 falsified) whose operative variable is the fidelity/smoothing trade-off
+induced by temporal resolution, not the surrogate model class; a matched-corpus
+attribution further splits the predictive gain into $74.6\%$ data-resolution and only
+$25.4\%$ physical calibration. Separating the two roles resolves it: using the
+black-box surrogate for smooth rollout dynamics and a frozen physical twin as a
+reward-shaping censor (H2 supported) recovers the best cross-window robustness of the
+study ($m_s = 0.041$ typical, violation below $5\%$) at an $85\times$ training
+speed-up. The censor strength is controller-family specific
 ($\lambda_{\mathrm{temp}}=0.10$ for thermostatic PPO, $0$ for the hierarchical and
 MORL agents; H3 falsified), and transferability resolves into a component-level
 boundary (H4): the inverse-calibration pipeline transfers --- rollout \RMSE{} falls

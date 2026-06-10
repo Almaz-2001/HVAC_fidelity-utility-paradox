@@ -52,7 +52,7 @@ Block 2 is structured as a sequence of falsifiable hypotheses, each tied to a ro
  & Hypothesis & roadmap & Verdict \\
 \midrule
 H1 & The higher-fidelity twin (v3.5) used directly as the rollout environment yields the best controller. & \S4--4.5 & FALSIFIED (direct v3.5 $m_s>1.0$) \\
-H2 & Calibrated v3.5 is useful when its role changes from dynamics provider to a frozen reward-shaping censor. & \S5 & SUPPORTED (hybrid is best) \\
+H2 & Calibrated v3.5 is useful when its role changes from dynamics provider to a frozen reward-shaping censor. & \S5 & SUPPORTED (hybrid gives best cross-window robustness) \\
 H3 & The thermostatic-optimal censor weight $\lambda_T=0.10$ transfers to the HDRL family. & \S6 & FALSIFIED (HDRL best at $\lambda_T=0$) \\
 H4 & MORL viability is determined by the reward scalarization alone. & \S6.5--7 & FALSIFIED (needs the 17D observation) \\
 H5 & The single-seed MORL canonical ($m_s\approx0.10$) is representative. & \S8--9 & FALSIFIED at N=5 (best of five; CV $0.42$--$0.61$) \\
@@ -197,6 +197,7 @@ The time-series and action diagnostics in Figures~\ref{fig:closed_loop_traces} a
 
 
 \subsection{Temporal-coarse-graining ablation: matched-resolution v3 (roadmap \S4.6)}
+\label{ssec:coarse-graining}
 
 The direct-v3.5 failure could be dismissed as an artefact of the grey-box / physics-informed model class rather than of fidelity itself. We close this confound with a matched-config control: we retrain the \emph{same black-box} v3 architecture on the matched fifteen-minute corpus---making it a strictly \emph{more accurate} predictor (24\,h rollout RMSE $0.876\,^\circ$C vs $1.557\,^\circ$C for the canonical hourly v3)---and train a PPO controller on it under the \emph{identical} recipe as the canonical pure-v3 baseline, changing only the surrogate's training resolution. The result is unambiguous (Table~\ref{tab:coarse_graining}): the more accurate matched-resolution v3 \emph{collapses} in closed loop ($m_s=1.142$/$1.211$, 85.6/91.4\% violation on peak/typical), on a par with the direct-v3.5 failure and far worse than the hourly-trained controller.
 
