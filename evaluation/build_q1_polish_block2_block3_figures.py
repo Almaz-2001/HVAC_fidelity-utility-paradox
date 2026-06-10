@@ -191,7 +191,7 @@ def fig_block3_czon_hypothesis_box() -> None:
     ax.axvline(vals.mean(), color=PURPLE, linestyle="--", linewidth=1.4, label=f"mean {vals.mean():.3f}x")
     ax.set_yticks([])
     ax.set_xlim(0.8, 4.2)
-    style(ax, "$C_{zon}$ hydronic-family consistency against pre-registered hypothesis intervals", "$C_{zon}$ ratio vs bestest_air", "")
+    style(ax, "$C_{zon}$ hydronic-family consistency against version-locked hypothesis intervals", "$C_{zon}$ ratio vs bestest_air", "")
     ax.legend(frameon=False, fontsize=8, loc="upper right")
     save(fig, "block3_q1_polish_czon_hypothesis_box")
 

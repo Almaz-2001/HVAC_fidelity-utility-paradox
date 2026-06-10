@@ -527,7 +527,7 @@ def fig11_block3_protocol():
         box(ax, x, 2.1, w, 1.25, lab, color, fontsize=8.5)
     for i in range(len(xs) - 1):
         arrow(ax, (xs[i] + widths[i], 2.72), (xs[i + 1], 2.72))
-    ax.set_title("Block 3 pre-registered transferability protocol")
+    ax.set_title("Block 3 version-locked transferability protocol")
     save(fig, "final17_fig11_block3_transferability_protocol")
 
 
@@ -673,7 +673,7 @@ def fig17_hypothesis_closure():
         ax.text(0.05, y, h, va="center")
         ax.text(0.34, y, verdict.replace("_", " "), va="center", fontsize=8.3)
         ax.text(0.72, y, evidence, va="center", fontsize=8.3)
-    ax.set_title("Hypothesis closure and pre-registered predictions vs observed outcomes")
+    ax.set_title("Hypothesis closure and version-locked predictions vs observed outcomes")
     save(fig, "final17_fig17_hypothesis_closure_matrix")
 
 
