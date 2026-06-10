@@ -579,6 +579,20 @@ Reviewer-defensible reading (computed automatically by the report's `verdict`):
 The full step-by-step rationale, timing, and outcome table live in
 `docs/experiments/v3_15min_closed_loop_runbook.md`.
 
+**Executed result (verdict: `timestep_driven`).** The matched-15min v3 is a
+strictly more accurate predictor (val rollout RMSE ~0.31 °C short-horizon;
+0.876 °C at 24 h vs 1.557 °C for the hourly v3) yet, trained as an RL environment
+with the identical pure-v3 recipe (10M steps, 32 envs, seed 42), the controller
+**collapses** on live BOPTEST: `m_s = 1.142 / 1.211` with `85.6% / 91.4%` comfort
+violation on the peak/typical windows (`reports/block2_v3_15min_closed_loop_comparison.{csv,json}`,
+`outputs/bestest_air_pure_v3_15min/`), on a par with the direct-v3.5 failure and far
+worse than the hourly-trained controller (`0.073 / 0.095`). So v3's training utility
+comes from its **coarser temporal resolution**, not its black-box architecture. This
+is folded into the manuscript as the Results II *Temporal-coarse-graining ablation*
+(Table `tab:coarse_graining`) and the resolved §8.5(iii) / §8.1 framing; it is a
+reviewer-mitigation control and does **not** alter any canonical downstream artifact
+(the PPO families still use the hourly v3).
+
 ## 5. Block 2: Thermostatic Hybrid Sweep
 
 Run this section only after Sections 4 and 4.5. It tests the engineering fix
@@ -935,6 +949,7 @@ inspect every Block 2 number directly from `reports/` and `outputs/`:
 Results II content                                   -> source artifact
 ---------------------------------------------------     ----------------------------------------------------------
 Pure v3 thermostatic baseline KPIs                   -> outputs/bestest_air_article7_style_15min/summary.csv
+Temporal-coarse-graining ablation (tab:coarse_graining) -> reports/block2_v3_15min_closed_loop_comparison.csv ; outputs/bestest_air_pure_v3_15min/summary.csv
 Direct-v3.5 warm-start negative control              -> outputs/block2_thermostatic_warmstart_utility/comparison_summary.csv
 Thermostatic hybrid sweep (canonical hybrid_l010)    -> outputs/block2_thermostatic_*hybrid*/  (benchmark summaries)
 Architecture justification on live BOPTEST (S9)      -> reports/hou_evins_architecture_justification_table.csv
