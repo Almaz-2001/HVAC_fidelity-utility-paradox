@@ -1,0 +1,5 @@
+variant,variant_label,window,window_label,m_s,violation_pct,energy_kwh,rmse_22_c
+pure_v3_hourly,v3 hourly-trained (canonical),peak_heat_window,Peak heat window,0.0725,1.488,322.19,0.8691
+pure_v3_hourly,v3 hourly-trained (canonical),typical_heat_window,Typical heat window,0.0947,4.39,368.27,0.6222
+pure_v3_15min,v3 15-min matched-resolution,peak_heat_window,Peak heat window,1.1416,85.565,219.38,4.2744
+pure_v3_15min,v3 15-min matched-resolution,typical_heat_window,Typical heat window,1.211,91.443,249.28,4.7929

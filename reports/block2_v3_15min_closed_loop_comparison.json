@@ -1,0 +1,33 @@
+{
+  "experiment": "v3_15min_closed_loop_control_utility",
+  "windows": {
+    "peak_heat_window": {
+      "m_s_hourly": 0.0725,
+      "m_s_matched": 1.1416,
+      "delta_m_s": 1.0691,
+      "violation_pct_hourly": 1.488,
+      "violation_pct_matched": 85.565,
+      "energy_kwh_hourly": 322.19,
+      "energy_kwh_matched": 219.38
+    },
+    "typical_heat_window": {
+      "m_s_hourly": 0.0947,
+      "m_s_matched": 1.211,
+      "delta_m_s": 1.1164,
+      "violation_pct_hourly": 4.39,
+      "violation_pct_matched": 91.443,
+      "energy_kwh_hourly": 368.27,
+      "energy_kwh_matched": 249.28
+    }
+  },
+  "verdict": "timestep_driven",
+  "interpretation": "A PPO controller trained on the corpus-matched 15-minute v3 fails the sub-5% comfort-violation usability bar on at least one window, indicating that v3's training utility depends substantially on the coarser hourly-step dynamics rather than on its black-box architecture alone; the paradox framing is then refined to a temporal-coarse-graining mechanism.",
+  "thresholds": {
+    "violation_usable_pct": 5.0,
+    "m_s_rel_tolerance": 0.25
+  },
+  "sources": {
+    "hourly_summary": "outputs/bestest_air_article7_style_15min/summary.json",
+    "matched_summary": "outputs/bestest_air_pure_v3_15min/summary.json"
+  }
+}
