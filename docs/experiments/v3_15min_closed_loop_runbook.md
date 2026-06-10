@@ -53,50 +53,39 @@ the corpus-matched report, you can skip the retrain and reuse it.
 
 ## Step B — train the PPO controller on the matched v3
 
+All Block 2 steps are routed through `evaluation/run_block2.py` (add `--dry-run` before
+any subcommand to print the resolved command without running it).
+
 **B0. Smoke test first (≈2–3 min)** — confirms the checkpoint loads through the
 `legacy_v3` adapter and the env steps before you commit to the full 10 M-step run:
 
 ```bash
-python3 -B training/train_thermostatic.py \
-  --surrogate-kind legacy_v3 \
-  --surrogate-path outputs/surrogate_v3_15min_matched/rc_node_v3_15min_matched.pt \
-  --step-sec 900 --comfort-low 21 --comfort-high 24 \
-  --num-envs 4 --total-steps 50000 \
-  --seed 42 --save-name ppo_thermostatic_v3_15min_smoke
+python3 -B evaluation/run_block2.py thermostatic-train --variant pure_v3_15min --smoke
 ```
 
 If that produces `models/ppo_thermostatic_v3_15min_smoke.zip` without a loader/shape
-error, delete it and launch the real run:
+error, delete it (`rm -f models/ppo_thermostatic_v3_15min_smoke.zip`) and launch the
+real run:
 
 **B1. Full run (matches the canonical pure-v3 recipe exactly except the surrogate):**
 
 ```bash
-python3 -B training/train_thermostatic.py \
-  --surrogate-kind legacy_v3 \
-  --surrogate-path outputs/surrogate_v3_15min_matched/rc_node_v3_15min_matched.pt \
-  --step-sec 900 --comfort-low 21 --comfort-high 24 \
-  --num-envs 32 --total-steps 10000000 \
-  --seed 42 --save-name ppo_thermostatic_v3_15min
+python3 -B evaluation/run_block2.py thermostatic-train --variant pure_v3_15min
 # -> models/ppo_thermostatic_v3_15min.zip
 ```
 
-(The canonical pure-v3 baseline is the identical command with
-`--surrogate-path outputs/surrogate_v2/rc_node_v3_tsupply.pt` and
-`--save-name ppo_thermostatic`; cf. `evaluation/run_block2.py:thermostatic_train_command("pure")`.)
+(The canonical pure-v3 baseline is the identical recipe under
+`thermostatic-train --variant pure`; only the surrogate checkpoint differs.)
 
 ---
 
 ## Step C — live closed-loop benchmark on the two targeted windows
 
 Requires the BOPTEST web service to be up. This reuses the exact benchmark that
-produced the canonical pure-v3 row (`outputs/bestest_air_article7_style_15min`):
+produced the canonical pure-v3 row:
 
 ```bash
-python3 -B evaluation/benchmark_bestest_air_article7_style.py \
-  --step-sec 900 \
-  --controllers thermostatic \
-  --thermostatic-model models/ppo_thermostatic_v3_15min.zip \
-  --output-dir outputs/bestest_air_pure_v3_15min
+python3 -B evaluation/run_block2.py thermostatic-benchmark --variant pure_v3_15min
 # -> outputs/bestest_air_pure_v3_15min/summary.json  (peak + typical windows, m_s, violation%, energy)
 ```
 
@@ -105,9 +94,7 @@ python3 -B evaluation/benchmark_bestest_air_article7_style.py \
 ## Step D — integrate into the Block 2 comparison
 
 ```bash
-python3 -B evaluation/build_v3_15min_closed_loop_comparison.py \
-  --hourly-summary  outputs/bestest_air_article7_style_15min/summary.json \
-  --matched-summary outputs/bestest_air_pure_v3_15min/summary.json
+python3 -B evaluation/run_block2.py v3-15min-report
 # -> reports/block2_v3_15min_closed_loop_comparison.csv
 # -> reports/block2_v3_15min_closed_loop_comparison.json   (verdict + ready-to-quote sentence)
 ```
@@ -141,15 +128,7 @@ For an unattended single-seed run once BOPTEST is up:
 ```bash
 set -e
 python3 -B evaluation/run_block1.py v3-train-15min
-python3 -B training/train_thermostatic.py \
-  --surrogate-kind legacy_v3 \
-  --surrogate-path outputs/surrogate_v3_15min_matched/rc_node_v3_15min_matched.pt \
-  --step-sec 900 --comfort-low 21 --comfort-high 24 \
-  --num-envs 32 --total-steps 10000000 --seed 42 \
-  --save-name ppo_thermostatic_v3_15min
-python3 -B evaluation/benchmark_bestest_air_article7_style.py \
-  --step-sec 900 --controllers thermostatic \
-  --thermostatic-model models/ppo_thermostatic_v3_15min.zip \
-  --output-dir outputs/bestest_air_pure_v3_15min
-python3 -B evaluation/build_v3_15min_closed_loop_comparison.py
+python3 -B evaluation/run_block2.py thermostatic-train     --variant pure_v3_15min
+python3 -B evaluation/run_block2.py thermostatic-benchmark --variant pure_v3_15min
+python3 -B evaluation/run_block2.py v3-15min-report
 ```

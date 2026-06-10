@@ -512,6 +512,73 @@ Section 5.5 v35_direct model:
   calibrated v3.5 training only -> zero-shot/live-transfer diagnostics
 ```
 
+## 4.6. Block 2: Corpus-Matched v3 Closed-Loop Control Utility (Reviewer Mitigation)
+
+Why this section exists:
+
+- Section 4 trains the pure-v3 controller on a v3 surrogate that was **fit** at a
+  1-hour step but **used** at the 15-minute control step.
+- Section 2.5 already retrained v3 on the matched 15-minute corpus and validated it
+  as a *predictor* (24 h rollout RMSE ~0.876 C), but did **not** run it in closed
+  loop. A reviewer can therefore argue that v3's *training utility* may come partly
+  from the train/control timestep mismatch rather than from its black-box nature
+  (Threats to validity, manuscript 8.5(iii)).
+- This section closes that loop: it trains a PPO controller on the matched 15-min v3
+  with the **identical** recipe as the canonical pure-v3 baseline (only the surrogate
+  checkpoint changes) and benchmarks it on the same two targeted 14-day windows.
+
+Dependencies:
+
+- Reads the matched-resolution checkpoint from Section 2.5
+  (`outputs/surrogate_v3_15min_matched/rc_node_v3_15min_matched.pt`).
+- Reads the canonical pure-v3 benchmark from Section 4
+  (`outputs/bestest_air_article7_style_15min/summary.json`) as the hourly reference row.
+- Requires the BOPTEST RTE for the benchmark step (as in Section 4).
+- Does **not** modify any canonical Block 2/3 artifact; the downstream PPO families
+  still use the original hourly v3.
+
+Smoke-check the matched checkpoint loads and the env steps (≈2-3 min):
+
+```bash
+python3 -B evaluation/run_block2.py thermostatic-train --variant pure_v3_15min --smoke
+```
+
+Train the matched-v3 controller (full 10M steps; pure-surrogate, no BOPTEST needed):
+
+```bash
+python3 -B evaluation/run_block2.py thermostatic-train --variant pure_v3_15min
+```
+
+Benchmark it in BOPTEST on the two targeted windows:
+
+```bash
+python3 -B evaluation/run_block2.py thermostatic-benchmark --variant pure_v3_15min
+```
+
+Build the hourly-vs-matched comparison (verdict + ready-to-quote sentence for 8.5):
+
+```bash
+python3 -B evaluation/run_block2.py v3-15min-report
+```
+
+Expected artifacts:
+
+```bash
+cat outputs/bestest_air_pure_v3_15min/summary.csv
+cat reports/block2_v3_15min_closed_loop_comparison.json
+```
+
+Reviewer-defensible reading (computed automatically by the report's `verdict`):
+
+- `confound_rejected` — matched-v3 trains a usable controller with a comparable
+  maintenance score, so v3's utility is its black-box smoothness, not the timestep
+  mismatch; manuscript 8.5(iii) is promoted from open limitation to resolved control.
+- `partial_confound` / `timestep_driven` — temporal coarse-graining contributes to (or
+  drives) the utility; the §8.1/§8.5 framing is refined accordingly.
+
+The full step-by-step rationale, timing, and outcome table live in
+`docs/experiments/v3_15min_closed_loop_runbook.md`.
+
 ## 5. Block 2: Thermostatic Hybrid Sweep
 
 Run this section only after Sections 4 and 4.5. It tests the engineering fix

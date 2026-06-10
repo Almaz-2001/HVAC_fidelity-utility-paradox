@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PY = sys.executable
 
 SURROGATE_V3 = "outputs/surrogate_v2/rc_node_v3_tsupply.pt"
+SURROGATE_V3_15MIN = "outputs/surrogate_v3_15min_matched/rc_node_v3_15min_matched.pt"
 V35_SUMMARY = "outputs/surrogate_v35_inverse_boptest_15min_power_head_only/calibration_summary_boptest_v35.json"
 
 THERMOSTATIC_HYBRID = {
@@ -51,10 +52,18 @@ def run_commands(commands: list[list[str]], *, dry_run: bool) -> None:
             subprocess.run(command, cwd=ROOT, check=True)
 
 
-def thermostatic_train_command(variant: str) -> list[str]:
+def thermostatic_train_command(variant: str, *, smoke: bool = False) -> list[str]:
     base = cmd(PY, "-B", ROOT / "training" / "train_thermostatic.py", "--step-sec", "900", "--comfort-low", "21", "--comfort-high", "24")
+    if smoke:
+        # Quick load/step check before committing to the full 10M-step run.
+        base += cmd("--num-envs", "4", "--total-steps", "50000")
     if variant == "pure":
         return base + cmd("--surrogate-kind", "legacy_v3", "--surrogate-path", SURROGATE_V3, "--save-name", "ppo_thermostatic")
+    if variant == "pure_v3_15min":
+        # Reviewer mitigation (Threats to validity 8.5): identical recipe to "pure"
+        # but trained on the corpus-matched 15-min v3 instead of the hourly v3.
+        name = "ppo_thermostatic_v3_15min_smoke" if smoke else "ppo_thermostatic_v3_15min"
+        return base + cmd("--surrogate-kind", "legacy_v3", "--surrogate-path", SURROGATE_V3_15MIN, "--save-name", name)
     if variant == "v35_direct":
         return base + cmd(
             "--surrogate-kind",
@@ -98,11 +107,16 @@ def thermostatic_train_command(variant: str) -> list[str]:
 def thermostatic_benchmark_command(variant: str) -> list[str]:
     model = {
         "pure": "models/ppo_thermostatic.zip",
+        "pure_v3_15min": "models/ppo_thermostatic_v3_15min.zip",
         "hybrid_l005": "models/ppo_thermostatic_hybrid_v3_v35_l005.zip",
         "hybrid_l010": "models/ppo_thermostatic_hybrid_v3_v35_l010.zip",
         "hybrid_l015": "models/ppo_thermostatic_hybrid_v3_v35_l015.zip",
     }[variant]
-    out = "outputs/bestest_air_article7_style_15min" if variant == "pure" else f"outputs/block2_thermostatic_hybrid_v3_v35_{THERMOSTATIC_HYBRID[variant][1]}"
+    fixed_out = {
+        "pure": "outputs/bestest_air_article7_style_15min",
+        "pure_v3_15min": "outputs/bestest_air_pure_v3_15min",
+    }
+    out = fixed_out.get(variant) or f"outputs/block2_thermostatic_hybrid_v3_v35_{THERMOSTATIC_HYBRID[variant][1]}"
     return cmd(
         PY,
         "-B",
@@ -284,6 +298,10 @@ def pi_yearly_command() -> list[str]:
     return cmd(PY, "-B", ROOT / "evaluation" / "yearly_validation_pi.py", "--output_dir", "outputs/pi_baseline_15min_yearly", "--step-sec", "900", "--scenario-days", "14")
 
 
+def v3_15min_report_command() -> list[str]:
+    return cmd(PY, "-B", ROOT / "evaluation" / "build_v3_15min_closed_loop_comparison.py")
+
+
 def build_reports_commands() -> list[list[str]]:
     scripts = [
         "build_hou_evins_q1_gap_tables.py",
@@ -318,10 +336,11 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("thermostatic-train")
-    p.add_argument("--variant", choices=["pure", "v35_direct", "hybrid_l005", "hybrid_l010", "hybrid_l015", "hybrid_sweep"], required=True)
+    p.add_argument("--variant", choices=["pure", "pure_v3_15min", "v35_direct", "hybrid_l005", "hybrid_l010", "hybrid_l015", "hybrid_sweep"], required=True)
+    p.add_argument("--smoke", action="store_true", help="Quick 4-env x 50k-step load/step check instead of the full 10M run.")
 
     p = sub.add_parser("thermostatic-benchmark")
-    p.add_argument("--variant", choices=["pure", "hybrid_l005", "hybrid_l010", "hybrid_l015", "hybrid_sweep"], required=True)
+    p.add_argument("--variant", choices=["pure", "pure_v3_15min", "hybrid_l005", "hybrid_l010", "hybrid_l015", "hybrid_sweep"], required=True)
 
     p = sub.add_parser("thermostatic-transfer")
     p.add_argument("--variant", choices=["pure", "v35_direct", "hybrid_l010", "all"], required=True)
@@ -354,6 +373,7 @@ def main() -> None:
     p.add_argument("--seeds", default="42,43,44,45,46")
 
     sub.add_parser("pi-yearly")
+    sub.add_parser("v3-15min-report")
     sub.add_parser("build-hybrid-evidence")
     sub.add_parser("build-morl-5d-comparison")
     sub.add_parser("build-reports")
@@ -363,7 +383,7 @@ def main() -> None:
 
     if args.command == "thermostatic-train":
         variants = ["hybrid_l005", "hybrid_l010", "hybrid_l015"] if args.variant == "hybrid_sweep" else [args.variant]
-        commands = [thermostatic_train_command(v) for v in variants]
+        commands = [thermostatic_train_command(v, smoke=args.smoke) for v in variants]
     elif args.command == "thermostatic-benchmark":
         variants = ["hybrid_l005", "hybrid_l010", "hybrid_l015"] if args.variant == "hybrid_sweep" else [args.variant]
         commands = [thermostatic_benchmark_command(v) for v in variants]
@@ -412,6 +432,8 @@ def main() -> None:
                 commands.append(morl_pipeline_command(artifact_root=f"outputs/morl_pareto_hybrid_power_only_seedfix/{tag}", weights=weights, seed=seed))
     elif args.command == "pi-yearly":
         commands = [pi_yearly_command()]
+    elif args.command == "v3-15min-report":
+        commands = [v3_15min_report_command()]
     elif args.command == "build-hybrid-evidence":
         commands = build_hybrid_evidence_commands()
     elif args.command == "build-morl-5d-comparison":
