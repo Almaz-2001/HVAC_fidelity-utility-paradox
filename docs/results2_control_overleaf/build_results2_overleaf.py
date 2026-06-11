@@ -605,7 +605,7 @@ Seed & 42 & 42 & 42 & 42--46 (N=5) \\
 
 \paragraph{{Thermostatic PPO baseline (roadmap \S4).}} Block 2 opens with the control baseline: a single-level thermostatic PPO controller trained purely on the v3 rollout surrogate (the canonical 1-hour-step checkpoint \texttt{{rc\_node\_v3\_tsupply.pt}}) with no v3.5 regularization ($\lambda_T=\lambda_P=0$). The actor and critic are separate MLP heads (Stable-Baselines3 \texttt{{MlpPolicy}}): the actor maps the 17D observation \eqref{{eq:obs17}} to a tanh-squashed continuous supply-temperature command \eqref{{eq:action_map}}, while the critic estimates the state value entering the PPO advantage. Training runs for 10M surrogate steps under the shared settings of Table~\ref{{tab:ppo_hparams}}; with entropy coefficient zero the evaluated policy is deterministic. Crucially, the trained policy is run \emph{{zero-shot}} on the live BOPTEST RTE with no live finetuning, so the baseline is already a strict surrogate-to-simulator transfer test. It is the reference against which the two negative controls (direct v3.5, warm-start) and the hybrid are measured.
 
-The canonical observation interface is the 17-dimensional extended TSup-style vector:
+The canonical observation interface is the 17-dimensional extended TSup-style vector (full per-feature breakdown in Supplementary Table~\ref{{tab:obs17}}):
 \begin{{equation}}
   s_t =
   \left[
@@ -896,7 +896,7 @@ MORL uses a four-stage pipeline that differs from the single-stage PPO families 
   \label{{fig:morl_pipeline}}
 \end{{figure}}
 
-MORL initially failed with a 5D observation (zone temperature, ambient, hour, day, occupancy). Under the current code path, a reconstructed 5D rerun obtains RMSE$_T={ctx['m5_rmse']}\,^\circ$C, violation ${ctx['m5_viol']}\%$, and $m_s={ctx['m5_ms']}$; the originally frozen 5D artifact was even worse (RMSE$_T={ctx['m5frozen_rmse']}\,^\circ$C, $m_s={ctx['m5frozen_ms']}$) and is retained only as an audit artifact. Replacing the observation with the 17D TSup-style vector recovers a usable policy: RMSE$_T={ctx['m17_rmse']}\,^\circ$C, violation ${ctx['m17_viol']}\%$, $m_s={ctx['m17_ms']}$ (Table~\ref{{tab:morl5d17d}}). The dominant MORL bottleneck was the observation geometry, not the reward scalarization alone.
+MORL initially failed with a 5D observation (zone temperature, ambient, hour, day, occupancy). Under the current code path, a reconstructed 5D rerun obtains RMSE$_T={ctx['m5_rmse']}\,^\circ$C, violation ${ctx['m5_viol']}\%$, and $m_s={ctx['m5_ms']}$; the originally frozen 5D artifact was even worse (RMSE$_T={ctx['m5frozen_rmse']}\,^\circ$C, $m_s={ctx['m5frozen_ms']}$) and is retained only as an audit artifact. Replacing the observation with the 17D TSup-style vector recovers a usable policy: RMSE$_T={ctx['m17_rmse']}\,^\circ$C, violation ${ctx['m17_viol']}\%$, $m_s={ctx['m17_ms']}$ (Table~\ref{{tab:morl5d17d}}). The dominant MORL bottleneck was the observation geometry, not the reward scalarization alone. Widening the observation to include action history and short-horizon forecasts is the standard remedy for the partial observability (POMDP structure) of the underlying control task --- the richer interface restores an approximately Markov state, consistent with forecast-augmented RL-HVAC control~\citep{{Gao2024Predictive}}.
 
 \begin{{table}}[H]
 \centering
