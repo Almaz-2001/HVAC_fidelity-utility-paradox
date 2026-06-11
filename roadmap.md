@@ -1015,6 +1015,22 @@ Do not rewrite these commits when preparing the paper:
 - Pre-registration: `93df9b364657ac77bbe3642e4bc277d1eb8a8b60`
 - Post-N=5 falsification: `62dc859d02f5f4a75fa4b55d8477c1d4e6206449`
 
+> **Note for reviewers (public snapshot).** This public repository is a curated
+> single-snapshot release, so the two anchor commits above are not reachable from
+> `main`. They are published as annotated Git tags so the version-locked timeline
+> remains independently verifiable:
+>
+> ```bash
+> git fetch --tags
+> git show audit-pre-registration   # -> 93df9b3, 2026-05-16 (predictions logged first)
+> git show audit-post-n5            # -> 62dc859, 2026-05-17 (results appended after)
+> ```
+>
+> The tag dates prove the pre-registration predates the N=5 results; the frozen
+> plan content itself is also preserved verbatim in the machine-readable protocol
+> file below. The full per-commit development history is retained in the authors'
+> development repository and is available on request.
+
 The corresponding machine-readable protocol file is:
 
 ```bash
@@ -1331,6 +1347,14 @@ After Block 3 closure the full audit chain is:
 All four commits must remain untouched when preparing the paper. The
 machine-readable cross-references are in `configs/morl_canonical_selection_log.yaml`
 and `configs/block3_testcase_manifest.yaml`.
+
+> **Public-snapshot verification.** In this curated public release the two MORL
+> anchors are reachable as the Git tags `audit-pre-registration` (→ `93df9b3`) and
+> `audit-post-n5` (→ `62dc859`); fetch them with `git fetch --tags` and inspect with
+> `git show <tag>`. The Block 3 pre-registration and closure anchors are recorded
+> inside `configs/block3_testcase_manifest.yaml` (`audit.*_commit_sha` fields). The
+> complete development history is held in the authors' development repository and is
+> available on request.
 
 ## 17. Paper Manuscript Build Path
 
