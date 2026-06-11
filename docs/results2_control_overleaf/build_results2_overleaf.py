@@ -1,16 +1,3 @@
-"""Build the data-driven Overleaf package for Results II / Block 2.
-
-The section follows Block 2 of ``roadmap.md`` (Sections 4-11): pure v3
-thermostatic PPO baseline, direct-v3.5 negative control, thermostatic hybrid,
-warm-start negative control, transfer diagnostics, HDRL sweep, MORL 5D->17D
-observation ablation, MORL Pareto + N=5 canonical seed analysis, seasonal
-falsification, and PI reference.
-
-Design: every table and inline KPI is read from versioned project artifacts in
-``reports/`` and ``outputs/`` (provenance map: roadmap Section 11.1). Figures are
-referenced from ``figures/`` (already produced by the Block 2 evaluation
-scripts); this builder does not regenerate them. It writes ``main.tex`` only.
-"""
 
 from __future__ import annotations
 
@@ -66,12 +53,10 @@ def _arrow(ax, start, end, color=SLATE, text=None):
 
 
 def fig_reward_shaping(ctx: dict) -> None:
-    """Clean, non-overlapping reward-shaping schematic with real lambda values and
-    measured disagreement. Replaces the legacy figure whose green box overlapped
-    the title."""
+    
     fig, ax = plt.subplots(figsize=(11.0, 4.9))
     ax.set_axis_off(); ax.set_xlim(0, 1); ax.set_ylim(0, 1)
-    # Title rows (kept above the diagram band so nothing overlaps).
+    
     ax.text(0.5, 0.96, "Hybrid backend: per-step reward shaping", ha="center",
             fontsize=13, weight="bold", color="#1f2933")
     ax.text(0.5, 0.885, "v3.5 is a frozen reward-shaping censor --- NOT a policy-loss term and NOT the rollout model",
@@ -88,7 +73,7 @@ def fig_reward_shaping(ctx: dict) -> None:
     _arrow(ax, (0.49, 0.66), (0.55, 0.58), TEAL)
     _arrow(ax, (0.49, 0.42), (0.55, 0.52), GREEN)
     _arrow(ax, (0.73, 0.56), (0.785, 0.56), AMBER)
-    # Bottom annotation row, well below the diagram band (no overlap).
+    
     ax.text(0.5, 0.12,
             f"canonical thermostatic: $\\lambda_T={ctx['lam_T']}$, $\\lambda_P={ctx['lam_P']}$"
             f"   |   measured disagreement: mean $|\\Delta T|={ctx['dis_temp_mean']}\\,^\\circ$C, "
@@ -140,9 +125,8 @@ def f(value: float, nd: int = 3) -> str:
     return f"{float(value):.{nd}f}"
 
 
-# ---------------------------------------------------------------------------
-# Data accessors
-# ---------------------------------------------------------------------------
+
+
 
 def _scen_row(df: pd.DataFrame, scenario: str, **conds) -> pd.Series:
     sub = df[df["scenario"] == scenario]
@@ -168,9 +152,9 @@ def load_block2():
     }
 
 
-# ---------------------------------------------------------------------------
-# Table builders (all data-driven)
-# ---------------------------------------------------------------------------
+
+
+
 
 def table_main_kpi(d: dict) -> str:
     arch = d["arch"]
@@ -192,9 +176,7 @@ def table_main_kpi(d: dict) -> str:
 
 
 def table_coarse_graining_ablation(d: dict) -> str:
-    # Matched-resolution closed-loop ablation (roadmap 4.6). Live BOPTEST m_s and
-    # violation cells are data-driven; the 24h predictive RMSE column reuses the
-    # canonical, version-locked Block 1 rollout numbers cited throughout the paper.
+
     cg = read_csv("reports/block2_v3_15min_closed_loop_comparison.csv")
 
     def mv(window, col):
@@ -468,10 +450,6 @@ def table_nomenclature() -> str:
     ]
     return "\n".join(f"{a} & {b} & {tex_escape(c)} \\\\" for a, b, c in rows)
 
-
-# ---------------------------------------------------------------------------
-# LaTeX
-# ---------------------------------------------------------------------------
 
 def write_tex(ctx: dict) -> None:
     tex = rf"""\documentclass[11pt,a4paper]{{article}}
@@ -1034,7 +1012,7 @@ def main() -> None:
     n75 = d["seed_sum"][d["seed_sum"].canonical == "comfort_075_energy_025"].iloc[0]
     p0 = d["pareto"][d["pareto"].label == "comfort_000_energy_100"].iloc[0]
 
-    # Q1 additions: reward config, scenario manifest, disagreement stats, N=5 CI.
+    
     import json
     import math
     try:
@@ -1050,7 +1028,7 @@ def main() -> None:
         scen_tbl = ""
     dis = read_csv("reports/hybrid_disagreement_summary.csv")
     dov = dis[dis.scenario == "overall"].iloc[0]
-    # 95% t-CI (n=5, t_{0.975,4}=2.776) on m_s for the two canonicals.
+    
     tcrit = 2.776
     n50 = d["seed_sum"][d["seed_sum"].canonical == "comfort_050_energy_050"].iloc[0]
     n75 = d["seed_sum"][d["seed_sum"].canonical == "comfort_075_energy_025"].iloc[0]

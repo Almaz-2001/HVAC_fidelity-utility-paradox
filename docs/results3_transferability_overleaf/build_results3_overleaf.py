@@ -1,16 +1,3 @@
-"""Build the data-driven Overleaf package for Results III / Block 3.
-
-The section follows Block 3 of ``roadmap.md`` (Sections 14-15): pre-specified
-transferability of the v3+v3.5 hybrid recipe to three BOPTEST hydronic-family
-testcases under three recalibration regimes (none / partial / full).
-
-Design (identical to Results I/II): every numeric table is read from versioned
-artifacts in ``reports/``; pre-specified hypotheses, predictions, and audit
-anchors are verified literals from ``configs/block3_testcase_manifest.yaml`` and
-the git audit chain. Figures are referenced from ``figures/`` (already produced
-by the Block 3 evaluation scripts); this builder writes ``main.tex`` only.
-Provenance map: roadmap Section 15.
-"""
 
 from __future__ import annotations
 
