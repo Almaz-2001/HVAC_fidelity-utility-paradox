@@ -576,8 +576,9 @@ Reviewer-defensible reading (computed automatically by the report's `verdict`):
 - `partial_confound` / `timestep_driven` — temporal coarse-graining contributes to (or
   drives) the utility; the §8.1/§8.5 framing is refined accordingly.
 
-The full step-by-step rationale, timing, and outcome table live in
-`docs/experiments/v3_15min_closed_loop_runbook.md`.
+The step-by-step commands are listed above; the outcome table and verdict are
+written to `reports/block2_v3_15min_closed_loop_comparison.{csv,json}` by the
+`v3-15min-report` step.
 
 **Executed result (verdict: `timestep_driven`).** The matched-15min v3 is a
 strictly more accurate predictor (val rollout RMSE ~0.31 °C short-horizon;
