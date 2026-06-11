@@ -3,8 +3,10 @@
 **Surrogate-based reinforcement learning for HVAC control.**
 
 This repository accompanies the manuscript submitted to *Results in Engineering*
-(Elsevier). It contains the code, configurations, trained controllers, calibration
-data, and the full LaTeX sources of the manuscript and its supplementary material.
+(Elsevier). It is a **results-reproducibility package**: it contains the code,
+configurations, trained controllers, calibration data, the result tables, and the
+data-driven generators and figures behind every result. The typeset manuscript and
+supplementary PDFs are the journal's artifact and are not vendored here.
 
 > **Headline result — the fidelity–utility paradox.** On the BOPTEST
 > `bestest_air` testcase, a physically-calibrated grey-box surrogate (v3.5,
@@ -34,17 +36,23 @@ models/         24 trained Stable-Baselines3 policy checkpoints (.zip)
 data/           calibration / training corpora (CSV) and manifests
 reports/        result CSV/JSON tables that back the manuscript figures and tables
 docs/
-  paper_combined/   self-contained LaTeX bundle (main_paper.tex + supplementary.tex)
-  build_integrated_paper.py    assembles the manuscript + supplementary from sources
-  results{1,2,3}_*_overleaf/   per-block data-driven generators (build_*.py, main.tex)
+  paper_combined/figures/      the manuscript + supplementary figures (PDF/PNG)
+  results{1,2,3}_*_overleaf/    per-block data-driven generators (build_*.py): each
+                                reads the reports/ and outputs/ artifacts and (re)builds
+                                its block's figures and the data-filled section text
 roadmap.md      provenance maps: every figure/table/number -> its source artifact
 ```
 
 ## What is and is **not** included
 
 **Included:** all source code, configurations, the 24 trained controller
-checkpoints, the calibration/training corpora, the result tables (CSV/JSON), and
-the complete manuscript + supplementary LaTeX sources with figures.
+checkpoints, the calibration/training corpora, the result tables (CSV/JSON), the
+data-driven section generators, and the manuscript + supplementary figures.
+
+**Not included (by design):** the typeset LaTeX manuscript and supplementary PDFs
+(the journal's artifact). Every figure, table, and inline number remains
+reproducible here from the data and the generators; the content-to-artifact
+provenance maps are in [`roadmap.md`](roadmap.md).
 
 **Not included (by design):**
 - `outputs/` — the ~7 GB of raw per-seed run artifacts are **not** shipped.
@@ -95,18 +103,19 @@ ERAM branch. Configs live in `configs/morl_surrogate_ppo/`.
 python evaluation/run_block2.py build-reports
 ```
 
-**Rebuild the manuscript and supplementary PDFs** (requires a LaTeX
-distribution with `pdflatex` + `bibtex`):
+**Regenerate the figures and the data-filled section text** (each block, data-driven
+from the `reports/` and `outputs/` artifacts):
 
 ```bash
-python docs/build_integrated_paper.py          # regenerates the .tex bundle
-cd docs/paper_combined
-pdflatex main_paper.tex && bibtex main_paper && pdflatex main_paper.tex && pdflatex main_paper.tex
-pdflatex supplementary.tex && pdflatex supplementary.tex
+python docs/results1_digital_twin_overleaf/build_results1_overleaf.py
+python docs/results2_control_overleaf/build_results2_overleaf.py
+python docs/results3_transferability_overleaf/build_results3_overleaf.py
 ```
 
-The three Results sections are themselves regenerated, data-driven, by
-`docs/results{1,2,3}_*_overleaf/build_*.py`.
+Each generator rebuilds its block's figures and prints the section text with every
+number substituted from the source CSV/JSON — i.e., the manuscript content is
+*computed from the data*, not hand-entered. (The typeset LaTeX manuscript itself is
+the journal's artifact and is not included here.)
 
 ## Provenance and data availability
 

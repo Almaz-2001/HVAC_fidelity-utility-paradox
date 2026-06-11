@@ -8,11 +8,8 @@ venv/
 # Note: outputs/ here holds ONLY the small audit/calibration/manifest artefacts
 # referenced by roadmap.md (the ~7 GB of raw per-seed run data is NOT shipped).
 
-# Compiled manuscript PDFs (figures under docs/**/figures are kept)
-docs/paper_combined/main_paper.pdf
-docs/paper_combined/supplementary.pdf
-
-# LaTeX build artifacts
+# LaTeX build artifacts (the typeset manuscript is not vendored; generators may
+# still emit a local .tex/.aux when run, which should not be committed)
 *.aux
 *.log
 *.out
@@ -22,6 +19,7 @@ docs/paper_combined/supplementary.pdf
 *.synctex.gz
 *.fls
 *.fdb_latexmk
+*.tex
 
 # OS / editor
 .DS_Store

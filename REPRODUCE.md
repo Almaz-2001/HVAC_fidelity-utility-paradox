@@ -29,24 +29,19 @@ python docs/results2_control_overleaf/build_results2_overleaf.py
 python docs/results3_transferability_overleaf/build_results3_overleaf.py
 ```
 
-Each command prints `Wrote ... main.tex` and (re)creates the block's `figures/`.
-Every figure and every data-driven number (e.g. the 0.644 °C rollout RMSE, the
-`m_s = 1.046 / 0.041` controller scores, the 60.2–87.8 % transfer-RMSE gains)
-is recomputed from the committed artifacts and matches the manuscript.
+Each command (re)creates the block's figures and prints the block's section text
+with every number substituted from the source artifacts. Every figure and every
+data-driven number (e.g. the 0.644 °C rollout RMSE, the `m_s = 1.046 / 0.041`
+controller scores, the 60.2–87.8 % transfer-RMSE gains) is recomputed from the
+committed `reports/`/`outputs/` files and matches the published manuscript.
 
-**Rebuild the manuscript PDFs** (needs a LaTeX distribution with `pdflatex`+`bibtex`):
-
-```bash
-python docs/build_integrated_paper.py          # assembles main_paper.tex + supplementary.tex
-cd docs/paper_combined
-pdflatex main_paper.tex && bibtex main_paper && pdflatex main_paper.tex && pdflatex main_paper.tex
-pdflatex supplementary.tex && pdflatex supplementary.tex
-```
-
-> The authoritative manuscript text lives in `docs/paper_combined/`. The
-> per-section `main.tex` files carry minor editorial heading/intro wording added
-> after generation; the figures, tables, and **all numbers** are reproduced
-> verbatim by the generators above.
+> **Scope note.** This is a results-reproducibility package: the typeset LaTeX
+> manuscript and supplementary PDFs (the journal's artifact) are not included. What
+> *is* here is the machinery that produces the results they report — so every
+> number in the paper can be regenerated from the data by the generators above, and
+> traced to its source artifact through the provenance maps in
+> [`roadmap.md`](roadmap.md) (§3.2, §11.1, §15.7). The manuscript figures are also
+> committed under `docs/paper_combined/figures/`.
 
 ---
 
