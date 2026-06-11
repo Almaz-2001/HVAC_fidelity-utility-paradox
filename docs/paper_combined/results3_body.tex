@@ -110,7 +110,7 @@ Two-axis reporting ($m_s$ threshold and $\Delta E$) is necessary because the com
 
 \subsection{Headline transfer matrix}
 
-Table~\ref{tab:transfer_matrix} is the compact evidence summary and contains two distinct stories. The surrogate component transfers strongly: full Stage A/B/C improves RMSE by $60.2$--$87.8\%$ on all three target testcases. The frozen controller does not transfer uniformly: the two residential hydronic cases fail the pre-specified $1.25\times$ PI threshold, while the commercial stretch case passes the threshold but pays a $+35.3\%$ energy penalty.
+Table~\ref{tab:transfer_matrix} is the compact evidence summary and contains two distinct stories. The surrogate component transfers strongly: full Stage A/B/C improves RMSE by $60.2$--$87.8\%$ on all three target testcases. The frozen controller does not transfer uniformly: the two residential hydronic cases fail the pre-specified $1.25\times$ PI threshold, while the commercial stretch case passes the threshold but pays a $+35.3\%$ energy penalty. This component-level boundary --- the identified physics transfers, the frozen control law does not --- is consistent with prior evidence that building heterogeneity requires local adaptation rather than zero-shot reuse, motivating heterogeneous transfer-learning and online fine-tuning for real-world DRL deployment~\citep{Coraci2024HeteroTL,Coraci2025HiLo}.
 
 \begin{table}[pos={!ht}]
 \centering
@@ -181,7 +181,7 @@ Full Stage A/B/C improves target rollout RMSE on all three testcases (gains $60.
   \bar\rho_C = 1.918,\quad s_{\rho_C} = 0.032.
   \label{eq:czon_stats}
 \end{equation}
-The calibrated thermal capacitance is thus more closely associated with hydronic-family physics than with the obvious commercial zone-size proxy: despite the stretch testcase having an order-of-magnitude larger zone volume, its ratio sits within $\pm2\%$ of the family mean. This generalizes the calibration component of the v3.5 surrogate beyond a single building. The uniformity claim is, however, established on $N=3$ single-zone hydronic cases and is therefore a hydronic-family observation rather than a statistically powered law; it is not asserted for radiant, VRF, multi-zone, or cross-climate cases (Section~\ref{ssec:b3lim}).
+The calibrated thermal capacitance is thus more closely associated with hydronic-family physics than with the obvious commercial zone-size proxy: despite the stretch testcase having an order-of-magnitude larger zone volume, its ratio sits within $\pm2\%$ of the family mean. This generalizes the calibration component of the v3.5 surrogate beyond a single building: the re-identified capacitance behaves as a transferable structural invariant of the hydronic family --- a successfully carried-over ``knowledge anchor'' in the sense of preserved, recombinable knowledge studied in lifelong reinforcement learning~\citep{Meng2025Lifelong}. The uniformity claim is, however, established on $N=3$ single-zone hydronic cases and is therefore a hydronic-family observation rather than a statistically powered law; it is not asserted for radiant, VRF, multi-zone, or cross-climate cases (Section~\ref{ssec:b3lim}).
 
 \begin{table}[pos={!ht}]
 \centering

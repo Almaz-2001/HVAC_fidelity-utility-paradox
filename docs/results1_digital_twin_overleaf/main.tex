@@ -115,7 +115,7 @@ Interface invariance & All four backends obey \eqref{eq:tsup-signature}; only th
 \subsection{Control-Oriented Surrogate Architecture (v3)}
 \label{ssec:block1-v3}
 
-The v3 surrogate is a compact control-oriented direct-\Tsupply{} model. Its role is not to be the most accurate long-horizon forecaster; its role is to provide smooth and fast rollout dynamics for downstream PPO experiments. In contrast, v3.5 is a physics-informed extension whose Stage B parameter is interpretable as the zone thermal capacitance \(\Czon\).
+The v3 surrogate is a compact control-oriented direct-\Tsupply{} model. Its role is not to be the most accurate long-horizon forecaster; its role is to provide smooth and fast rollout dynamics for downstream PPO experiments. In contrast, v3.5 is a physics-informed extension whose Stage B parameter is interpretable as the zone thermal capacitance \(\Czon\); embedding thermodynamic structure directly into the learned model follows the physics-informed reinforcement-learning paradigm~\citep{Hedayat2025PINN}.
 
 \begin{table}[H]
 \centering
@@ -201,7 +201,7 @@ The canonical v3 checkpoint is the early-stopped optimum of a 215-epoch supervis
   \label{fig:v3-learning-curve}
 \end{figure}
 
-The v3 input vector is intentionally low-dimensional. It keeps only the thermal state, outdoor disturbance, cyclic time embedding, and direct-\Tsupply{} action coordinates required by the control problem. The action coordinate \(a_0\in[-1,1]\) is mapped to an 18--35~$^\circ$C supply-temperature command, and the power head is constrained through a non-negative output transform. These choices make v3 a control-oriented surrogate rather than a generic black-box forecaster. Its full hyperparameters and layer shapes are listed in Supplementary Table~\ref{tab:v3-config}.
+The v3 input vector is intentionally low-dimensional. It keeps only the thermal state, outdoor disturbance, cyclic time embedding, and direct-\Tsupply{} action coordinates required by the control problem. The action coordinate \(a_0\in[-1,1]\) is mapped to an 18--35~$^\circ$C supply-temperature command --- a direct supply-temperature setpoint interface of the kind shown effective for DRL-based room HVAC control~\citep{Sun2024DirectTSup} --- and the power head is constrained through a non-negative output transform. These choices make v3 a control-oriented surrogate rather than a generic black-box forecaster. Its full hyperparameters and layer shapes are listed in Supplementary Table~\ref{tab:v3-config}.
 
 \begin{table}[H]
 \centering
