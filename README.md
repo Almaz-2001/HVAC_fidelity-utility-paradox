@@ -14,12 +14,17 @@ supplementary PDFs are the journal's artifact and are not vendored here.
 > 0.644 °C vs 1.557 °C for a black-box surrogate v3), yet used directly as a
 > reinforcement-learning training environment it produces an *unusable* controller
 > (maintenance score `m_s = 1.046`, >77 % comfort violation). Training on the
-> predictively weaker v3 yields a usable controller. A **hybrid** that uses v3 for
+> predictively weaker v3 yields a usable controller. The effect tracks a
+> fidelity/smoothing trade-off, not the model class: retraining the *same* black-box
+> surrogate at the finer 15-min control resolution makes it strictly *more* accurate
+> (0.876 °C) yet also unusable as a training environment (`m_s = 1.14`/`1.21`,
+> >85 % violation), on a par with the calibrated twin. A **hybrid** that uses v3 for
 > smooth rollout dynamics and a *frozen* v3.5 as a per-step reward-shaping censor
-> recovers the best controller (`m_s = 0.041` typical, <5 % violation) at ~85×
-> the live-simulator throughput. The optimal censor weight is **controller-family
-> specific**, and cross-testcase transfer resolves into a component-level boundary:
-> the inverse-calibration pipeline transfers, the frozen policy does not.
+> recovers the best **cross-window robustness** (`m_s = 0.041` typical, <5 % violation
+> on both windows) at ~85× the live-simulator throughput. The optimal censor weight is
+> **controller-family specific**, and cross-testcase transfer resolves into a
+> component-level boundary: the inverse-calibration pipeline transfers, the frozen
+> policy does not.
 
 ---
 
@@ -49,12 +54,11 @@ roadmap.md      provenance maps: every figure/table/number -> its source artifac
 checkpoints, the calibration/training corpora, the result tables (CSV/JSON), the
 data-driven section generators, and the manuscript + supplementary figures.
 
-**Not included (by design):** the typeset LaTeX manuscript and supplementary PDFs
-(the journal's artifact). Every figure, table, and inline number remains
-reproducible here from the data and the generators; the content-to-artifact
-provenance maps are in [`roadmap.md`](roadmap.md).
-
 **Not included (by design):**
+- The **typeset LaTeX manuscript and supplementary PDFs** (the journal's artifact).
+  Every figure, table, and inline number remains reproducible here from the data and
+  the generators; the content-to-artifact provenance maps are in
+  [`roadmap.md`](roadmap.md).
 - `outputs/` — the ~7 GB of raw per-seed run artifacts are **not** shipped.
   However, the small audit trail referenced by the provenance maps — calibration
   summaries, scenario/pipeline manifests, and the Stage-B `C_zon` histories — **is**
@@ -77,7 +81,7 @@ pip install -r requirements.txt
 ```
 
 A running BOPTEST instance (Docker or local) is required for any live-simulator
-evaluation; surrogate-only training and the paper build do not need it.
+evaluation; surrogate-only training and the figure/section generators do not need it.
 
 ## Reproducing the results
 
