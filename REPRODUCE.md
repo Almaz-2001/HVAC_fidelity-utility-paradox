@@ -22,7 +22,7 @@ the section's `main.tex` plus its figures.
 # Block 1 — digital-twin fidelity (surrogate accuracy, C_zon, Fisher CI, physics audit)
 python docs/results1_digital_twin_overleaf/build_results1_overleaf.py
 
-# Block 2 — downstream control utility (fidelity-utility paradox, hybrid, HDRL, MORL)
+# Block 2 — downstream control utility (paradox, matched-resolution ablation, hybrid, HDRL, MORL)
 python docs/results2_control_overleaf/build_results2_overleaf.py
 
 # Block 3 — pre-registered transferability (transfer matrix, C_zon invariance)
@@ -31,9 +31,11 @@ python docs/results3_transferability_overleaf/build_results3_overleaf.py
 
 Each command (re)creates the block's figures and prints the block's section text
 with every number substituted from the source artifacts. Every figure and every
-data-driven number (e.g. the 0.644 °C rollout RMSE, the `m_s = 1.046 / 0.041`
-controller scores, the 60.2–87.8 % transfer-RMSE gains) is recomputed from the
-committed `reports/`/`outputs/` files and matches the published manuscript.
+data-driven number (e.g. the 0.644 / 1.557 / 0.876 °C rollout RMSEs, the controller
+scores `m_s = 1.046` for direct v3.5, `1.14`/`1.21` for the matched-resolution v3
+ablation, and `0.041` typical for the hybrid, the 60.2–87.8 % transfer-RMSE gains)
+is recomputed from the committed `reports/`/`outputs/` files and matches the
+published manuscript.
 
 > **Scope note.** This is a results-reproducibility package: the typeset LaTeX
 > manuscript and supplementary PDFs (the journal's artifact) are not included. What
