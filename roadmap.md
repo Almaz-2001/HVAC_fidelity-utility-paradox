@@ -1325,7 +1325,7 @@ Secondary / stretch per-regime detail                  -> reports/block3_bestest
 N=2 hydronic-family roll-up                            -> reports/block3_hydronic_family_n2_summary.csv
 C_zon ratios + hydronic-family mean/std                -> reports/block3_transfer_matrix.csv (c_zon_ratio_vs_bestest_air); baseline 4.413e5 J/K (Block 1)
 Testcases / adapters / regimes / hypotheses / predictions -> configs/block3_testcase_manifest.yaml ; configs/block3_actuator_mapping_*.yaml
-Audit anchors                                          -> git log: 1861e48, 2f9d596, eb7091e, 46fbaa9, 645626e, 7ada793, cb7025f
+Audit anchors                                          -> git log: 1861e48, 2f9d596, eb7091e, 46fbaa9, 645626e, b915bfc (close), 7ada793 (record close SHA), cb7025f
 Figures (protocol, heatmap, RMSE gain, C_zon, closure) -> docs/results3_transferability_overleaf/figures/  (Block 3 evaluation scripts)
 ```
 
