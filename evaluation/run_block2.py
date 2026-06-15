@@ -52,71 +52,55 @@ def run_commands(commands: list[list[str]], *, dry_run: bool) -> None:
             subprocess.run(command, cwd=ROOT, check=True)
 
 
-def thermostatic_train_command(variant: str, *, smoke: bool = False) -> list[str]:
-    base = cmd(PY, "-B", ROOT / "training" / "train_thermostatic.py", "--step-sec", "900", "--comfort-low", "21", "--comfort-high", "24")
+def _seed_suffix(seed: int) -> str:
+    # Seed 42 keeps the canonical artifact names (so existing frozen results are
+    # untouched); other seeds get a _seedN suffix for the multi-seed robustness band.
+    return "" if seed == 42 else f"_seed{seed}"
+
+
+def thermostatic_train_command(variant: str, *, smoke: bool = False, seed: int = 42) -> list[str]:
+    base = cmd(PY, "-B", ROOT / "training" / "train_thermostatic.py", "--step-sec", "900", "--comfort-low", "21", "--comfort-high", "24", "--seed", str(seed))
     if smoke:
         # Quick load/step check before committing to the full 10M-step run.
         base += cmd("--num-envs", "4", "--total-steps", "50000")
     if variant == "pure":
-        return base + cmd("--surrogate-kind", "legacy_v3", "--surrogate-path", SURROGATE_V3, "--save-name", "ppo_thermostatic")
-    if variant == "pure_v3_15min":
+        save, args = "ppo_thermostatic", cmd("--surrogate-kind", "legacy_v3", "--surrogate-path", SURROGATE_V3)
+    elif variant == "pure_v3_15min":
         # Reviewer mitigation (Threats to validity 8.5): identical recipe to "pure"
         # but trained on the corpus-matched 15-min v3 instead of the hourly v3.
-        name = "ppo_thermostatic_v3_15min_smoke" if smoke else "ppo_thermostatic_v3_15min"
-        return base + cmd("--surrogate-kind", "legacy_v3", "--surrogate-path", SURROGATE_V3_15MIN, "--save-name", name)
-    if variant == "v35_direct":
-        return base + cmd(
-            "--surrogate-kind",
-            "v35_calibrated",
-            "--surrogate-summary-json",
-            V35_SUMMARY,
-            "--obs-ablation",
-            "no_delta_t",
-            "--power-feature-mode",
-            "clipped_log",
-            "--t-zone-feature-mode",
-            "comfort_centered",
-            "--save-name",
-            "ppo_thermostatic_v35_15min_no_delta_t_powerlog_tzone",
-        )
-    if variant in THERMOSTATIC_HYBRID:
+        save = "ppo_thermostatic_v3_15min_smoke" if smoke else "ppo_thermostatic_v3_15min"
+        args = cmd("--surrogate-kind", "legacy_v3", "--surrogate-path", SURROGATE_V3_15MIN)
+    elif variant == "v35_direct":
+        save = "ppo_thermostatic_v35_15min_no_delta_t_powerlog_tzone"
+        args = cmd("--surrogate-kind", "v35_calibrated", "--surrogate-summary-json", V35_SUMMARY,
+                   "--obs-ablation", "no_delta_t", "--power-feature-mode", "clipped_log",
+                   "--t-zone-feature-mode", "comfort_centered")
+    elif variant in THERMOSTATIC_HYBRID:
         lambda_temp, tag = THERMOSTATIC_HYBRID[variant]
-        return base + cmd(
-            "--surrogate-kind",
-            "hybrid_v3_v35",
-            "--surrogate-path",
-            SURROGATE_V3,
-            "--surrogate-summary-json",
-            V35_SUMMARY,
-            "--obs-ablation",
-            "no_delta_t",
-            "--power-feature-mode",
-            "clipped_log",
-            "--t-zone-feature-mode",
-            "raw",
-            "--lambda-temp-disagree",
-            lambda_temp,
-            "--lambda-power-disagree",
-            "5e-5",
-            "--save-name",
-            f"ppo_thermostatic_hybrid_v3_v35_{tag}",
-        )
-    raise ValueError(f"Unknown thermostatic variant: {variant}")
+        save = f"ppo_thermostatic_hybrid_v3_v35_{tag}"
+        args = cmd("--surrogate-kind", "hybrid_v3_v35", "--surrogate-path", SURROGATE_V3,
+                   "--surrogate-summary-json", V35_SUMMARY, "--obs-ablation", "no_delta_t",
+                   "--power-feature-mode", "clipped_log", "--t-zone-feature-mode", "raw",
+                   "--lambda-temp-disagree", lambda_temp, "--lambda-power-disagree", "5e-5")
+    else:
+        raise ValueError(f"Unknown thermostatic variant: {variant}")
+    return base + args + cmd("--save-name", save + _seed_suffix(seed))
 
 
-def thermostatic_benchmark_command(variant: str) -> list[str]:
+def thermostatic_benchmark_command(variant: str, *, seed: int = 42) -> list[str]:
+    sfx = _seed_suffix(seed)
     model = {
-        "pure": "models/ppo_thermostatic.zip",
-        "pure_v3_15min": "models/ppo_thermostatic_v3_15min.zip",
-        "hybrid_l005": "models/ppo_thermostatic_hybrid_v3_v35_l005.zip",
-        "hybrid_l010": "models/ppo_thermostatic_hybrid_v3_v35_l010.zip",
-        "hybrid_l015": "models/ppo_thermostatic_hybrid_v3_v35_l015.zip",
-    }[variant]
+        "pure": "models/ppo_thermostatic",
+        "pure_v3_15min": "models/ppo_thermostatic_v3_15min",
+        "hybrid_l005": "models/ppo_thermostatic_hybrid_v3_v35_l005",
+        "hybrid_l010": "models/ppo_thermostatic_hybrid_v3_v35_l010",
+        "hybrid_l015": "models/ppo_thermostatic_hybrid_v3_v35_l015",
+    }[variant] + sfx + ".zip"
     fixed_out = {
         "pure": "outputs/bestest_air_article7_style_15min",
         "pure_v3_15min": "outputs/bestest_air_pure_v3_15min",
     }
-    out = fixed_out.get(variant) or f"outputs/block2_thermostatic_hybrid_v3_v35_{THERMOSTATIC_HYBRID[variant][1]}"
+    out = (fixed_out.get(variant) or f"outputs/block2_thermostatic_hybrid_v3_v35_{THERMOSTATIC_HYBRID[variant][1]}") + sfx
     return cmd(
         PY,
         "-B",
@@ -302,6 +286,10 @@ def v3_15min_report_command() -> list[str]:
     return cmd(PY, "-B", ROOT / "evaluation" / "build_v3_15min_closed_loop_comparison.py")
 
 
+def seed_band_command(seeds: str) -> list[str]:
+    return cmd(PY, "-B", ROOT / "evaluation" / "build_thermostatic_seed_band.py", "--seeds", seeds)
+
+
 def build_reports_commands() -> list[list[str]]:
     scripts = [
         "build_hou_evins_q1_gap_tables.py",
@@ -338,9 +326,11 @@ def main() -> None:
     p = sub.add_parser("thermostatic-train")
     p.add_argument("--variant", choices=["pure", "pure_v3_15min", "v35_direct", "hybrid_l005", "hybrid_l010", "hybrid_l015", "hybrid_sweep"], required=True)
     p.add_argument("--smoke", action="store_true", help="Quick 4-env x 50k-step load/step check instead of the full 10M run.")
+    p.add_argument("--seed", type=int, default=42, help="RNG seed; seed 42 keeps canonical names, others get a _seedN suffix.")
 
     p = sub.add_parser("thermostatic-benchmark")
     p.add_argument("--variant", choices=["pure", "pure_v3_15min", "hybrid_l005", "hybrid_l010", "hybrid_l015", "hybrid_sweep"], required=True)
+    p.add_argument("--seed", type=int, default=42, help="Benchmark the model trained with this seed (matches thermostatic-train --seed).")
 
     p = sub.add_parser("thermostatic-transfer")
     p.add_argument("--variant", choices=["pure", "v35_direct", "hybrid_l010", "all"], required=True)
@@ -374,6 +364,8 @@ def main() -> None:
 
     sub.add_parser("pi-yearly")
     sub.add_parser("v3-15min-report")
+    p = sub.add_parser("seed-band")
+    p.add_argument("--seeds", default="42,43,44", help="Seeds to aggregate into the pure-v3/hybrid mean+/-std band.")
     sub.add_parser("build-hybrid-evidence")
     sub.add_parser("build-morl-5d-comparison")
     sub.add_parser("build-reports")
@@ -383,10 +375,10 @@ def main() -> None:
 
     if args.command == "thermostatic-train":
         variants = ["hybrid_l005", "hybrid_l010", "hybrid_l015"] if args.variant == "hybrid_sweep" else [args.variant]
-        commands = [thermostatic_train_command(v, smoke=args.smoke) for v in variants]
+        commands = [thermostatic_train_command(v, smoke=args.smoke, seed=args.seed) for v in variants]
     elif args.command == "thermostatic-benchmark":
         variants = ["hybrid_l005", "hybrid_l010", "hybrid_l015"] if args.variant == "hybrid_sweep" else [args.variant]
-        commands = [thermostatic_benchmark_command(v) for v in variants]
+        commands = [thermostatic_benchmark_command(v, seed=args.seed) for v in variants]
     elif args.command == "thermostatic-transfer":
         commands = [thermostatic_transfer_command(v) for v in expand_variants(args.variant, ["v35_direct", "pure", "hybrid_l010"])]
     elif args.command == "thermostatic-diagnose":
@@ -434,6 +426,8 @@ def main() -> None:
         commands = [pi_yearly_command()]
     elif args.command == "v3-15min-report":
         commands = [v3_15min_report_command()]
+    elif args.command == "seed-band":
+        commands = [seed_band_command(args.seeds)]
     elif args.command == "build-hybrid-evidence":
         commands = build_hybrid_evidence_commands()
     elif args.command == "build-morl-5d-comparison":
