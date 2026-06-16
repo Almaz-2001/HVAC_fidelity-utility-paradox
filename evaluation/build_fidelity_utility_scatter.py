@@ -72,40 +72,59 @@ def make_figure(rows: list[dict]) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    plt.rcParams.update({"font.size": 11})
     color = {"usable": "#1b7837", "collapse": "#b2182b", "robust": "#2166ac"}
-    fig, ax = plt.subplots(figsize=(6.4, 4.7))
+    legend_label = {"v3 (hourly)": "v3 hourly — usable",
+                    "matched v3 (15-min)": "matched v3 (15-min) — collapse",
+                    "v3.5 (calibrated)": "v3.5 calibrated — collapse",
+                    "hybrid (v3 rollout + v3.5 censor)": "hybrid (v3 rollout + v3.5 censor) — robust"}
+    fig, ax = plt.subplots(figsize=(7.2, 5.2))
+
+    ymax = max(r["m_s_mean"] for r in rows) * 1.18
+    # shaded usable / collapse zones (m_s = 1 is a clear live failure)
+    ax.axhspan(1.0, ymax, color="#b2182b", alpha=0.06, zorder=0)
+    ax.axhspan(0.0, 1.0, color="#1b7837", alpha=0.05, zorder=0)
+    ax.axhline(1.0, color="0.6", lw=0.9, ls=":", zorder=1)
 
     # paradox trend through the three single-model surrogates (ordered by RMSE)
     singles = sorted([r for r in rows if r["is_single"]], key=lambda r: r["rmse_24h_c"])
     ax.plot([r["rmse_24h_c"] for r in singles], [r["m_s_mean"] for r in singles],
-            "--", color="0.5", lw=1.2, zorder=1)
+            "--", color="0.55", lw=1.4, zorder=2)
 
+    from matplotlib.lines import Line2D
+    handles = []
     for r in rows:
         c = color[r["verdict"]]
         lo, hi = min(r["m_s_peak"], r["m_s_typ"]), max(r["m_s_peak"], r["m_s_typ"])
         marker = "D" if not r["is_single"] else "o"
         ax.errorbar(r["rmse_24h_c"], r["m_s_mean"], yerr=[[r["m_s_mean"] - lo], [hi - r["m_s_mean"]]],
-                    fmt=marker, ms=11, color=c, ecolor=c, elinewidth=1.3, capsize=4, zorder=3,
-                    markeredgecolor="white", markeredgewidth=0.8)
+                    fmt=marker, ms=13, color=c, ecolor=c, elinewidth=1.4, capsize=4, zorder=4,
+                    markeredgecolor="white", markeredgewidth=1.0)
+        handles.append(Line2D([0], [0], marker=marker, color="none", markerfacecolor=c,
+                              markeredgecolor="white", markersize=11, label=legend_label[r["controller"]]))
 
-    # usable / collapse divider (m_s = 1 is a clear failure; usable controllers are well below)
-    ax.axhline(1.0, color="0.7", lw=0.8, ls=":", zorder=0)
-    ax.text(ax.get_xlim()[1], 1.0, " collapse (m_s>1) ", va="bottom", ha="right", color="0.45", fontsize=7)
+    # zone labels (placed in the empty corners)
+    xlo, xhi = 0.55, 1.62
+    ax.text(xlo + 0.02, ymax * 0.97, "collapse  ($m_s>1$)", color="#b2182b", fontsize=10,
+            va="top", ha="left", weight="bold")
+    ax.text(xhi - 0.02, 0.04 * ymax + 0.02, "usable", color="#1b7837", fontsize=10,
+            va="bottom", ha="right", weight="bold")
 
-    # annotations
-    ann = {"v3 (hourly)": (8, 10), "matched v3 (15-min)": (8, 8), "v3.5 (calibrated)": (-8, 10),
-           "hybrid (v3 rollout + v3.5 censor)": (-10, -22)}
-    for r in rows:
-        dx, dy = ann.get(r["controller"], (6, 6))
-        ax.annotate(r["controller"], (r["rmse_24h_c"], r["m_s_mean"]), textcoords="offset points",
-                    xytext=(dx, dy), fontsize=8, ha="left" if dx >= 0 else "right",
-                    color=color[r["verdict"]])
+    # one short callout for the special hybrid case only
+    hy = next(r for r in rows if not r["is_single"])
+    ax.annotate("hybrid breaks\nthe trade-off", (hy["rmse_24h_c"], hy["m_s_mean"]),
+                textcoords="offset points", xytext=(-6, 34), fontsize=9, ha="right",
+                color=color["robust"],
+                arrowprops=dict(arrowstyle="->", color=color["robust"], lw=1.2))
 
-    ax.set_xlabel(r"surrogate predictive fidelity: 24 h rollout RMSE ($^\circ$C)  $\rightarrow$ more accurate")
-    ax.set_ylabel(r"downstream control utility: live $m_s$  $\rightarrow$ worse")
+    ax.set_xlim(xhi, xlo)  # inverted: "more accurate" (lower RMSE) to the right
+    ax.set_ylim(-0.02, ymax)
+    ax.set_xlabel(r"24-h rollout RMSE ($^\circ$C)      $\longrightarrow$ more accurate surrogate")
+    ax.set_ylabel(r"live maintenance score $m_s$      $\longrightarrow$ worse controller")
     ax.set_title("Fidelity–utility paradox: lower RMSE does not imply lower $m_s$")
-    ax.invert_xaxis()  # so "more accurate" is to the right, matching the arrow
-    ax.grid(alpha=0.2)
+    ax.legend(handles=handles, loc="center", fontsize=9, frameon=True, framealpha=0.9,
+              bbox_to_anchor=(0.5, 0.5))
+    ax.grid(alpha=0.18)
     fig.tight_layout()
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_OUT, bbox_inches="tight")
