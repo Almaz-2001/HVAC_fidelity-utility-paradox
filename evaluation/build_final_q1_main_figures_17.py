@@ -456,20 +456,29 @@ def fig08_hdrl_lambda_sweep():
 
 
 def fig09_morl_5d_17d():
-    df = read_csv("reports/block2_morl_comparison_summary.csv")
+    # Read the reconstructed comparison so the figure's primary 5D bar matches the
+    # current-code rerun reported in Table tab:morl5d17d (the originally frozen 5D is
+    # shown alongside, explicitly labelled as the retained audit artifact).
+    rec = read_csv("reports/block2_morl_5d_reconstructed_comparison.csv")
+    rerun5 = rec[rec.variant == "MORL_5D_basic_reconstructed"].iloc[0]
+    frozen5 = rec[(rec.variant == "MORL_5D_basic") & (rec.evidence_layer == "historical_frozen")].iloc[0]
+    d17 = rec[rec.variant == "MORL_17D_power_only"].iloc[0]
+    bars = [("5D\n(current rerun)", rerun5, COLORS["red"]),
+            ("5D\n(frozen audit)", frozen5, "#7a1f1f"),
+            ("17D\npower-only", d17, COLORS["green"])]
     metrics = [("rmse_c", "RMSE_T\n(°C)"), ("violation_pct", "Violation\n%"), ("within_1c_pct", "Within\n1°C %"), ("m_s", "m_s"), ("energy_kwh", "Energy\nkWh")]
-    labels = ["5D basic", "17D power-only"]
+    labels = [b[0] for b in bars]
+    colors = [b[2] for b in bars]
     fig, axes = plt.subplots(1, len(metrics), figsize=(13, 3.8))
-    colors = [COLORS["red"], COLORS["green"]]
     for ax, (col, title) in zip(axes, metrics):
-        vals = df[col].astype(float).values
+        vals = [float(b[1][col]) for b in bars]
         ax.bar(labels, vals, color=colors)
         ax.set_title(title)
         ax.tick_params(axis="x", rotation=35)
         ax.grid(axis="y", alpha=0.2)
         for i, v in enumerate(vals):
             ax.text(i, v * 1.03 if v else 0.03, f"{v:.2f}", ha="center", fontsize=8)
-    fig.suptitle("MORL observation-interface ablation: 5D failure → 17D success")
+    fig.suptitle("MORL observation-interface ablation: 5D failure (current rerun and frozen audit) → 17D success")
     save(fig, "final17_fig09_morl_5d_failure_17d_success")
 
 

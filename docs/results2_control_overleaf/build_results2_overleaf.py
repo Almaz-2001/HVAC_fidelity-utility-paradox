@@ -995,7 +995,7 @@ Variant & Obs dim & RMSE$_T$ ($^\circ$C) & Violation (\%) & $m_s$ \\
 \begin{{figure}}[H]
   \centering
   \includegraphics[width=0.84\linewidth]{{final17_fig09_morl_5d_failure_17d_success.pdf}}
-  \caption{{MORL 5D failure and 17D recovery. The observation interface, not only the scalarized reward, determines whether MORL is viable.}}
+  \caption{{MORL observation-interface ablation: 5D failure $\rightarrow$ 17D recovery. Two 5D bars are shown to match the main-text MORL 5D/17D comparison table: the \emph{{current-code 5D rerun}} ($m_s={ctx['m5_ms']}$, the value reported in that table) and the \emph{{originally frozen 5D artifact}} ($m_s={ctx['m5frozen_ms']}$), which is retained only as an audit artifact. Both 5D variants fail; only the 17D power-only observation ($m_s={ctx['m17_ms']}$) recovers a usable policy. The observation interface, not only the scalarized reward, determines whether MORL is viable.}}
   \label{{fig:morl5d17d}}
 \end{{figure}}
 
