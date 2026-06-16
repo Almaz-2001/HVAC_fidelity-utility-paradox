@@ -950,7 +950,7 @@ Results II content                                   -> source artifact
 ---------------------------------------------------     ----------------------------------------------------------
 Pure v3 thermostatic baseline KPIs                   -> outputs/bestest_air_article7_style_15min/summary.csv
 Temporal-coarse-graining ablation (tab:coarse_graining) -> reports/block2_v3_15min_closed_loop_comparison.csv ; outputs/bestest_air_pure_v3_15min/summary.csv
-Thermostatic N=3 seed band (tab:seed_band)             -> reports/block2_thermostatic_seed_band.csv (run_block2.py seed-band; per-seed outputs/bestest_air_article7_style_15min[_seed43,44]/ and outputs/block2_thermostatic_hybrid_v3_v35_l010[_seed43,44]/)
+Thermostatic N=3 seed band (tab:seed_band)             -> reports/block2_thermostatic_seed_band.csv (run_block2.py seed-band; pure v3, matched-resolution v3, and hybrid over seeds 42/43/44 -> per-seed outputs/bestest_air_article7_style_15min[_seed43,44]/, outputs/bestest_air_pure_v3_15min[_seed43,44]/, and outputs/block2_thermostatic_hybrid_v3_v35_l010[_seed43,44]/)
 Direct-v3.5 warm-start negative control              -> outputs/block2_thermostatic_warmstart_utility/comparison_summary.csv
 Thermostatic hybrid sweep (canonical hybrid_l010)    -> outputs/block2_thermostatic_*hybrid*/  (benchmark summaries)
 Architecture justification on live BOPTEST (S9)      -> reports/hou_evins_architecture_justification_table.csv
