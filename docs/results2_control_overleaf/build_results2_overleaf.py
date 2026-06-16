@@ -223,8 +223,9 @@ def table_seed_band(d: dict) -> str:
     # multi-seed aggregator (reports/block2_thermostatic_seed_band.csv). Mean +/- std.
     sb = read_csv("reports/block2_thermostatic_seed_band.csv")
     rows = []
-    label = {"pure v3": "pure v3", "hybrid (lambda_T=0.10)": "hybrid ($\\lambda_T{=}0.10$)"}
-    for ctrl in ["pure v3", "hybrid (lambda_T=0.10)"]:
+    label = {"pure v3": "pure v3", "matched v3 (15-min)": "matched v3 (15-min)",
+             "hybrid (lambda_T=0.10)": "hybrid ($\\lambda_T{=}0.10$)"}
+    for ctrl in ["pure v3", "matched v3 (15-min)", "hybrid (lambda_T=0.10)"]:
         for win in ["peak", "typical"]:
             r = sb[(sb.controller == ctrl) & (sb.window == win)].iloc[0]
             rows.append(
@@ -787,7 +788,7 @@ Training backend & Architecture & Step (s) & 24\,h RMSE & $m_s$ (pk/typ) & Viol.
 
 This ablation resolves the timestep confound directly: improving v3's temporal resolution and predictive RMSE does not improve downstream control utility---it destroys it. The useful property of the canonical v3 is therefore not its black-box architecture alone, but the optimization-friendly smoothing induced by temporal coarse-graining. Read across the three single-model backends the pattern is near-monotonic in fidelity: the least accurate surrogate (hourly v3) is the only usable training environment, while the more accurate matched v3 and the most accurate calibrated v3.5 both fail. This reframes the hybrid as an explicit \emph{{architectural separation of smoothing and fidelity}}: v3 supplies the coarse, optimization-friendly rollout dynamics while the frozen v3.5 supplies a physical-plausibility signal as a censor, so policy-gradient training keeps the smoothing it needs while regaining physical grounding. The broader principle is that PPO needs not only accurate predictions but an optimization-friendly training landscape.
 
-\paragraph{{Seed robustness of the two headline controllers.}} To check that the single-seed scores are not seed-luck, pure v3 and the canonical hybrid were retrained and re-evaluated on three fixed seeds (\{{42, 43, 44\}}). Both stay in their qualitative regime on every seed --- each individual seed is below the $5\%$ comfort-violation bar on both windows --- so the usable-vs-robust verdicts are seed-stable (Supplementary Table~\ref{{tab:seed_band}}). The single-seed peak advantage of pure v3 over the hybrid (Table~\ref{{tab:main_kpi}}) does not persist across seeds: over $N{{=}}3$ the hybrid is at least as good on both windows. The hierarchical and MORL families are treated separately (HDRL single-seed; MORL over $N{{=}}5$).
+\paragraph{{Seed robustness.}} To check that the single-seed scores are not seed-luck, the three thermostatic backends (pure v3, the matched-resolution v3, and the canonical hybrid) were retrained and re-evaluated on three fixed seeds (\{{42, 43, 44\}}). Each stays in its qualitative regime on every seed: the usable controllers (pure v3 and hybrid) keep every individual seed below the $5\%$ comfort-violation bar on both windows, while the matched-resolution v3 \emph{{collapses on every seed}} ($m_s = 1.14$/$1.21$, std $<0.001$ --- the unlearnable environment drives all seeds to the same degenerate policy). The usable-versus-collapse verdicts, including the temporal-coarse-graining failure, are therefore seed-stable (Supplementary Table~\ref{{tab:seed_band}}). The single-seed peak advantage of pure v3 over the hybrid (Table~\ref{{tab:main_kpi}}) does not persist across seeds: over $N{{=}}3$ the hybrid is at least as good on both windows. The hierarchical and MORL families are treated separately (HDRL single-seed; MORL over $N{{=}}5$).
 
 \begin{{table}}[H]
 \centering

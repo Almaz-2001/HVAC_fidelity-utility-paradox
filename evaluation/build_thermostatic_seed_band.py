@@ -33,6 +33,7 @@ def out_dir(variant: str, seed: int) -> Path:
     base = {
         "pure": "outputs/bestest_air_article7_style_15min",
         "hybrid_l010": "outputs/block2_thermostatic_hybrid_v3_v35_l010",
+        "matched_v3": "outputs/bestest_air_pure_v3_15min",
     }[variant]
     return ROOT / (base + sfx) / "summary.csv"
 
@@ -63,7 +64,7 @@ def main() -> None:
     seeds = [int(s) for s in args.seeds.split(",") if s.strip()]
 
     rows, payload = [], {}
-    for variant, label in [("pure", "pure v3"), ("hybrid_l010", "hybrid (lambda_T=0.10)")]:
+    for variant, label in [("pure", "pure v3"), ("matched_v3", "matched v3 (15-min)"), ("hybrid_l010", "hybrid (lambda_T=0.10)")]:
         payload[variant] = {}
         for scenario, wlabel in WINDOWS.items():
             found, vals = [], {"m_s": [], "violation_pct": [], "energy_kwh": []}
