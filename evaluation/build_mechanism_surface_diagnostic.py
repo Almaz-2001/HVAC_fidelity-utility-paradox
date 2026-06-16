@@ -76,8 +76,68 @@ def metrics(adapter):
     return st.mean(sens), st.mean(rough), st.mean(rng)
 
 
+FIG_OUT = ROOT / "docs/results2_control_overleaf/figures/block2_surface_response_curves.pdf"
+# Representative state for the Panel-A response curves (typical-window ambient, mid comfort band).
+REP_TZ, REP_TA = 22.0, 2.4
+
+
+def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception as exc:  # pragma: no cover - figure is optional
+        print(f"[figure skipped: matplotlib unavailable: {exc}]")
+        return
+
+    short = {"v3 hourly (1h)": "v3 hourly (usable)",
+             "v3 matched (15min)": "v3 matched 15-min (collapse)",
+             "v3.5 calibrated": "v3.5 calibrated (collapse)"}
+    colors = {"v3 hourly (1h)": "#1b7837", "v3 matched (15min)": "#d6604d",
+              "v3.5 calibrated": "#b2182b"}
+    fig, (axA, axB) = plt.subplots(1, 2, figsize=(9.2, 3.6))
+
+    # Panel A: shape of the action -> next-T map, each curve centred and scaled by its
+    # own peak-to-peak range so the comparison is of SMOOTHNESS, not amplitude
+    # (the metric is scale-free; the raw per-step magnitudes differ by ~7x).
+    for name, ad in adapters:
+        y = curve(ad, REP_TZ, REP_TA)
+        span = y.max() - y.min()
+        yn = (y - y.mean()) / span if span else y - y.mean()
+        axA.plot(A0, yn, color=colors[name], lw=2.0, label=short[name])
+    axA.set_xlabel(r"supply-temperature action $a_0$")
+    axA.set_ylabel(r"normalised response shape")
+    axA.set_title(r"(A) action $\rightarrow$ next-temperature map")
+    axA.axhline(0, color="0.8", lw=0.7, zorder=0)
+    axA.legend(fontsize=7, frameon=False, loc="lower right")
+
+    # Panel B: scale-free relative roughness with the x-fold annotations
+    order = ["v3 hourly (1h)", "v3 matched (15min)", "v3.5 calibrated"]
+    rr = {r["surrogate"]: r["rel_roughness"] for r in rows}
+    base = rr["v3 hourly (1h)"]
+    vals = [rr[n] for n in order]
+    folds = [f"$\\times${v/base:.1f}" for v in vals]
+    bars = axB.bar([short[n].split(" (")[0] for n in order], vals,
+                   color=[colors[n] for n in order])
+    for b, f_ in zip(bars, folds):
+        axB.text(b.get_x() + b.get_width() / 2, b.get_height(), f_,
+                 ha="center", va="bottom", fontsize=8)
+    axB.set_ylabel(r"relative roughness (curvature / slope)")
+    axB.set_title("(B) scale-free non-smoothness")
+    axB.set_ylim(0, max(vals) * 1.18)
+    for lbl in axB.get_xticklabels():
+        lbl.set_rotation(12); lbl.set_ha("right"); lbl.set_fontsize(8)
+
+    fig.tight_layout()
+    FIG_OUT.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(FIG_OUT, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Wrote {FIG_OUT}")
+
+
 def main() -> None:
     rows = []
+    _adapters: list[tuple[str, object]] = []
     print(f"{'surrogate':22s} {'sensitivity':>12s} {'roughness':>11s} {'rel_rough':>10s} {'range(C)':>9s}")
     for name, kw in SURROGATES:
         try:
@@ -90,6 +150,7 @@ def main() -> None:
         rows.append({"surrogate": name, "sensitivity_C_per_action": round(s, 4),
                      "roughness_C_per_action2": round(r, 4), "rel_roughness": round(rel, 4),
                      "response_range_C": round(g, 4)})
+        _adapters.append((name, ad))
         print(f"{name:22s} {s:12.4f} {r:11.4f} {rel:10.4f} {g:9.3f}")
 
     if rows:
@@ -108,6 +169,7 @@ def main() -> None:
                   if smoothest else
                   "hourly v3 is NOT the smoothest by rel_roughness -> report measured values as-is, do not overclaim.")
         print(f"Wrote {out}")
+        make_figure(_adapters, rows)
 
 
 if __name__ == "__main__":
