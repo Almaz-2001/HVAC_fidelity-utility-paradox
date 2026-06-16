@@ -107,6 +107,13 @@ ERAM branch. Configs live in `configs/morl_surrogate_ppo/`.
 python evaluation/run_block2.py build-reports
 ```
 
+**Multi-seed robustness (N=3 seeds {42,43,44}).** The pure-v3, matched-resolution-v3,
+and hybrid controllers are also reported as a seed band: each `usable`/`collapse`
+verdict is seed-stable (usable controllers stay sub-5 % on every seed; the
+matched-resolution v3 collapses on every seed). Train/benchmark the extra seeds with
+`run_block2.py thermostatic-train/-benchmark --variant <v> --seed <s>`, then aggregate
+with `run_block2.py seed-band` (see [REPRODUCE.md](REPRODUCE.md)).
+
 **Regenerate the figures and the data-filled section text** (each block, data-driven
 from the `reports/` and `outputs/` artifacts):
 
