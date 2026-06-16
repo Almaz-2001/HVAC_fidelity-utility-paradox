@@ -64,8 +64,9 @@ data-driven section generators, and the manuscript + supplementary figures.
   summaries, scenario/pipeline manifests, and the Stage-B `C_zon` histories — **is**
   included under `outputs/` (preserving the original paths) so that the maps in
   [`roadmap.md`](roadmap.md) (§3.2, §11.1, §15.7) resolve directly in this
-  repository. The full raw per-seed artifacts are available from the authors on
-  reasonable request.
+  repository. A map decoding the directory names is in
+  [`outputs/README.md`](outputs/README.md). The full raw per-seed artifacts are
+  available from the authors on reasonable request.
 - **BOPTEST** — the building emulator is a separate open-source project and is
   **not** vendored here. Install it from
   <https://github.com/ibpsa/project1-boptest> and point the environments at your
