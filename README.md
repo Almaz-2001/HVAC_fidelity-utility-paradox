@@ -114,6 +114,16 @@ matched-resolution v3 collapses on every seed). Train/benchmark the extra seeds 
 `run_block2.py thermostatic-train/-benchmark --variant <v> --seed <s>`, then aggregate
 with `run_block2.py seed-band` (see [REPRODUCE.md](REPRODUCE.md)).
 
+**Measured paradox mechanism.** The reason the *more accurate* surrogates fail as
+training environments is measured directly on the surrogates, not just asserted:
+`run_block2.py surface-diagnostic` probes each surrogate's own one-step action map
+(no controller, no BOPTEST) and reports a scale-free *relative roughness*
+(curvature ÷ slope, independent of the control step length). The only usable training
+environment, the hourly v3, exposes the smoothest action→next-temperature landscape
+(`0.169`), whereas the matched-resolution v3 and the calibrated v3.5 are `9.4×` and
+`7.9×` rougher — the surrogate-side cause of the near-bang-bang action gap of the
+collapsed controllers (`reports/block2_mechanism_surface_sharpness.csv`).
+
 **Regenerate the figures and the data-filled section text** (each block, data-driven
 from the `reports/` and `outputs/` artifacts):
 

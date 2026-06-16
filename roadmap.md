@@ -593,6 +593,18 @@ is folded into the manuscript as the Results II *Temporal-coarse-graining ablati
 reviewer-mitigation control and does **not** alter any canonical downstream artifact
 (the PPO families still use the hourly v3).
 
+**Measured mechanism (surrogate response-surface smoothness).** The "optimization-friendly
+smoothing" claim is no longer direction-only: `evaluation/build_mechanism_surface_diagnostic.py`
+(`run_block2.py surface-diagnostic`) probes each surrogate's own one-step action map
+(sweep `a_0` ∈ [−1,1] at a grid of states; no controller, no BOPTEST) and reports a
+scale-free **relative roughness** = curvature/slope, which is independent of the step
+length (the coarse-graining variable). Measured: the usable hourly v3 has the smoothest
+landscape (rel_roughness 0.169), while both collapsing backends are far rougher —
+matched-resolution v3 ×9.4 (1.578) and calibrated v3.5 ×7.9 (1.338)
+(`reports/block2_mechanism_surface_sharpness.csv`, Table `tab:surface_sharpness`). This
+is the surrogate-side cause of the policy-side action-gap symptom (`fig:action_phase`);
+it is diagnostic only and alters no canonical artifact.
+
 ## 5. Block 2: Thermostatic Hybrid Sweep
 
 Run this section only after Sections 4 and 4.5. It tests the engineering fix
@@ -951,6 +963,7 @@ Results II content                                   -> source artifact
 Pure v3 thermostatic baseline KPIs                   -> outputs/bestest_air_article7_style_15min/summary.csv
 Temporal-coarse-graining ablation (tab:coarse_graining) -> reports/block2_v3_15min_closed_loop_comparison.csv ; outputs/bestest_air_pure_v3_15min/summary.csv
 Thermostatic N=3 seed band (tab:seed_band)             -> reports/block2_thermostatic_seed_band.csv (run_block2.py seed-band; pure v3, matched-resolution v3, and hybrid over seeds 42/43/44 -> per-seed outputs/bestest_air_article7_style_15min[_seed43,44]/, outputs/bestest_air_pure_v3_15min[_seed43,44]/, and outputs/block2_thermostatic_hybrid_v3_v35_l010[_seed43,44]/)
+Measured response-surface smoothness (tab:surface_sharpness) -> reports/block2_mechanism_surface_sharpness.csv (run_block2.py surface-diagnostic; evaluation/build_mechanism_surface_diagnostic.py probes each surrogate's one-step action map -> outputs/surrogate_v2/rc_node_v3_tsupply.pt, outputs/surrogate_v3_15min_matched/rc_node_v3_15min_matched.pt, outputs/surrogate_v35_inverse_boptest_15min_power_head_only/calibration_summary_boptest_v35.json; scale-free rel_roughness = curvature/slope)
 Direct-v3.5 warm-start negative control              -> outputs/block2_thermostatic_warmstart_utility/comparison_summary.csv
 Thermostatic hybrid sweep (canonical hybrid_l010)    -> outputs/block2_thermostatic_*hybrid*/  (benchmark summaries)
 Architecture justification on live BOPTEST (S9)      -> reports/hou_evins_architecture_justification_table.csv

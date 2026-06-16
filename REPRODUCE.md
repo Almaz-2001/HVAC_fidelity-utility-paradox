@@ -87,6 +87,15 @@ across `N = 5` seeds and several controller families; hours to days).
    python evaluation/run_block2.py seed-band --seeds 42,43,44   # -> reports/block2_thermostatic_seed_band.csv
    ```
 
+   **Measured paradox mechanism (response-surface smoothness).** This probe needs only
+   the three committed surrogate checkpoints (no controller, no BOPTEST): it sweeps each
+   surrogate's one-step action map and reports the scale-free relative roughness
+   (curvature ÷ slope) that separates the usable hourly v3 from the collapsing matched-v3
+   and v3.5 backends:
+   ```bash
+   python evaluation/run_block2.py surface-diagnostic   # -> reports/block2_mechanism_surface_sharpness.csv
+   ```
+
 4. **Block 3 — pre-registered transferability:**
    ```bash
    python evaluation/run_block3_surrogate_recalibration.py   # Stage A/B/C on the hydronic family

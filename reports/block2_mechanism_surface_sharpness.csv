@@ -1,0 +1,4 @@
+surrogate,sensitivity_C_per_action,roughness_C_per_action2,rel_roughness,response_range_C
+v3 hourly (1h),3.3679,0.568,0.1686,6.7469
+v3 matched (15min),0.2717,0.4287,1.5777,0.4896
+v3.5 calibrated,0.4666,0.6244,1.3383,0.8254

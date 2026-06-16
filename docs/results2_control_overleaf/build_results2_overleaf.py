@@ -236,6 +236,29 @@ def table_seed_band(d: dict) -> str:
     return "\n".join(rows)
 
 
+def table_surface_sharpness(d: dict) -> str:
+    # Measured response-surface smoothness of each single-model backend, computed by
+    # sweeping the supply-temperature action and probing the surrogate's own step map
+    # (evaluation/build_mechanism_surface_diagnostic.py -> the CSV below). The
+    # scale-free rel_roughness (curvature / slope) is the timestep-independent measure.
+    ss = read_csv("reports/block2_mechanism_surface_sharpness.csv")
+    name2role = {"v3 hourly (1h)": "usable", "v3 matched (15min)": "collapse",
+                 "v3.5 calibrated": "collapse"}
+    name2tex = {"v3 hourly (1h)": "canonical v3 (hourly)",
+                "v3 matched (15min)": "matched v3 (15-min)",
+                "v3.5 calibrated": "calibrated v3.5"}
+    base = ss[ss.surrogate == "v3 hourly (1h)"].iloc[0]["rel_roughness"]
+    rows = []
+    for name in ["v3 hourly (1h)", "v3 matched (15min)", "v3.5 calibrated"]:
+        r = ss[ss.surrogate == name].iloc[0]
+        ratio = "1.0 (ref)" if name == "v3 hourly (1h)" else f"{r['rel_roughness']/base:.1f}$\\times$"
+        rows.append(
+            f"{name2tex[name]} & {f(r['sensitivity_C_per_action'])} & "
+            f"{f(r['rel_roughness'])} & {ratio} & {name2role[name]} \\\\"
+        )
+    return "\n".join(rows)
+
+
 def table_warmstart(d: dict) -> str:
     w = d["warm"]
     rows = []
@@ -804,6 +827,22 @@ Controller & Window & $N$ & $m_s$ (mean $\pm$ std) & Violation \% (mean $\pm$ st
 \end{{tabular}}
 \end{{table}}
 
+\paragraph{{Measured mechanism: response-surface smoothness.}} The ``optimization-friendly smoothing'' invoked above is not a post-hoc narrative: it is directly measurable on the surrogates themselves, independently of any controller. For each single-model backend we hold a representative state fixed, sweep the supply-temperature action $a_0$ over $[-1,1]$, and read the surrogate's own one-step map $\hat T(a_0)$; from that curve we compute the slope magnitude $\overline{{|\partial\hat T/\partial a_0|}}$ and, as a step-length-independent measure of non-smoothness, the \emph{{relative roughness}} (mean curvature normalised by mean slope, both in $^\circ$C per unit action), averaged over a grid of zone temperatures and the two windows' ambients. The scale-free relative roughness orders cleanly with downstream usability (Table~\ref{{tab:surface_sharpness}}): the only usable training environment, the canonical hourly v3, exposes the \emph{{smoothest}}, near-monotone action$\to$next-temperature landscape (relative roughness ${ctx['surf_v3_rel']}$), whereas both backends that collapse in closed loop expose markedly rougher landscapes---${ctx['surf_matched_x']}\times$ for the matched-resolution v3 and ${ctx['surf_v35_x']}\times$ for the calibrated v3.5. (The raw per-step slope and range are intentionally \emph{{not}} used as the mechanism metric: they are confounded by the step length, which is the coarse-graining variable; the normalised roughness is not.) This is the surrogate-side cause whose policy-side symptom is the near-bang-bang action gap of the collapsed controllers (Fig.~\ref{{fig:action_phase}}): a rougher, more sharply peaked optimisation landscape is precisely what a policy-gradient learner saturates into a non-transferable extremal law.
+
+\begin{{table}}[H]
+\centering
+\caption{{Measured response-surface smoothness of the three single-model backends, probed directly on each surrogate's one-step action map (no controller, no BOPTEST; data: \texttt{{reports/block2\_mechanism\_surface\_sharpness.csv}}). The scale-free relative roughness (curvature normalised by slope) is independent of the step length and tracks closed-loop usability: the usable hourly v3 is the smoothest; both collapsed backends are several times rougher.}}
+\label{{tab:surface_sharpness}}
+\small
+\begin{{tabular}}{{lrrll}}
+\toprule
+Surrogate backend & Slope $\overline{{|\partial\hat T/\partial a_0|}}$ & Rel.\ roughness & vs.\ v3 & Closed-loop role \\
+\midrule
+{ctx['table_surface_sharpness']}
+\bottomrule
+\end{{tabular}}
+\end{{table}}
+
 \paragraph{{Hybrid $\lambda_T$ sweep and canonical selection (roadmap \S5).}} The canonical hybrid operating point was selected by a thermostatic sweep over the temperature-disagreement weight $\lambda_T\in\{{0.05,0.10,0.15\}}$ at fixed $\lambda_P=5\times10^{{-5}}$ (Table~\ref{{tab:hybrid_sweep}}). The mid setting $\lambda_T=0.10$ (\texttt{{hybrid\_l010}}) is canonical: per the roadmap selection rule it retains the energy advantage over pure v3 while avoiding the stronger comfort degradation seen at the weaker ($0.05$) and stronger ($0.15$) censor settings. Only the canonical point's live-BOPTEST KPIs are retained as a frozen artifact; the bracketing points served selection only.
 
 \begin{{table}}[H]
@@ -1104,6 +1143,13 @@ def main() -> None:
     def _cg(window, col):
         return _cg_df[(_cg_df.variant == "pure_v3_15min") & (_cg_df.window == window)].iloc[0][col]
 
+    _ss_df = read_csv("reports/block2_mechanism_surface_sharpness.csv")
+
+    def _ss(name):
+        return _ss_df[_ss_df.surrogate == name].iloc[0]["rel_roughness"]
+
+    _ss_v3, _ss_mv, _ss_v35 = _ss("v3 hourly (1h)"), _ss("v3 matched (15min)"), _ss("v3.5 calibrated")
+
     ctx = {
         "table_nomenclature": table_nomenclature(),
         "table_ms_decomp": table_ms_decomp(d),
@@ -1120,6 +1166,9 @@ def main() -> None:
         "table_main_kpi": kpi,
         "table_coarse_graining": table_coarse_graining_ablation(d),
         "table_seed_band": table_seed_band(d),
+        "table_surface_sharpness": table_surface_sharpness(d),
+        "surf_v3_rel": f(_ss_v3, 2), "surf_matched_x": f(_ss_mv / _ss_v3, 1),
+        "surf_v35_x": f(_ss_v35 / _ss_v3, 1),
         "table_warmstart": table_warmstart(d),
         "table_transfer": table_transfer(d),
         "table_hdrl": table_hdrl(d),
