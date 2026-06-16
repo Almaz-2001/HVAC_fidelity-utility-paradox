@@ -294,6 +294,10 @@ def surface_diagnostic_command() -> list[str]:
     return cmd(PY, "-B", ROOT / "evaluation" / "build_mechanism_surface_diagnostic.py")
 
 
+def fidelity_scatter_command() -> list[str]:
+    return cmd(PY, "-B", ROOT / "evaluation" / "build_fidelity_utility_scatter.py")
+
+
 def build_reports_commands() -> list[list[str]]:
     scripts = [
         "build_hou_evins_q1_gap_tables.py",
@@ -371,6 +375,7 @@ def main() -> None:
     p = sub.add_parser("seed-band")
     p.add_argument("--seeds", default="42,43,44", help="Seeds to aggregate into the pure-v3/hybrid mean+/-std band.")
     sub.add_parser("surface-diagnostic")
+    sub.add_parser("fidelity-scatter")
     sub.add_parser("build-hybrid-evidence")
     sub.add_parser("build-morl-5d-comparison")
     sub.add_parser("build-reports")
@@ -435,6 +440,8 @@ def main() -> None:
         commands = [seed_band_command(args.seeds)]
     elif args.command == "surface-diagnostic":
         commands = [surface_diagnostic_command()]
+    elif args.command == "fidelity-scatter":
+        commands = [fidelity_scatter_command()]
     elif args.command == "build-hybrid-evidence":
         commands = build_hybrid_evidence_commands()
     elif args.command == "build-morl-5d-comparison":
