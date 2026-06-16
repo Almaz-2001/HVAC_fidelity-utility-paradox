@@ -1,3 +1,16 @@
+"""Build the data-driven Overleaf package for Results II / Block 2.
+
+The section follows Block 2 of ``roadmap.md`` (Sections 4-11): pure v3
+thermostatic PPO baseline, direct-v3.5 negative control, thermostatic hybrid,
+warm-start negative control, transfer diagnostics, HDRL sweep, MORL 5D->17D
+observation ablation, MORL Pareto + N=5 canonical seed analysis, seasonal
+falsification, and PI reference.
+
+Design: every table and inline KPI is read from versioned project artifacts in
+``reports/`` and ``outputs/`` (provenance map: roadmap Section 11.1). Figures are
+referenced from ``figures/`` (already produced by the Block 2 evaluation
+scripts); this builder does not regenerate them. It writes ``main.tex`` only.
+"""
 
 from __future__ import annotations
 
@@ -53,10 +66,12 @@ def _arrow(ax, start, end, color=SLATE, text=None):
 
 
 def fig_reward_shaping(ctx: dict) -> None:
-    
+    """Clean, non-overlapping reward-shaping schematic with real lambda values and
+    measured disagreement. Replaces the legacy figure whose green box overlapped
+    the title."""
     fig, ax = plt.subplots(figsize=(11.0, 4.9))
     ax.set_axis_off(); ax.set_xlim(0, 1); ax.set_ylim(0, 1)
-    
+    # Title rows (kept above the diagram band so nothing overlaps).
     ax.text(0.5, 0.96, "Hybrid backend: per-step reward shaping", ha="center",
             fontsize=13, weight="bold", color="#1f2933")
     ax.text(0.5, 0.885, "v3.5 is a frozen reward-shaping censor --- NOT a policy-loss term and NOT the rollout model",
@@ -73,7 +88,7 @@ def fig_reward_shaping(ctx: dict) -> None:
     _arrow(ax, (0.49, 0.66), (0.55, 0.58), TEAL)
     _arrow(ax, (0.49, 0.42), (0.55, 0.52), GREEN)
     _arrow(ax, (0.73, 0.56), (0.785, 0.56), AMBER)
-    
+    # Bottom annotation row, well below the diagram band (no overlap).
     ax.text(0.5, 0.12,
             f"canonical thermostatic: $\\lambda_T={ctx['lam_T']}$, $\\lambda_P={ctx['lam_P']}$"
             f"   |   measured disagreement: mean $|\\Delta T|={ctx['dis_temp_mean']}\\,^\\circ$C, "
@@ -125,8 +140,9 @@ def f(value: float, nd: int = 3) -> str:
     return f"{float(value):.{nd}f}"
 
 
-
-
+# ---------------------------------------------------------------------------
+# Data accessors
+# ---------------------------------------------------------------------------
 
 def _scen_row(df: pd.DataFrame, scenario: str, **conds) -> pd.Series:
     sub = df[df["scenario"] == scenario]
@@ -152,9 +168,9 @@ def load_block2():
     }
 
 
-
-
-
+# ---------------------------------------------------------------------------
+# Table builders (all data-driven)
+# ---------------------------------------------------------------------------
 
 def table_main_kpi(d: dict) -> str:
     arch = d["arch"]
@@ -176,7 +192,9 @@ def table_main_kpi(d: dict) -> str:
 
 
 def table_coarse_graining_ablation(d: dict) -> str:
-
+    # Matched-resolution closed-loop ablation (roadmap 4.6). Live BOPTEST m_s and
+    # violation cells are data-driven; the 24h predictive RMSE column reuses the
+    # canonical, version-locked Block 1 rollout numbers cited throughout the paper.
     cg = read_csv("reports/block2_v3_15min_closed_loop_comparison.csv")
 
     def mv(window, col):
@@ -197,6 +215,23 @@ def table_coarse_graining_ablation(d: dict) -> str:
         f"calibrated v3.5 & grey-box RC & 900 & 0.644 & {f(v35['peak_control_m_s'])} / {f(v35['typical_control_m_s'])} & {f(dvv_p,1)} / {f(dvv_t,1)} & collapse \\\\",
         f"hybrid & v3 + v3.5 censor & 900 & --- & {f(hy_p.m_s)} / {f(hy_t.m_s)} & {f(hy_p.violation_pct,1)} / {f(hy_t.violation_pct,1)} & robust \\\\",
     ]
+    return "\n".join(rows)
+
+
+def table_seed_band(d: dict) -> str:
+    # N=3 seed robustness for the two headline thermostatic controllers, read from the
+    # multi-seed aggregator (reports/block2_thermostatic_seed_band.csv). Mean +/- std.
+    sb = read_csv("reports/block2_thermostatic_seed_band.csv")
+    rows = []
+    label = {"pure v3": "pure v3", "hybrid (lambda_T=0.10)": "hybrid ($\\lambda_T{=}0.10$)"}
+    for ctrl in ["pure v3", "hybrid (lambda_T=0.10)"]:
+        for win in ["peak", "typical"]:
+            r = sb[(sb.controller == ctrl) & (sb.window == win)].iloc[0]
+            rows.append(
+                f"{label[ctrl]} & {win} & {int(r.n_seeds)} & "
+                f"{f(r.m_s_mean)} $\\pm$ {f(r.m_s_std)} & "
+                f"{f(r.violation_pct_mean,1)} $\\pm$ {f(r.violation_pct_std,1)} \\\\"
+            )
     return "\n".join(rows)
 
 
@@ -450,6 +485,10 @@ def table_nomenclature() -> str:
     ]
     return "\n".join(f"{a} & {b} & {tex_escape(c)} \\\\" for a, b, c in rows)
 
+
+# ---------------------------------------------------------------------------
+# LaTeX
+# ---------------------------------------------------------------------------
 
 def write_tex(ctx: dict) -> None:
     tex = rf"""\documentclass[11pt,a4paper]{{article}}
@@ -748,6 +787,22 @@ Training backend & Architecture & Step (s) & 24\,h RMSE & $m_s$ (pk/typ) & Viol.
 
 This ablation resolves the timestep confound directly: improving v3's temporal resolution and predictive RMSE does not improve downstream control utility---it destroys it. The useful property of the canonical v3 is therefore not its black-box architecture alone, but the optimization-friendly smoothing induced by temporal coarse-graining. Read across the three single-model backends the pattern is near-monotonic in fidelity: the least accurate surrogate (hourly v3) is the only usable training environment, while the more accurate matched v3 and the most accurate calibrated v3.5 both fail. This reframes the hybrid as an explicit \emph{{architectural separation of smoothing and fidelity}}: v3 supplies the coarse, optimization-friendly rollout dynamics while the frozen v3.5 supplies a physical-plausibility signal as a censor, so policy-gradient training keeps the smoothing it needs while regaining physical grounding. The broader principle is that PPO needs not only accurate predictions but an optimization-friendly training landscape.
 
+\paragraph{{Seed robustness of the two headline controllers.}} To check that the single-seed scores are not seed-luck, pure v3 and the canonical hybrid were retrained and re-evaluated on three fixed seeds (\{{42, 43, 44\}}). Both stay in their qualitative regime on every seed --- each individual seed is below the $5\%$ comfort-violation bar on both windows --- so the usable-vs-robust verdicts are seed-stable (Supplementary Table~\ref{{tab:seed_band}}). The single-seed peak advantage of pure v3 over the hybrid (Table~\ref{{tab:main_kpi}}) does not persist across seeds: over $N{{=}}3$ the hybrid is at least as good on both windows. The hierarchical and MORL families are treated separately (HDRL single-seed; MORL over $N{{=}}5$).
+
+\begin{{table}}[H]
+\centering
+\caption{{Seed robustness ($N=3$ seeds \{{42,43,44\}}) of the two headline thermostatic controllers on the live BOPTEST targeted windows; mean $\pm$ standard deviation. Every individual seed is below the $5\%$ comfort-violation bar on both windows (data: \texttt{{reports/block2\_thermostatic\_seed\_band.csv}}).}}
+\label{{tab:seed_band}}
+\small
+\begin{{tabular}}{{llrll}}
+\toprule
+Controller & Window & $N$ & $m_s$ (mean $\pm$ std) & Violation \% (mean $\pm$ std) \\
+\midrule
+{ctx['table_seed_band']}
+\bottomrule
+\end{{tabular}}
+\end{{table}}
+
 \paragraph{{Hybrid $\lambda_T$ sweep and canonical selection (roadmap \S5).}} The canonical hybrid operating point was selected by a thermostatic sweep over the temperature-disagreement weight $\lambda_T\in\{{0.05,0.10,0.15\}}$ at fixed $\lambda_P=5\times10^{{-5}}$ (Table~\ref{{tab:hybrid_sweep}}). The mid setting $\lambda_T=0.10$ (\texttt{{hybrid\_l010}}) is canonical: per the roadmap selection rule it retains the energy advantage over pure v3 while avoiding the stronger comfort degradation seen at the weaker ($0.05$) and stronger ($0.15$) censor settings. Only the canonical point's live-BOPTEST KPIs are retained as a frozen artifact; the bracketing points served selection only.
 
 \begin{{table}}[H]
@@ -1012,7 +1067,7 @@ def main() -> None:
     n75 = d["seed_sum"][d["seed_sum"].canonical == "comfort_075_energy_025"].iloc[0]
     p0 = d["pareto"][d["pareto"].label == "comfort_000_energy_100"].iloc[0]
 
-    
+    # Q1 additions: reward config, scenario manifest, disagreement stats, N=5 CI.
     import json
     import math
     try:
@@ -1028,7 +1083,7 @@ def main() -> None:
         scen_tbl = ""
     dis = read_csv("reports/hybrid_disagreement_summary.csv")
     dov = dis[dis.scenario == "overall"].iloc[0]
-    
+    # 95% t-CI (n=5, t_{0.975,4}=2.776) on m_s for the two canonicals.
     tcrit = 2.776
     n50 = d["seed_sum"][d["seed_sum"].canonical == "comfort_050_energy_050"].iloc[0]
     n75 = d["seed_sum"][d["seed_sum"].canonical == "comfort_075_energy_025"].iloc[0]
@@ -1063,6 +1118,7 @@ def main() -> None:
         "n75_ci_lo": f(float(n75.ms_mean) - ci75, 3), "n75_ci_hi": f(float(n75.ms_mean) + ci75, 3),
         "table_main_kpi": kpi,
         "table_coarse_graining": table_coarse_graining_ablation(d),
+        "table_seed_band": table_seed_band(d),
         "table_warmstart": table_warmstart(d),
         "table_transfer": table_transfer(d),
         "table_hdrl": table_hdrl(d),

@@ -1,0 +1,5 @@
+controller,window,seeds,n_seeds,m_s_mean,m_s_std,violation_pct_mean,violation_pct_std
+pure v3,peak,42/43/44,3,0.0718,0.0192,2.5546,1.2097
+pure v3,typical,42/43/44,3,0.0455,0.0474,2.4306,2.2326
+hybrid (lambda_T=0.10),peak,42/43/44,3,0.0595,0.0261,3.0258,1.6033
+hybrid (lambda_T=0.10),typical,42/43/44,3,0.0137,0.0237,0.7937,1.3746
