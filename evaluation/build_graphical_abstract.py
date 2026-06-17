@@ -119,7 +119,10 @@ def main() -> None:
         win = th <= 120.0           # first 5 days: behaviour is daily-periodic, so this shows
         th, tz = th[win], tz[win]   # the real oscillation instead of a 14-day dense blur
         axr.axhspan(COMFORT_LO, COMFORT_HI, color="#1b7837", alpha=0.13, zorder=0)
-        axr.plot(th, tz, color=color, lw=0.8, zorder=2)
+        # the collapse trace is a dense daily sawtooth -> very thin line so it reads as a
+        # fine oscillation rather than a heavy red band; smooth traces stay normal weight
+        axr.plot(th, tz, color=color, lw=(0.3 if color == RED else 0.9),
+                 alpha=(0.85 if color == RED else 1.0), zorder=2)
         axr.set_ylim(14, 35); axr.set_xlim(0, 120)
         axr.tick_params(labelsize=6.5, length=2)
         axr.set_xticks([0, 48, 96])
