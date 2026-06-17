@@ -53,10 +53,42 @@ This re-derives the underlying data rather than re-plotting it. It requires the
 BOPTEST emulator and is computationally heavy (millions of policy-gradient steps
 across `N = 5` seeds and several controller families; hours to days).
 
-1. **Install BOPTEST** (not vendored here) from
-   <https://github.com/ibpsa/project1-boptest> (Docker recommended) and start the
-   `bestest_air` testcase (plus the `bestest_hydronic` family for Block 3). Point
-   the environments in `envs/` and `configs/` at your local runtime URL.
+1. **Stand up BOPTEST and the training container.** BOPTEST is a separate
+   open-source project and is deliberately **not** vendored here (it is ~GB and has its
+   own repository and license). We ran the **containerized BOPTEST service** (the
+   `web`/`provision` Docker-Compose deployment), version **`1.0.0-dev`**. The training
+   code runs in its own container on the same Docker network, so the environments reach
+   BOPTEST at the in-network URL `http://web:8000` (set in `configs/env.yaml` and
+   `configs/boptest_15min/env.yaml` as `boptest_url`).
+
+   The exact workflow we used:
+
+   ```bash
+   # (a) Get BOPTEST (service deployment) at the pinned version and start it.
+   #     Clone into a directory named e.g. boptest_rte; its compose project name then
+   #     defines the docker network name <dir>_default referenced below.
+   git clone https://github.com/ibpsa/project1-boptest.git boptest_rte
+   cd boptest_rte && git checkout 1.0.0-dev          # match the version we used
+   docker compose up -d
+   docker compose up -d web
+   docker compose run --rm provision                  # registers the testcases
+   cd ..
+
+   # (b) Build the training image from the shipped Dockerfile (base: sinergym).
+   docker build -t hvac-drl:latest .
+
+   # (c) Enter the training container ON THE BOPTEST NETWORK so http://web:8000 resolves.
+   #     Drop --gpus all if you have no GPU; replace boptest_rte_default if your BOPTEST
+   #     clone directory has a different name.
+   docker run -it --gpus all --network boptest_rte_default \
+       -v "${PWD}:/app" -w /app --name hvac-drl hvac-drl:latest bash
+   ```
+
+   All Level-C commands below are run **inside** this container. Testcases needed:
+   `bestest_air` (Blocks 1–2) and the hydronic family — `bestest_hydronic`,
+   `bestest_hydronic_heat_pump`, `singlezone_commercial_hydronic` (Block 3). If you run
+   BOPTEST differently (e.g. a single-container testcase on `localhost`), set
+   `boptest_url` in the configs to your runtime URL instead.
 
 2. **Block 1 — surrogates and calibration:**
    ```bash

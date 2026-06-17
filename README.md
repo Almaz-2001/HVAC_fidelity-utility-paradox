@@ -68,9 +68,13 @@ data-driven section generators, and the manuscript + supplementary figures.
   [`outputs/README.md`](outputs/README.md). The full raw per-seed artifacts are
   available from the authors on reasonable request.
 - **BOPTEST** — the building emulator is a separate open-source project and is
-  **not** vendored here. Install it from
-  <https://github.com/ibpsa/project1-boptest> and point the environments at your
-  local runtime (see `configs/`).
+  **not** vendored here (it is ~GB with its own repository and license). We used the
+  containerized BOPTEST **service** deployment (`web`/`provision` Docker-Compose),
+  version **`1.0.0-dev`**, from <https://github.com/ibpsa/project1-boptest>. The
+  training code runs in its own container (built from the shipped
+  [`Dockerfile`](Dockerfile)) on the same Docker network, reaching BOPTEST at
+  `http://web:8000` (`boptest_url` in `configs/`). The exact step-by-step bring-up is
+  in [REPRODUCE.md](REPRODUCE.md) (Level C, step 1).
 - **Reference PDFs** — the cited papers under the working tree are third-party
   copyrighted material and are deliberately excluded.
 
