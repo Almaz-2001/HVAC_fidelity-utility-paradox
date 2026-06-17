@@ -87,11 +87,37 @@ def per_state_curves(adapter):
             for tz in T_ZONE for ta in T_AMB]
 
 
+# Closed-loop traces (peak window) for the three single-model surrogate controllers.
+TRACE_DIRS = {"v3 hourly (1h)": "bestest_air_article7_style_15min",
+              "v3 matched (15min)": "bestest_air_pure_v3_15min",
+              "v3.5 calibrated": "block2_bestest_air_15min_thermostatic_v35"}
+
+
+def per_state_rel(adapter):
+    """Per-state relative roughness (rough_s / sens_s) across the grid."""
+    da = A0[1] - A0[0]
+    out = []
+    for tz in T_ZONE:
+        for ta in T_AMB:
+            y = curve(adapter, tz, ta)
+            s = float(np.mean(np.abs(np.gradient(y, da))))
+            r = float(np.mean(np.abs(np.diff(y, 2) / (da * da))))
+            out.append(r / s if s else np.nan)
+    return np.array(out)
+
+
+def _saturation_pct(run_dir):
+    import pandas as pd
+    a = pd.read_csv(ROOT / "outputs" / run_dir / "traces" / "peak_heat_window_thermostatic.csv")["a0"]
+    return 100.0 * float((a.abs() > 0.9).mean())
+
+
 def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
     try:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+        import pandas as pd
     except Exception as exc:  # pragma: no cover - figure is optional
         print(f"[figure skipped: matplotlib unavailable: {exc}]")
         return
@@ -100,18 +126,17 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
     short = {"v3 hourly (1h)": "v3 hourly (usable)",
              "v3 matched (15min)": "matched-resolution v3 (collapse)",
              "v3.5 calibrated": "calibrated v3.5 (collapse)"}
-    colors = {"v3 hourly (1h)": "#1b7837", "v3 matched (15min)": "#d6604d",
-              "v3.5 calibrated": "#b2182b"}
+    tick = {"v3 hourly (1h)": "v3\nhourly", "v3 matched (15min)": "matched\nv3", "v3.5 calibrated": "v3.5"}
+    colors = {"v3 hourly (1h)": "#1b7837", "v3 matched (15min)": "#d6604d", "v3.5 calibrated": "#b2182b"}
     admap = dict(adapters)
     rr = {r["surrogate"]: r["rel_roughness"] for r in rows}
     base = rr["v3 hourly (1h)"]
+    xs = list(range(len(order)))
 
-    fig = plt.figure(figsize=(9.8, 4.9))
-    gs = fig.add_gridspec(3, 2, width_ratios=[1.35, 1.0], hspace=0.62, wspace=0.32)
+    fig = plt.figure(figsize=(10.6, 6.0))
+    gs = fig.add_gridspec(3, 2, width_ratios=[1.25, 1.0], hspace=0.7, wspace=0.42)
 
-    # Panel A: small multiples -- real dT_hat (deg C) over the full state grid
-    # (faint = one curve per state, bold = mean). Real units + per-state spread make
-    # the "smooth vs rough" comparison a measurement, not a single stylised slice.
+    # (A) measured response over the state grid (faint = per state, bold = mean)
     last = None
     for i, name in enumerate(order):
         ax = fig.add_subplot(gs[i, 0]); last = ax
@@ -120,35 +145,64 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
             ax.plot(A0, c, color=colors[name], lw=0.7, alpha=0.28, zorder=1)
         ax.plot(A0, np.mean(cs, axis=0), color=colors[name], lw=2.4, zorder=3)
         ax.axhline(0, color="0.85", lw=0.6, zorder=0)
-        ax.set_title(f"{short[name]}   —   rel. roughness {rr[name]:.2f} "
+        ax.set_title(f"{short[name]} — rel. roughness {rr[name]:.2f} "
                      f"(${'1.0' if name == order[0] else f'{rr[name]/base:.1f}'}\\times$)",
-                     fontsize=8.6, color=colors[name])
+                     fontsize=8.4, color=colors[name])
         ax.set_ylabel(r"$\Delta\hat T$ ($^\circ$C)", fontsize=8.5)
         ax.tick_params(labelsize=7)
         if i < 2:
             ax.set_xticklabels([])
     last.set_xlabel(r"supply-temperature action $a_0$", fontsize=9.5)
-    fig.text(0.30, 0.99, "(A) Measured action$\\rightarrow$next-temperature response, swept over a grid of states",
+    fig.text(0.285, 0.995, "(A) Measured action$\\rightarrow$next-temperature response over a grid of states",
              fontsize=9, ha="center", va="top", weight="bold")
 
-    # Panel B: canonical scale-free relative roughness (matches the main table)
-    axB = fig.add_subplot(gs[:, 1])
+    # (B) canonical relative roughness (matches the main table) with per-state spread
+    axB = fig.add_subplot(gs[0, 1])
     vals = [rr[n] for n in order]
-    xs = list(range(len(order)))
-    axB.bar(xs, vals, color=[colors[n] for n in order], edgecolor="0.3", linewidth=0.6)
-    for x, v in zip(xs, vals):
-        axB.text(x, v + 0.02, f"$\\times${v/base:.1f}", ha="center", va="bottom", fontsize=9, weight="bold")
-    axB.set_xticks(xs)
-    axB.set_xticklabels(["v3\nhourly", "matched\nv3", "v3.5"], fontsize=8.5)
-    axB.set_ylabel(r"relative roughness  $\overline{|\partial^2\hat T|}\,/\,\overline{|\partial\hat T|}$", fontsize=9)
-    axB.set_title("(B) Scale-free\nnon-smoothness", fontsize=9.5, weight="bold")
-    axB.set_ylim(0, max(vals) * 1.16)
+    errs = [float(np.nanstd(per_state_rel(admap[n]))) for n in order]
+    axB.bar(xs, vals, yerr=errs, capsize=3, color=[colors[n] for n in order], edgecolor="0.3", linewidth=0.6,
+            error_kw=dict(elinewidth=0.9, ecolor="0.35"))
+    for x, v, e in zip(xs, vals, errs):
+        axB.text(x, v + e + 0.05, f"$\\times${v/base:.1f}", ha="center", va="bottom", fontsize=8.5, weight="bold")
+    axB.set_xticks(xs); axB.set_xticklabels([tick[n] for n in order], fontsize=8)
+    axB.set_ylabel(r"rel. roughness $\overline{|\partial^2\hat T|}/\overline{|\partial\hat T|}$", fontsize=8.5)
+    axB.set_title("(B) Scale-free non-smoothness\n(bar = canonical; whisker = per-state std)", fontsize=8.6, weight="bold")
+    axB.set_ylim(0, max(v + e for v, e in zip(vals, errs)) * 1.2)
     axB.grid(axis="y", alpha=0.2)
+
+    # (C) measured policy-side consequence: closed-loop action saturation (|a0|>0.9)
+    axC = fig.add_subplot(gs[1, 1])
+    sat = [_saturation_pct(TRACE_DIRS[n]) for n in order]
+    axC.bar(xs, sat, color=[colors[n] for n in order], edgecolor="0.3", linewidth=0.6)
+    for x, s in zip(xs, sat):
+        axC.text(x, s + 1.5, f"{s:.0f}%", ha="center", va="bottom", fontsize=8.5, weight="bold")
+    axC.set_xticks(xs); axC.set_xticklabels([tick[n] for n in order], fontsize=8)
+    axC.set_ylabel("action saturation\n($|a_0|>0.9$, % steps)", fontsize=8.5)
+    axC.set_title("(C) Live policy bang-bang\n(measured on BOPTEST)", fontsize=8.6, weight="bold")
+    axC.set_ylim(0, 112); axC.grid(axis="y", alpha=0.2)
+
+    # (D) cause vs effect: surrogate roughness vs live controller score
+    axD = fig.add_subplot(gs[2, 1])
+    sc = pd.read_csv(ROOT / "reports/block2_fidelity_utility_scatter.csv")
+    ms = {c: float(sc[sc.controller.str.startswith(c)].iloc[0]["m_s_mean"])
+          for c in ["v3 (", "matched", "v3.5", "hybrid"]}
+    pts = [(rr["v3 hourly (1h)"], ms["v3 ("], colors["v3 hourly (1h)"], "o", "v3"),
+           (rr["v3 matched (15min)"], ms["matched"], colors["v3 matched (15min)"], "o", "matched v3"),
+           (rr["v3.5 calibrated"], ms["v3.5"], colors["v3.5 calibrated"], "o", "v3.5"),
+           (base, ms["hybrid"], "#2166ac", "D", "hybrid")]
+    axD.axhline(1.0, color="0.7", lw=0.8, ls=":")
+    for x, y, c, m, lab in pts:
+        axD.scatter(x, y, s=70, color=c, marker=m, edgecolor="white", linewidth=0.8, zorder=3)
+    axD.annotate("hybrid", (base, ms["hybrid"]), xytext=(6, 8), textcoords="offset points", fontsize=7.5, color="#2166ac")
+    axD.set_xlabel("surrogate rel. roughness", fontsize=8.5)
+    axD.set_ylabel("live $m_s$", fontsize=8.5)
+    axD.set_title("(D) Rougher surrogate $\\rightarrow$ worse\ncontroller (measured)", fontsize=8.6, weight="bold")
+    axD.grid(alpha=0.2)
 
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_OUT, bbox_inches="tight")
     plt.close(fig)
-    print(f"Wrote {FIG_OUT}")
+    print(f"Wrote {FIG_OUT}  [saturation %: " + ", ".join(f"{n.split()[0]} {s:.0f}" for n, s in zip(order, sat)) + "]")
 
 
 def main() -> None:
