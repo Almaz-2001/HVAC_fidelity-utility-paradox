@@ -30,18 +30,17 @@ OUT = ROOT / "docs/paper_combined/figures/graphical_abstract"
 GREEN, RED, BLUE = "#1b7837", "#b2182b", "#2166ac"
 
 
-def real_curve(kind_kwargs):
-    ad = msd.load_direct_tsup_adapter(**kind_kwargs)
-    y = msd.curve(ad, msd.REP_TZ, msd.REP_TA)
-    return (y - y.mean()) / (y.max() - y.min())  # normalised shape
+def state_curves(kind_kwargs):
+    """Real centred response curves dT_hat(a0) in deg C, one per state in the grid."""
+    return msd.per_state_curves(msd.load_direct_tsup_adapter(**kind_kwargs))
 
 
 def main() -> None:
-    # real response-surface shapes (canonical checkpoints)
+    # real response-surface curves (canonical checkpoints), in physical deg C
     v3_kw = dict(kind="legacy_v3", legacy_model_path="outputs/surrogate_v2/rc_node_v3_tsupply.pt")
     v35_kw = dict(kind="v35_calibrated", summary_json=msd.V35_SUMMARY)
-    y_smooth = real_curve(v3_kw)        # coarse v3 (and hybrid rollout dynamics)
-    y_rough = real_curve(v35_kw)        # accurate twin
+    c_smooth = state_curves(v3_kw)      # coarse v3 (and hybrid rollout dynamics)
+    c_rough = state_curves(v35_kw)      # accurate twin
     a0 = msd.A0
 
     fig = plt.figure(figsize=(13.28, 5.31))
@@ -62,11 +61,11 @@ def main() -> None:
         bg.text(x, 0.79, t, ha="center", fontsize=11, weight="bold", color="0.3")
 
     lanes = [
-        (0.625, GREEN, y_smooth, "Coarse black-box v3\n(1 h step — less accurate)",
+        (0.625, GREEN, c_smooth, "Coarse black-box v3\n(1 h step — less accurate)",
          "smooth · monotone", "✓  USABLE", "<5% comfort violation"),
-        (0.405, RED, y_rough, "Accurate twin\n(calibrated v3.5 / fine-res v3)",
+        (0.405, RED, c_rough, "Accurate twin\n(calibrated v3.5 / fine-res v3)",
          "rough · non-monotone", "✗  COLLAPSE", ">77% violation,  $m_s>1$"),
-        (0.185, BLUE, y_smooth, "Hybrid\n(v3 rollout + frozen\nv3.5 censor)",
+        (0.185, BLUE, c_smooth, "Hybrid\n(v3 rollout + frozen\nv3.5 censor)",
          "smooth (v3 dynamics)\n+ plausibility censor", "✓  ROBUST", "<5% violation,  ~85× faster"),
     ]
 
@@ -75,19 +74,23 @@ def main() -> None:
                      linewidth=1.8, edgecolor=color, facecolor=color + "14"))
         bg.text(x + w / 2, y, text, ha="center", va="center", fontsize=fs, color="black", weight=weight)
 
-    for yc, color, ycurve, surro, shape, verdict, metric in lanes:
+    import numpy as np
+    for yc, color, ccurves, surro, shape, verdict, metric in lanes:
         # left: surrogate label
         lbox(0.02, yc, 0.235, 0.16, surro, color)
         bg.add_patch(FancyArrowPatch((0.258, yc), (0.318, yc), arrowstyle="-|>", mutation_scale=15, color=color, lw=1.8))
-        # centre: real response curve
+        # centre: real measured response in deg C (faint = per state, bold = mean)
         ax = fig.add_axes([0.345, yc - 0.072, 0.235, 0.145])
-        ax.plot(a0, ycurve, color=color, lw=2.6)
+        for c in ccurves:
+            ax.plot(a0, c, color=color, lw=0.6, alpha=0.28, zorder=1)
+        ax.plot(a0, np.mean(ccurves, axis=0), color=color, lw=2.6, zorder=3)
         ax.axhline(0, color="0.85", lw=0.7, zorder=0)
-        ax.set_xticks([]); ax.set_yticks([])
+        ax.tick_params(labelsize=6.5, length=2)
+        ax.set_xticks([-1, 0, 1])
         for s in ax.spines.values():
             s.set_color("0.6")
-        ax.set_xlabel("action $a_0$", fontsize=8, labelpad=1)
-        ax.text(0.5, 1.04, shape, transform=ax.transAxes, ha="center", va="bottom",
+        ax.set_ylabel(r"$\Delta\hat T$ (°C)", fontsize=7.5, labelpad=1)
+        ax.text(0.5, 1.07, shape, transform=ax.transAxes, ha="center", va="bottom",
                 fontsize=8.5, color=color, style="italic")
         bg.add_patch(FancyArrowPatch((0.60, yc), (0.66, yc), arrowstyle="-|>", mutation_scale=15, color=color, lw=1.8))
         # right: outcome badge (verdict line + metric line)

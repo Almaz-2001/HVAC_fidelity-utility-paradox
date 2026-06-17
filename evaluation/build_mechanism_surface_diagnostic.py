@@ -81,6 +81,12 @@ FIG_OUT = ROOT / "docs/results2_control_overleaf/figures/block2_surface_response
 REP_TZ, REP_TA = 22.0, 2.4
 
 
+def per_state_curves(adapter):
+    """Centred response curve dT_hat(a0) in deg C for every state in the grid."""
+    return [curve(adapter, tz, ta) - curve(adapter, tz, ta).mean()
+            for tz in T_ZONE for ta in T_AMB]
+
+
 def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
     try:
         import matplotlib
@@ -90,45 +96,55 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
         print(f"[figure skipped: matplotlib unavailable: {exc}]")
         return
 
+    order = ["v3 hourly (1h)", "v3 matched (15min)", "v3.5 calibrated"]
     short = {"v3 hourly (1h)": "v3 hourly (usable)",
-             "v3 matched (15min)": "v3 matched 15-min (collapse)",
-             "v3.5 calibrated": "v3.5 calibrated (collapse)"}
+             "v3 matched (15min)": "matched-resolution v3 (collapse)",
+             "v3.5 calibrated": "calibrated v3.5 (collapse)"}
     colors = {"v3 hourly (1h)": "#1b7837", "v3 matched (15min)": "#d6604d",
               "v3.5 calibrated": "#b2182b"}
-    fig, (axA, axB) = plt.subplots(1, 2, figsize=(9.2, 3.6))
-
-    # Panel A: shape of the action -> next-T map, each curve centred and scaled by its
-    # own peak-to-peak range so the comparison is of SMOOTHNESS, not amplitude
-    # (the metric is scale-free; the raw per-step magnitudes differ by ~7x).
-    for name, ad in adapters:
-        y = curve(ad, REP_TZ, REP_TA)
-        span = y.max() - y.min()
-        yn = (y - y.mean()) / span if span else y - y.mean()
-        axA.plot(A0, yn, color=colors[name], lw=2.0, label=short[name])
-    axA.set_xlabel(r"supply-temperature action $a_0$")
-    axA.set_ylabel(r"normalised response shape")
-    axA.set_title(r"(A) action $\rightarrow$ next-temperature map")
-    axA.axhline(0, color="0.8", lw=0.7, zorder=0)
-    axA.legend(fontsize=7, frameon=False, loc="lower right")
-
-    # Panel B: scale-free relative roughness with the x-fold annotations
-    order = ["v3 hourly (1h)", "v3 matched (15min)", "v3.5 calibrated"]
+    admap = dict(adapters)
     rr = {r["surrogate"]: r["rel_roughness"] for r in rows}
     base = rr["v3 hourly (1h)"]
-    vals = [rr[n] for n in order]
-    folds = [f"$\\times${v/base:.1f}" for v in vals]
-    bars = axB.bar([short[n].split(" (")[0] for n in order], vals,
-                   color=[colors[n] for n in order])
-    for b, f_ in zip(bars, folds):
-        axB.text(b.get_x() + b.get_width() / 2, b.get_height(), f_,
-                 ha="center", va="bottom", fontsize=8)
-    axB.set_ylabel(r"relative roughness (curvature / slope)")
-    axB.set_title("(B) scale-free non-smoothness")
-    axB.set_ylim(0, max(vals) * 1.18)
-    for lbl in axB.get_xticklabels():
-        lbl.set_rotation(12); lbl.set_ha("right"); lbl.set_fontsize(8)
 
-    fig.tight_layout()
+    fig = plt.figure(figsize=(9.8, 4.9))
+    gs = fig.add_gridspec(3, 2, width_ratios=[1.35, 1.0], hspace=0.62, wspace=0.32)
+
+    # Panel A: small multiples -- real dT_hat (deg C) over the full state grid
+    # (faint = one curve per state, bold = mean). Real units + per-state spread make
+    # the "smooth vs rough" comparison a measurement, not a single stylised slice.
+    last = None
+    for i, name in enumerate(order):
+        ax = fig.add_subplot(gs[i, 0]); last = ax
+        cs = per_state_curves(admap[name])
+        for c in cs:
+            ax.plot(A0, c, color=colors[name], lw=0.7, alpha=0.28, zorder=1)
+        ax.plot(A0, np.mean(cs, axis=0), color=colors[name], lw=2.4, zorder=3)
+        ax.axhline(0, color="0.85", lw=0.6, zorder=0)
+        ax.set_title(f"{short[name]}   —   rel. roughness {rr[name]:.2f} "
+                     f"(${'1.0' if name == order[0] else f'{rr[name]/base:.1f}'}\\times$)",
+                     fontsize=8.6, color=colors[name])
+        ax.set_ylabel(r"$\Delta\hat T$ ($^\circ$C)", fontsize=8.5)
+        ax.tick_params(labelsize=7)
+        if i < 2:
+            ax.set_xticklabels([])
+    last.set_xlabel(r"supply-temperature action $a_0$", fontsize=9.5)
+    fig.text(0.30, 0.99, "(A) Measured action$\\rightarrow$next-temperature response, swept over a grid of states",
+             fontsize=9, ha="center", va="top", weight="bold")
+
+    # Panel B: canonical scale-free relative roughness (matches the main table)
+    axB = fig.add_subplot(gs[:, 1])
+    vals = [rr[n] for n in order]
+    xs = list(range(len(order)))
+    axB.bar(xs, vals, color=[colors[n] for n in order], edgecolor="0.3", linewidth=0.6)
+    for x, v in zip(xs, vals):
+        axB.text(x, v + 0.02, f"$\\times${v/base:.1f}", ha="center", va="bottom", fontsize=9, weight="bold")
+    axB.set_xticks(xs)
+    axB.set_xticklabels(["v3\nhourly", "matched\nv3", "v3.5"], fontsize=8.5)
+    axB.set_ylabel(r"relative roughness  $\overline{|\partial^2\hat T|}\,/\,\overline{|\partial\hat T|}$", fontsize=9)
+    axB.set_title("(B) Scale-free\nnon-smoothness", fontsize=9.5, weight="bold")
+    axB.set_ylim(0, max(vals) * 1.16)
+    axB.grid(axis="y", alpha=0.2)
+
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_OUT, bbox_inches="tight")
     plt.close(fig)
