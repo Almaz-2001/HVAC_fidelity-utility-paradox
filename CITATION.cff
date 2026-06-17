@@ -4,7 +4,11 @@ title: "The Fidelity–Utility Paradox in Surrogate-Based Reinforcement Learning
 authors:
   - family-names: "Sapargali"
     given-names: "Almaz"
-# Add co-authors here.
+    # orcid: "https://orcid.org/0000-0000-0000-0000"   # add when available
+    # affiliation: "Department, University/Institution, City, Country"
+  # - family-names: "<Co-author family name>"          # uncomment and fill per co-author
+  #   given-names: "<Given name>"
+repository-code: "https://github.com/Almaz-2001/HVAC_fidelity-utility-paradox"
 preferred-citation:
   type: article
   title: "The Fidelity–Utility Paradox in Surrogate-Based Reinforcement Learning for HVAC Control"
