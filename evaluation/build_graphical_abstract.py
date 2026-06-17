@@ -30,9 +30,19 @@ OUT = ROOT / "docs/paper_combined/figures/graphical_abstract"
 GREEN, RED, BLUE = "#1b7837", "#b2182b", "#2166ac"
 
 
+import pandas as pd
+COMFORT_LO, COMFORT_HI = 21.0, 24.0
+
+
 def state_curves(kind_kwargs):
     """Real centred response curves dT_hat(a0) in deg C, one per state in the grid."""
     return msd.per_state_curves(msd.load_direct_tsup_adapter(**kind_kwargs))
+
+
+def zone_trace(run_dir):
+    """Real closed-loop zone temperature (deg C) vs hours from a committed BOPTEST trace."""
+    df = pd.read_csv(ROOT / "outputs" / run_dir / "traces" / "peak_heat_window_thermostatic.csv")
+    return df["sim_time_sec"].to_numpy() / 3600.0, df["t_zone_c"].to_numpy()
 
 
 def main() -> None:
@@ -42,6 +52,10 @@ def main() -> None:
     c_smooth = state_curves(v3_kw)      # coarse v3 (and hybrid rollout dynamics)
     c_rough = state_curves(v35_kw)      # accurate twin
     a0 = msd.A0
+    # real closed-loop zone-temperature traces (peak window) from committed BOPTEST runs
+    tr_v3 = zone_trace("bestest_air_article7_style_15min")
+    tr_acc = zone_trace("block2_bestest_air_15min_thermostatic_v35")   # accurate twin (v3.5) collapse
+    tr_hyb = zone_trace("block2_thermostatic_hybrid_v3_v35_l010")
 
     fig = plt.figure(figsize=(13.28, 5.31))
     plt.rcParams.update({"font.size": 12})
@@ -57,16 +71,16 @@ def main() -> None:
     # column headers
     for x, t in [(0.135, "Surrogate training\nenvironment"),
                  (0.475, "Action → next-temperature\nresponse surface (measured)"),
-                 (0.83, "Controller on the\nlive building")]:
+                 (0.84, "Zone temperature on the\nlive building (measured)")]:
         bg.text(x, 0.79, t, ha="center", fontsize=11, weight="bold", color="0.3")
 
     lanes = [
         (0.625, GREEN, c_smooth, "Coarse black-box v3\n(1 h step — less accurate)",
-         "smooth · monotone", "✓  USABLE", "<5% comfort violation"),
+         "smooth · monotone", "✓ USABLE", tr_v3),
         (0.405, RED, c_rough, "Accurate twin\n(calibrated v3.5 / fine-res v3)",
-         "rough · non-monotone", "✗  COLLAPSE", ">77% violation,  $m_s>1$"),
+         "rough · non-monotone", "✗ COLLAPSE", tr_acc),
         (0.185, BLUE, c_smooth, "Hybrid\n(v3 rollout + frozen\nv3.5 censor)",
-         "smooth (v3 dynamics)\n+ plausibility censor", "✓  ROBUST", "<5% violation,  ~85× faster"),
+         "smooth (v3 dynamics)\n+ plausibility censor", "✓ ROBUST", tr_hyb),
     ]
 
     def lbox(x, y, w, h, text, color, fs=10.5, weight="normal"):
@@ -75,7 +89,8 @@ def main() -> None:
         bg.text(x + w / 2, y, text, ha="center", va="center", fontsize=fs, color="black", weight=weight)
 
     import numpy as np
-    for yc, color, ccurves, surro, shape, verdict, metric in lanes:
+    for i, (yc, color, ccurves, surro, shape, verdict, tzone) in enumerate(lanes):
+        bottom = (i == len(lanes) - 1)
         # left: surrogate label
         lbox(0.02, yc, 0.235, 0.16, surro, color)
         bg.add_patch(FancyArrowPatch((0.258, yc), (0.318, yc), arrowstyle="-|>", mutation_scale=15, color=color, lw=1.8))
@@ -87,18 +102,35 @@ def main() -> None:
         ax.axhline(0, color="0.85", lw=0.7, zorder=0)
         ax.tick_params(labelsize=6.5, length=2)
         ax.set_xticks([-1, 0, 1])
+        if not bottom:
+            ax.set_xticklabels([])
+        else:
+            ax.set_xlabel("action $a_0$", fontsize=7.5, labelpad=1)
         for s in ax.spines.values():
             s.set_color("0.6")
         ax.set_ylabel(r"$\Delta\hat T$ (°C)", fontsize=7.5, labelpad=1)
         ax.text(0.5, 1.07, shape, transform=ax.transAxes, ha="center", va="bottom",
                 fontsize=8.5, color=color, style="italic")
         bg.add_patch(FancyArrowPatch((0.60, yc), (0.66, yc), arrowstyle="-|>", mutation_scale=15, color=color, lw=1.8))
-        # right: outcome badge (verdict line + metric line)
-        bg.add_patch(FancyBboxPatch((0.665, yc - 0.08), 0.315, 0.16,
-                     boxstyle="round,pad=0.008,rounding_size=0.02",
-                     linewidth=1.8, edgecolor=color, facecolor=color + "14"))
-        bg.text(0.8225, yc + 0.028, verdict, ha="center", va="center", fontsize=13, weight="bold", color=color)
-        bg.text(0.8225, yc - 0.04, metric, ha="center", va="center", fontsize=10, color="black")
+        # right: REAL closed-loop zone-temperature trace + comfort band (measured BOPTEST)
+        axr = fig.add_axes([0.675, yc - 0.072, 0.235, 0.145])
+        th, tz = tzone
+        axr.axhspan(COMFORT_LO, COMFORT_HI, color="#1b7837", alpha=0.13, zorder=0)
+        axr.plot(th, tz, color=color, lw=1.3, zorder=2)
+        axr.set_ylim(14, 35); axr.set_xlim(th.min(), th.max())
+        axr.tick_params(labelsize=6.5, length=2)
+        axr.set_xticks([0, 168, 336])
+        axr.set_yticks([15, 21, 24, 30])
+        if not bottom:
+            axr.set_xticklabels([])
+        else:
+            axr.set_xticklabels(["0", "7", "14"])
+            axr.set_xlabel("day", fontsize=7.5, labelpad=1)
+        for s in axr.spines.values():
+            s.set_color("0.6")
+        axr.set_ylabel("zone T (°C)", fontsize=7.5, labelpad=1)
+        axr.text(0.5, 1.07, verdict, transform=axr.transAxes, ha="center", va="bottom",
+                 fontsize=11, weight="bold", color=color)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{OUT}.pdf", bbox_inches="tight")
