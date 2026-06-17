@@ -1,92 +1,101 @@
-"""Elsevier graphical abstract (single landscape panel, 1328x531 px).
+"""Elsevier graphical abstract (single landscape panel, ~1328x531 px).
 
-Left: the paradox -- across single-model surrogates, a more accurate twin (lower 24h
-rollout RMSE) gives a WORSE live controller (higher maintenance score m_s).
-Right: the resolution -- a role-separating hybrid (v3 smooth rollout + frozen v3.5
-plausibility censor) escapes the trade-off (robust, sub-5% violation).
+Iconographic, cause->effect layout in three lanes. The centre column shows each
+surrogate's REAL one-step action->next-temperature response curve (computed exactly
+as in build_mechanism_surface_diagnostic.py), so "smooth vs rough" is visible at a
+glance and is grounded in measured data, not a cartoon:
 
-Numbers are read from reports/block2_fidelity_utility_scatter.csv (data-driven).
+  coarse v3            smooth, monotone surface   -> usable controller
+  accurate twin        rough, non-monotone        -> collapse
+  hybrid (v3+censor)    smooth (v3 dynamics)       -> robust
+
 Output: docs/paper_combined/figures/graphical_abstract.{pdf,png}
 """
 
 from __future__ import annotations
+import sys
 from pathlib import Path
 
+import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
-import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "docs/paper_combined/figures/graphical_abstract"
-CSV = ROOT / "reports/block2_fidelity_utility_scatter.csv"
+sys.path.insert(0, str(ROOT / "evaluation"))
+import build_mechanism_surface_diagnostic as msd  # reuse the real surrogate curves
 
+OUT = ROOT / "docs/paper_combined/figures/graphical_abstract"
 GREEN, RED, BLUE = "#1b7837", "#b2182b", "#2166ac"
 
 
+def real_curve(kind_kwargs):
+    ad = msd.load_direct_tsup_adapter(**kind_kwargs)
+    y = msd.curve(ad, msd.REP_TZ, msd.REP_TA)
+    return (y - y.mean()) / (y.max() - y.min())  # normalised shape
+
+
 def main() -> None:
-    df = pd.read_csv(CSV)
-
-    def row(controller_startswith):
-        return df[df.controller.str.startswith(controller_startswith)].iloc[0]
-
-    v3, mv, v35, hy = row("v3 ("), row("matched"), row("v3.5"), row("hybrid")
+    # real response-surface shapes (canonical checkpoints)
+    v3_kw = dict(kind="legacy_v3", legacy_model_path="outputs/surrogate_v2/rc_node_v3_tsupply.pt")
+    v35_kw = dict(kind="v35_calibrated", summary_json=msd.V35_SUMMARY)
+    y_smooth = real_curve(v3_kw)        # coarse v3 (and hybrid rollout dynamics)
+    y_rough = real_curve(v35_kw)        # accurate twin
+    a0 = msd.A0
 
     fig = plt.figure(figsize=(13.28, 5.31))
     plt.rcParams.update({"font.size": 12})
-    fig.suptitle("The Fidelity–Utility Paradox in Surrogate-Based RL for HVAC Control",
-                 fontsize=15, weight="bold", y=0.985)
+    bg = fig.add_axes([0, 0, 1, 1]); bg.axis("off"); bg.set_xlim(0, 1); bg.set_ylim(0, 1)
 
-    # ---- LEFT: the paradox (compact scatter) ----
-    axL = fig.add_axes([0.055, 0.10, 0.46, 0.74])
-    pts = [(v3, GREEN, "o", "v3 (hourly)\nusable"),
-           (mv, RED, "o", "v3 fine-res\ncollapse"),
-           (v35, RED, "o", "v3.5 calibrated\ncollapse")]
-    axL.axhspan(1.0, 1.4, color=RED, alpha=0.06)
-    axL.plot([v3.rmse_24h_c, mv.rmse_24h_c, v35.rmse_24h_c],
-             [v3.m_s_mean, mv.m_s_mean, v35.m_s_mean], "--", color="0.55", lw=1.6, zorder=1)
-    for r, c, m, lab in pts:
-        axL.scatter(r.rmse_24h_c, r.m_s_mean, s=170, color=c, marker=m, zorder=3,
-                    edgecolor="white", linewidth=1.2)
-    axL.scatter(hy.rmse_24h_c, hy.m_s_mean, s=210, color=BLUE, marker="D", zorder=4,
-                edgecolor="white", linewidth=1.3)
-    axL.annotate("hybrid\n(robust)", (hy.rmse_24h_c, hy.m_s_mean), xytext=(-4, 30),
-                 textcoords="offset points", ha="right", color=BLUE, fontsize=11, weight="bold",
-                 arrowprops=dict(arrowstyle="->", color=BLUE, lw=1.3))
-    axL.annotate("v3 (usable)", (v3.rmse_24h_c, v3.m_s_mean), xytext=(8, -4),
-                 textcoords="offset points", color=GREEN, fontsize=10)
-    axL.annotate("v3 (fine-res)", (mv.rmse_24h_c, mv.m_s_mean), xytext=(6, 6),
-                 textcoords="offset points", color=RED, fontsize=10)
-    axL.annotate("v3.5", (v35.rmse_24h_c, v35.m_s_mean), xytext=(6, 6),
-                 textcoords="offset points", color=RED, fontsize=10)
-    axL.text(0.62, 1.0, "more accurate surrogate\n$\\longrightarrow$ worse controller",
-             color="0.3", fontsize=11, ha="center", style="italic")
-    axL.set_xlim(1.65, 0.55)
-    axL.set_ylim(-0.05, 1.35)
-    axL.set_xlabel("24-h rollout RMSE (°C)  →  more accurate", fontsize=11)
-    axL.set_ylabel("live $m_s$  →  worse", fontsize=11)
-    axL.set_title("The paradox", fontsize=12, weight="bold")
-    axL.grid(alpha=0.18)
+    bg.text(0.5, 0.965, "The Fidelity–Utility Paradox in Surrogate-Based RL for HVAC Control",
+            ha="center", fontsize=15, weight="bold")
+    bg.text(0.5, 0.90, "A more accurate surrogate can be a worse RL training environment — it exposes a rougher "
+            "action→temperature surface that the policy\nexploits into failure on the real building. "
+            "A role-separating hybrid keeps the surface smooth and the controller robust.",
+            ha="center", fontsize=11.5, style="italic", color="0.25")
 
-    # ---- RIGHT: the resolution (role-separating hybrid) ----
-    axR = fig.add_axes([0.56, 0.06, 0.42, 0.80]); axR.axis("off")
-    axR.set_xlim(0, 1); axR.set_ylim(0, 1)
-    axR.set_title("The resolution", fontsize=12, weight="bold")
+    # column headers
+    for x, t in [(0.135, "Surrogate training\nenvironment"),
+                 (0.475, "Action → next-temperature\nresponse surface (measured)"),
+                 (0.83, "Controller on the\nlive building")]:
+        bg.text(x, 0.79, t, ha="center", fontsize=11, weight="bold", color="0.3")
 
-    def box(x, y, w, h, text, color):
-        axR.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.01,rounding_size=0.03",
-                      linewidth=1.8, edgecolor=color, facecolor=color + "1A"))
-        axR.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=11, color="black")
+    lanes = [
+        (0.625, GREEN, y_smooth, "Coarse black-box v3\n(1 h step — less accurate)",
+         "smooth · monotone", "✓  USABLE", "<5% comfort violation"),
+        (0.405, RED, y_rough, "Accurate twin\n(calibrated v3.5 / fine-res v3)",
+         "rough · non-monotone", "✗  COLLAPSE", ">77% violation,  $m_s>1$"),
+        (0.185, BLUE, y_smooth, "Hybrid\n(v3 rollout + frozen\nv3.5 censor)",
+         "smooth (v3 dynamics)\n+ plausibility censor", "✓  ROBUST", "<5% violation,  ~85× faster"),
+    ]
 
-    box(0.02, 0.62, 0.44, 0.26, "v3 black-box\nsmooth rollout\ndynamics", GREEN)
-    box(0.54, 0.62, 0.44, 0.26, "frozen v3.5 twin\nper-step\nplausibility censor", RED)
-    box(0.27, 0.30, 0.46, 0.20, "Hybrid controller", BLUE)
-    box(0.20, 0.02, 0.60, 0.18,
-        "Robust on live BOPTEST:\n<5% comfort violation on both windows, ~85× faster", BLUE)
-    axR.add_patch(FancyArrowPatch((0.24, 0.62), (0.42, 0.50), arrowstyle="-|>", mutation_scale=16, color=BLUE, lw=1.8))
-    axR.add_patch(FancyArrowPatch((0.76, 0.62), (0.58, 0.50), arrowstyle="-|>", mutation_scale=16, color=BLUE, lw=1.8))
-    axR.add_patch(FancyArrowPatch((0.5, 0.30), (0.5, 0.20), arrowstyle="-|>", mutation_scale=16, color=BLUE, lw=1.8))
+    def lbox(x, y, w, h, text, color, fs=10.5, weight="normal"):
+        bg.add_patch(FancyBboxPatch((x, y - h / 2), w, h, boxstyle="round,pad=0.008,rounding_size=0.02",
+                     linewidth=1.8, edgecolor=color, facecolor=color + "14"))
+        bg.text(x + w / 2, y, text, ha="center", va="center", fontsize=fs, color="black", weight=weight)
+
+    for yc, color, ycurve, surro, shape, verdict, metric in lanes:
+        # left: surrogate label
+        lbox(0.02, yc, 0.235, 0.16, surro, color)
+        bg.add_patch(FancyArrowPatch((0.258, yc), (0.318, yc), arrowstyle="-|>", mutation_scale=15, color=color, lw=1.8))
+        # centre: real response curve
+        ax = fig.add_axes([0.345, yc - 0.072, 0.235, 0.145])
+        ax.plot(a0, ycurve, color=color, lw=2.6)
+        ax.axhline(0, color="0.85", lw=0.7, zorder=0)
+        ax.set_xticks([]); ax.set_yticks([])
+        for s in ax.spines.values():
+            s.set_color("0.6")
+        ax.set_xlabel("action $a_0$", fontsize=8, labelpad=1)
+        ax.text(0.5, 1.04, shape, transform=ax.transAxes, ha="center", va="bottom",
+                fontsize=8.5, color=color, style="italic")
+        bg.add_patch(FancyArrowPatch((0.60, yc), (0.66, yc), arrowstyle="-|>", mutation_scale=15, color=color, lw=1.8))
+        # right: outcome badge (verdict line + metric line)
+        bg.add_patch(FancyBboxPatch((0.665, yc - 0.08), 0.315, 0.16,
+                     boxstyle="round,pad=0.008,rounding_size=0.02",
+                     linewidth=1.8, edgecolor=color, facecolor=color + "14"))
+        bg.text(0.8225, yc + 0.028, verdict, ha="center", va="center", fontsize=13, weight="bold", color=color)
+        bg.text(0.8225, yc - 0.04, metric, ha="center", va="center", fontsize=10, color="black")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{OUT}.pdf", bbox_inches="tight")
