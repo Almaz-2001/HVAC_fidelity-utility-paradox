@@ -115,16 +115,19 @@ def main() -> None:
         # right: REAL closed-loop zone-temperature trace + comfort band (measured BOPTEST)
         axr = fig.add_axes([0.675, yc - 0.072, 0.235, 0.145])
         th, tz = tzone
+        th = th - th.min()          # window-relative hours (traces are time-stamped from year start)
+        win = th <= 120.0           # first 5 days: behaviour is daily-periodic, so this shows
+        th, tz = th[win], tz[win]   # the real oscillation instead of a 14-day dense blur
         axr.axhspan(COMFORT_LO, COMFORT_HI, color="#1b7837", alpha=0.13, zorder=0)
-        axr.plot(th, tz, color=color, lw=1.3, zorder=2)
-        axr.set_ylim(14, 35); axr.set_xlim(th.min(), th.max())
+        axr.plot(th, tz, color=color, lw=0.8, zorder=2)
+        axr.set_ylim(14, 35); axr.set_xlim(0, 120)
         axr.tick_params(labelsize=6.5, length=2)
-        axr.set_xticks([0, 168, 336])
+        axr.set_xticks([0, 48, 96])
         axr.set_yticks([15, 21, 24, 30])
         if not bottom:
             axr.set_xticklabels([])
         else:
-            axr.set_xticklabels(["0", "7", "14"])
+            axr.set_xticklabels(["0", "2", "4"])
             axr.set_xlabel("day", fontsize=7.5, labelpad=1)
         for s in axr.spines.values():
             s.set_color("0.6")

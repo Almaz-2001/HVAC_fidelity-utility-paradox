@@ -193,7 +193,15 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
     axD.axhline(1.0, color="0.7", lw=0.8, ls=":")
     for x, y, c, m, lab in pts:
         axD.scatter(x, y, s=70, color=c, marker=m, edgecolor="white", linewidth=0.8, zorder=3)
-    axD.annotate("hybrid", (base, ms["hybrid"]), xytext=(6, 8), textcoords="offset points", fontsize=7.5, color="#2166ac")
+    # v3 and hybrid sit at the same point (hybrid rolls out on v3) -> one shared label
+    axD.annotate("v3, hybrid\n(usable)", (base, ms["hybrid"]), xytext=(12, 2), textcoords="offset points",
+                 fontsize=7.2, color="0.25", ha="left", va="center")
+    axD.annotate("matched v3", (rr["v3 matched (15min)"], ms["matched"]), xytext=(-6, 6),
+                 textcoords="offset points", fontsize=7.2, color=colors["v3 matched (15min)"], ha="right", weight="bold")
+    axD.annotate("v3.5", (rr["v3.5 calibrated"], ms["v3.5"]), xytext=(-6, -13),
+                 textcoords="offset points", fontsize=7.2, color=colors["v3.5 calibrated"], ha="right", weight="bold")
+    axD.set_xlim(-0.05, max(rr.values()) * 1.30)
+    axD.set_ylim(-0.1, 1.45)
     axD.set_xlabel("surrogate rel. roughness", fontsize=8.5)
     axD.set_ylabel("live $m_s$", fontsize=8.5)
     axD.set_title("(D) Rougher surrogate $\\rightarrow$ worse\ncontroller (measured)", fontsize=8.6, weight="bold")
