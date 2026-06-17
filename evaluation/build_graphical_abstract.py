@@ -1,14 +1,18 @@
 """Elsevier graphical abstract (single landscape panel, ~1328x531 px).
 
-Iconographic, cause->effect layout in three lanes. The centre column shows each
-surrogate's REAL one-step action->next-temperature response curve (computed exactly
-as in build_mechanism_surface_diagnostic.py), so "smooth vs rough" is visible at a
-glance and is grounded in measured data, not a cartoon:
+Engineering, data-driven, two panels (no stylised cartoons):
 
-  coarse v3            smooth, monotone surface   -> usable controller
-  accurate twin        rough, non-monotone        -> collapse
-  hybrid (v3+censor)    smooth (v3 dynamics)       -> robust
+  (A) the measured CAUSE -- each surrogate's real one-step action->next-temperature
+      response dT_hat(a0) in deg C, swept over a grid of states (faint = per state,
+      bold = mean). Smooth (usable) vs rough/non-monotone (collapse) is visible.
+  (B) the measured EFFECT as a deployment plane in the style of the Block 3
+      comfort-energy quadrants: surrogate roughness (x) vs live maintenance score m_s
+      (y), with the m_s = 1 usability threshold and shaded usable / collapse regions.
+      Every controller is a real measured point (v3, matched v3, v3.5, hybrid).
 
+All numbers from committed artifacts:
+  rel_roughness -> reports/block2_mechanism_surface_sharpness.csv
+  live m_s      -> reports/block2_fidelity_utility_scatter.csv
 Output: docs/paper_combined/figures/graphical_abstract.{pdf,png}
 """
 
@@ -17,126 +21,95 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "evaluation"))
 import build_mechanism_surface_diagnostic as msd  # reuse the real surrogate curves
 
 OUT = ROOT / "docs/paper_combined/figures/graphical_abstract"
-GREEN, RED, BLUE = "#1b7837", "#b2182b", "#2166ac"
+GREEN, ORANGE, RED, BLUE = "#1b7837", "#d6604d", "#b2182b", "#2166ac"
+EDGE = "#222222"
 
 
-import pandas as pd
-COMFORT_LO, COMFORT_HI = 21.0, 24.0
-
-
-def state_curves(kind_kwargs):
-    """Real centred response curves dT_hat(a0) in deg C, one per state in the grid."""
-    return msd.per_state_curves(msd.load_direct_tsup_adapter(**kind_kwargs))
-
-
-def zone_trace(run_dir):
-    """Real closed-loop zone temperature (deg C) vs hours from a committed BOPTEST trace."""
-    df = pd.read_csv(ROOT / "outputs" / run_dir / "traces" / "peak_heat_window_thermostatic.csv")
-    return df["sim_time_sec"].to_numpy() / 3600.0, df["t_zone_c"].to_numpy()
+def state_curves(kw):
+    return msd.per_state_curves(msd.load_direct_tsup_adapter(**kw))
 
 
 def main() -> None:
-    # real response-surface curves (canonical checkpoints), in physical deg C
     v3_kw = dict(kind="legacy_v3", legacy_model_path="outputs/surrogate_v2/rc_node_v3_tsupply.pt")
     v35_kw = dict(kind="v35_calibrated", summary_json=msd.V35_SUMMARY)
-    c_smooth = state_curves(v3_kw)      # coarse v3 (and hybrid rollout dynamics)
-    c_rough = state_curves(v35_kw)      # accurate twin
+    c_v3 = state_curves(v3_kw)
+    c_v35 = state_curves(v35_kw)
     a0 = msd.A0
-    # real closed-loop zone-temperature traces (peak window) from committed BOPTEST runs
-    tr_v3 = zone_trace("bestest_air_article7_style_15min")
-    tr_acc = zone_trace("block2_bestest_air_15min_thermostatic_v35")   # accurate twin (v3.5) collapse
-    tr_hyb = zone_trace("block2_thermostatic_hybrid_v3_v35_l010")
 
-    fig = plt.figure(figsize=(13.28, 5.31))
-    plt.rcParams.update({"font.size": 12})
-    bg = fig.add_axes([0, 0, 1, 1]); bg.axis("off"); bg.set_xlim(0, 1); bg.set_ylim(0, 1)
+    rough = pd.read_csv(ROOT / "reports/block2_mechanism_surface_sharpness.csv")
+    rr = {r.surrogate: float(r.rel_roughness) for r in rough.itertuples()}
+    sc = pd.read_csv(ROOT / "reports/block2_fidelity_utility_scatter.csv")
+    ms = {c: float(sc[sc.controller.str.startswith(c)].iloc[0]["m_s_mean"]) for c in ["v3 (", "matched", "v3.5", "hybrid"]}
 
-    bg.text(0.5, 0.965, "The Fidelity–Utility Paradox in Surrogate-Based RL for HVAC Control",
-            ha="center", fontsize=15, weight="bold")
-    bg.text(0.5, 0.90, "A more accurate surrogate can be a worse RL training environment — it exposes a rougher "
-            "action→temperature surface that the policy\nexploits into failure on the real building. "
-            "A role-separating hybrid keeps the surface smooth and the controller robust.",
-            ha="center", fontsize=11.5, style="italic", color="0.25")
+    fig = plt.figure(figsize=(12.6, 5.3))
+    fig.suptitle("The Fidelity–Utility Paradox in Surrogate-Based RL for HVAC Control",
+                 fontsize=15, weight="bold", y=0.99)
+    fig.text(0.5, 0.905, "A more accurate surrogate exposes a rougher action$\\rightarrow$temperature response (A); "
+             "a policy trained on it collapses on the live building (B).\nA role-separating hybrid keeps the response "
+             "smooth and the controller deployable.", ha="center", fontsize=10.5, style="italic", color="0.3")
 
-    # column headers
-    for x, t in [(0.135, "Surrogate training\nenvironment"),
-                 (0.475, "Action → next-temperature\nresponse surface (measured)"),
-                 (0.84, "Zone temperature on the\nlive building (measured)")]:
-        bg.text(x, 0.79, t, ha="center", fontsize=11, weight="bold", color="0.3")
+    gs = fig.add_gridspec(3, 2, width_ratios=[1.0, 1.45], left=0.065, right=0.975,
+                          top=0.80, bottom=0.12, hspace=0.55, wspace=0.22)
 
-    lanes = [
-        (0.625, GREEN, c_smooth, "Coarse black-box v3\n(1 h step — less accurate)",
-         "smooth · monotone", "✓ USABLE", tr_v3),
-        (0.405, RED, c_rough, "Accurate twin\n(calibrated v3.5 / fine-res v3)",
-         "rough · non-monotone", "✗ COLLAPSE", tr_acc),
-        (0.185, BLUE, c_smooth, "Hybrid\n(v3 rollout + frozen\nv3.5 censor)",
-         "smooth (v3 dynamics)\n+ plausibility censor", "✓ ROBUST", tr_hyb),
-    ]
-
-    def lbox(x, y, w, h, text, color, fs=10.5, weight="normal"):
-        bg.add_patch(FancyBboxPatch((x, y - h / 2), w, h, boxstyle="round,pad=0.008,rounding_size=0.02",
-                     linewidth=1.8, edgecolor=color, facecolor=color + "14"))
-        bg.text(x + w / 2, y, text, ha="center", va="center", fontsize=fs, color="black", weight=weight)
-
-    import numpy as np
-    for i, (yc, color, ccurves, surro, shape, verdict, tzone) in enumerate(lanes):
-        bottom = (i == len(lanes) - 1)
-        # left: surrogate label
-        lbox(0.02, yc, 0.235, 0.16, surro, color)
-        bg.add_patch(FancyArrowPatch((0.258, yc), (0.318, yc), arrowstyle="-|>", mutation_scale=15, color=color, lw=1.8))
-        # centre: real measured response in deg C (faint = per state, bold = mean)
-        ax = fig.add_axes([0.345, yc - 0.072, 0.235, 0.145])
-        for c in ccurves:
-            ax.plot(a0, c, color=color, lw=0.6, alpha=0.28, zorder=1)
-        ax.plot(a0, np.mean(ccurves, axis=0), color=color, lw=2.6, zorder=3)
-        ax.axhline(0, color="0.85", lw=0.7, zorder=0)
-        ax.tick_params(labelsize=6.5, length=2)
+    # ---- (A) measured response surfaces (cause) ----
+    panelA = [("v3 hourly (1h)", c_v3, GREEN, "v3 (coarse) — smooth"),
+              ("v3.5 calibrated", c_v35, RED, "accurate twin — rough"),
+              ("v3 hourly (1h)", c_v3, BLUE, "hybrid (v3 dynamics) — smooth")]
+    for i, (key, cs, col, lab) in enumerate(panelA):
+        ax = fig.add_subplot(gs[i, 0])
+        for c in cs:
+            ax.plot(a0, c, color=col, lw=0.6, alpha=0.25, zorder=1)
+        ax.plot(a0, np.mean(cs, axis=0), color=col, lw=2.2, zorder=3)
+        ax.axhline(0, color="0.85", lw=0.6, zorder=0)
+        ax.set_ylabel(r"$\Delta\hat T$ (°C)", fontsize=8)
+        ax.tick_params(labelsize=6.5)
         ax.set_xticks([-1, 0, 1])
-        if not bottom:
+        ax.text(0.5, 1.04, lab, transform=ax.transAxes, ha="center", va="bottom", fontsize=8.5,
+                color=col, style="italic")
+        if i < 2:
             ax.set_xticklabels([])
         else:
-            ax.set_xlabel("action $a_0$", fontsize=7.5, labelpad=1)
-        for s in ax.spines.values():
-            s.set_color("0.6")
-        ax.set_ylabel(r"$\Delta\hat T$ (°C)", fontsize=7.5, labelpad=1)
-        ax.text(0.5, 1.07, shape, transform=ax.transAxes, ha="center", va="bottom",
-                fontsize=8.5, color=color, style="italic")
-        bg.add_patch(FancyArrowPatch((0.60, yc), (0.66, yc), arrowstyle="-|>", mutation_scale=15, color=color, lw=1.8))
-        # right: REAL closed-loop zone-temperature trace + comfort band (measured BOPTEST)
-        axr = fig.add_axes([0.675, yc - 0.072, 0.235, 0.145])
-        th, tz = tzone
-        th = th - th.min()          # window-relative hours (traces are time-stamped from year start)
-        win = th <= 120.0           # first 5 days: behaviour is daily-periodic, so this shows
-        th, tz = th[win], tz[win]   # the real oscillation instead of a 14-day dense blur
-        axr.axhspan(COMFORT_LO, COMFORT_HI, color="#1b7837", alpha=0.13, zorder=0)
-        # the collapse trace is a dense daily sawtooth -> very thin line so it reads as a
-        # fine oscillation rather than a heavy red band; smooth traces stay normal weight
-        axr.plot(th, tz, color=color, lw=(0.3 if color == RED else 0.9),
-                 alpha=(0.85 if color == RED else 1.0), zorder=2)
-        axr.set_ylim(14, 35); axr.set_xlim(0, 120)
-        axr.tick_params(labelsize=6.5, length=2)
-        axr.set_xticks([0, 48, 96])
-        axr.set_yticks([15, 21, 24, 30])
-        if not bottom:
-            axr.set_xticklabels([])
-        else:
-            axr.set_xticklabels(["0", "2", "4"])
-            axr.set_xlabel("day", fontsize=7.5, labelpad=1)
-        for s in axr.spines.values():
-            s.set_color("0.6")
-        axr.set_ylabel("zone T (°C)", fontsize=7.5, labelpad=1)
-        axr.text(0.5, 1.07, verdict, transform=axr.transAxes, ha="center", va="bottom",
-                 fontsize=11, weight="bold", color=color)
+            ax.set_xlabel(r"action $a_0$", fontsize=8)
+    fig.text(0.20, 0.83, "(A) Measured response surface", ha="center", fontsize=10, weight="bold", color="0.25")
+
+    # ---- (B) deployment plane (effect), Fig-8 engineering style ----
+    axB = fig.add_subplot(gs[:, 1])
+    xmax = max(rr.values()) * 1.18
+    ymax = max(ms.values()) * 1.18
+    # shaded interpreted regions split by the m_s = 1 usability threshold
+    axB.axhspan(0, 1.0, color=GREEN, alpha=0.09)
+    axB.axhspan(1.0, ymax, color=RED, alpha=0.09)
+    axB.axhline(1.0, color=EDGE, ls="--", lw=1.2)
+    axB.text(xmax * 0.40, 1.02, "$m_s=1$ usability threshold", ha="center", va="bottom", fontsize=8, color=EDGE)
+    axB.text(xmax * 0.04, ymax * 0.93, "collapse\n(rough surrogate, $m_s>1$)", fontsize=9, color="#8a1c1c", weight="bold")
+    axB.text(xmax * 0.60, 0.12, "deployable\n(smooth surrogate, $m_s<1$)", fontsize=9, color="#135f55", weight="bold")
+
+    pts = [(rr["v3 hourly (1h)"], ms["v3 ("], GREEN, "o", "v3 (coarse)"),
+           (rr["v3 matched (15min)"], ms["matched"], ORANGE, "o", "matched v3"),
+           (rr["v3.5 calibrated"], ms["v3.5"], RED, "o", "v3.5 calibrated"),
+           (rr["v3 hourly (1h)"], ms["hybrid"], BLUE, "D", "hybrid")]
+    for x, y, c, m, lab in pts:
+        axB.scatter([x], [y], s=130, color=c, marker=m, edgecolor=EDGE, linewidth=1.0, zorder=4)
+    lab_off = {"v3 (coarse)": (10, 6), "matched v3": (-8, 8), "v3.5 calibrated": (8, -4), "hybrid": (10, -14)}
+    for x, y, c, m, lab in pts:
+        dx, dy = lab_off[lab]
+        axB.annotate(lab, (x, y), xytext=(dx, dy), textcoords="offset points", fontsize=8.5,
+                     weight="bold", color=c, ha="left" if dx >= 0 else "right")
+    axB.set_xlim(0, xmax); axB.set_ylim(-0.03, ymax)
+    axB.set_xlabel("surrogate response-surface roughness  (rel. roughness)", fontsize=10)
+    axB.set_ylabel("live maintenance score $m_s$  (BOPTEST)", fontsize=10)
+    axB.set_title("(B) Fidelity–utility deployment plane (measured)", fontsize=11, weight="bold")
+    axB.grid(alpha=0.18)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{OUT}.pdf", bbox_inches="tight")
