@@ -41,7 +41,7 @@ def main() -> None:
     # ---- LEFT: the paradox (compact scatter) ----
     axL = fig.add_axes([0.055, 0.10, 0.46, 0.74])
     pts = [(v3, GREEN, "o", "v3 (hourly)\nusable"),
-           (mv, RED, "o", "matched v3\ncollapse"),
+           (mv, RED, "o", "v3 fine-res\ncollapse"),
            (v35, RED, "o", "v3.5 calibrated\ncollapse")]
     axL.axhspan(1.0, 1.4, color=RED, alpha=0.06)
     axL.plot([v3.rmse_24h_c, mv.rmse_24h_c, v35.rmse_24h_c],
@@ -56,7 +56,7 @@ def main() -> None:
                  arrowprops=dict(arrowstyle="->", color=BLUE, lw=1.3))
     axL.annotate("v3 (usable)", (v3.rmse_24h_c, v3.m_s_mean), xytext=(8, -4),
                  textcoords="offset points", color=GREEN, fontsize=10)
-    axL.annotate("matched v3", (mv.rmse_24h_c, mv.m_s_mean), xytext=(6, 6),
+    axL.annotate("v3 (fine-res)", (mv.rmse_24h_c, mv.m_s_mean), xytext=(6, 6),
                  textcoords="offset points", color=RED, fontsize=10)
     axL.annotate("v3.5", (v35.rmse_24h_c, v35.m_s_mean), xytext=(6, 6),
                  textcoords="offset points", color=RED, fontsize=10)
