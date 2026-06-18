@@ -1,12 +1,16 @@
 """Elsevier graphical abstract (single landscape panel, ~1328x531 px).
 
-Three measured, data-driven lanes (cause -> effect):
-  surrogate (with its key numbers) -> NORMALISED action->next-temperature response
-  shape (smooth vs rough) -> real closed-loop zone-temperature trace on the live
-  BOPTEST runtime (24 h, with the comfort band). The collapsing lane is drawn in the
-  warm-start negative-control style: a thin orange sawtooth.
+Four-column causal chain (engineering, data-driven):
+  Training backend -> Action-response surface -> PPO behaviour -> Live BOPTEST outcome
 
-Output: docs/paper_combined/figures/graphical_abstract.{pdf,png}
+  v3 (coarse)            smooth                modulating, 24% sat.   USABLE  (m_s~0.08)
+  v3.5 / matched v3      rough (7.9-9.4x)      bang-bang, 100% sat.   COLLAPSE (m_s>1)
+  hybrid                 smooth + censored     modulating, ~25% sat.  ROBUST  (m_s 0.041, 85x)
+
+Numbers: roughness from reports/block2_mechanism_surface_sharpness.csv; m_s from
+reports/block2_fidelity_utility_scatter.csv; action saturation from the committed
+BOPTEST traces; RMSE / 85x are the canonical values cited in the paper.
+Footer legend defines RMSE_T, m_s, violation so the figure is self-contained.
 """
 
 from __future__ import annotations
@@ -26,19 +30,17 @@ import build_mechanism_surface_diagnostic as msd
 
 OUT = ROOT / "docs/paper_combined/figures/graphical_abstract"
 GREEN, ORANGE, BLUE = "#1b7837", "#d6604d", "#2166ac"
-COMFORT_LO, COMFORT_HI = 21.0, 24.0
 
 
 def norm_mean_curve(kw):
     cs = msd.per_state_curves(msd.load_direct_tsup_adapter(**kw))
     m = np.mean(cs, axis=0)
-    return (m - m.mean()) / (m.max() - m.min())   # normalised shape, comparable across backends
+    return (m - m.mean()) / (m.max() - m.min())
 
 
-def zone_trace(run_dir):
-    df = pd.read_csv(ROOT / "outputs" / run_dir / "traces" / "peak_heat_window_thermostatic.csv")
-    h = df["sim_time_sec"].to_numpy() / 3600.0
-    return h - h.min(), df["t_zone_c"].to_numpy()
+def sat_pct(run_dir):
+    a = pd.read_csv(ROOT / "outputs" / run_dir / "traces" / "peak_heat_window_thermostatic.csv")["a0"]
+    return 100.0 * float((a.abs() > 0.9).mean())
 
 
 def main() -> None:
@@ -46,71 +48,79 @@ def main() -> None:
     v35_kw = dict(kind="v35_calibrated", summary_json=msd.V35_SUMMARY)
     n_v3, n_v35 = norm_mean_curve(v3_kw), norm_mean_curve(v35_kw)
     a0 = msd.A0
-    tr_v3 = zone_trace("bestest_air_article7_style_15min")
-    tr_acc = zone_trace("block2_bestest_air_15min_thermostatic_v35")
-    tr_hyb = zone_trace("block2_thermostatic_hybrid_v3_v35_l010")
+    sat_v3 = sat_pct("bestest_air_article7_style_15min")
+    sat_acc = sat_pct("block2_bestest_air_15min_thermostatic_v35")
+    sat_hyb = sat_pct("block2_thermostatic_hybrid_v3_v35_l010")
 
-    fig = plt.figure(figsize=(12.8, 5.4))
+    fig = plt.figure(figsize=(13.6, 5.6))
     bg = fig.add_axes([0, 0, 1, 1]); bg.axis("off"); bg.set_xlim(0, 1); bg.set_ylim(0, 1)
-    bg.text(0.5, 0.965, "The Fidelity–Utility Paradox in Surrogate-Based RL for HVAC Control",
+    bg.text(0.5, 0.965, "Fidelity–Utility Paradox in Surrogate-Based RL for HVAC Control",
             ha="center", fontsize=15, weight="bold")
-    bg.text(0.5, 0.905, "More accurate surrogate $\\rightarrow$ rougher action surface $\\rightarrow$ PPO collapse; "
-            "hybrid separates rollout smoothness from physical censoring.",
+    bg.text(0.5, 0.908, "More accurate surrogates expose rougher action surfaces and collapse PPO; "
+            "hybrid separates smooth rollout from physical censoring.",
             ha="center", fontsize=10.5, style="italic", color="0.3")
-    for x, t in [(0.15, "Surrogate training\nenvironment"),
-                 (0.48, "Normalised action → next-\ntemperature response"),
-                 (0.84, "Zone temperature on the\nlive BOPTEST runtime (24 h)")]:
-        bg.text(x, 0.80, t, ha="center", fontsize=10.5, weight="bold", color="0.3")
 
-    # rows: (y, colour, normalised-response, name, numeric badge, shape-label, verdict, trace)
+    cols = [(0.135, "Training backend"), (0.40, "Action-response\nsurface"),
+            (0.605, "PPO behaviour"), (0.84, "Live BOPTEST outcome")]
+    for x, t in cols:
+        bg.text(x, 0.84, t, ha="center", fontsize=10.5, weight="bold", color="0.3")
+
     rows = [
-        (0.625, GREEN, n_v3, "Coarse black-box v3", "24 h RMSE 1.557 °C · $m_s$≈0.08",
-         "smooth · monotone", "✓ USABLE", tr_v3),
-        (0.405, ORANGE, n_v35, "Accurate twin (v3.5 / matched-v3)", "RMSE 0.644/0.876 °C · roughness 7.9 to 9.4× · $m_s$ > 1",
-         "rough · non-monotone", "✗ COLLAPSE", tr_acc),
-        (0.185, BLUE, n_v3, "Hybrid (v3 rollout + v3.5 censor)", "$m_s$=0.041 (typ.) · violation <5%",
-         "smooth (v3 dynamics)", "✓ ROBUST", tr_hyb),
+        dict(y=0.66, c=GREEN, ncurve=n_v3, shape="smooth",
+             backend="Coarse black-box v3\n24 h RMSE$_T$ 1.557 °C",
+             ppo=f"modulating\n{sat_v3:.0f}% saturation",
+             status="USABLE", outcome="$m_s\\approx0.08$"),
+        dict(y=0.42, c=ORANGE, ncurve=n_v35, shape="rough",
+             backend="Accurate single-model\nv3.5: RMSE$_T$ 0.644 °C, 7.9×\nmatched-v3: RMSE$_T$ 0.876 °C, 9.4×",
+             ppo=f"bang-bang\n{sat_acc:.0f}% saturation",
+             status="COLLAPSE", outcome="$m_s>1$"),
+        dict(y=0.18, c=BLUE, ncurve=n_v3, shape="smooth + censored",
+             backend="Hybrid\nv3 rollout + frozen v3.5 censor",
+             ppo=f"modulating\n~{sat_hyb:.0f}% saturation",
+             status="ROBUST", outcome="$m_s$=0.041 typ. · viol <5% · 85× faster"),
     ]
 
-    for i, (yc, color, ncurve, name, badge, shape, verdict, tr) in enumerate(rows):
-        bottom = (i == len(rows) - 1)
-        # left: surrogate name + numeric badge
-        bg.add_patch(FancyBboxPatch((0.015, yc - 0.085), 0.265, 0.17, boxstyle="round,pad=0.008,rounding_size=0.02",
-                     linewidth=1.8, edgecolor=color, facecolor=color + "14"))
-        bg.text(0.1475, yc + 0.035, name, ha="center", va="center", fontsize=9.5, weight="bold", color="black")
-        bg.text(0.1475, yc - 0.037, badge, ha="center", va="center", fontsize=8.4, color="0.2")
-        bg.add_patch(FancyArrowPatch((0.285, yc), (0.335, yc), arrowstyle="-|>", mutation_scale=14, color=color, lw=1.7))
-        # centre: NORMALISED response shape (same scale for all backends)
-        ax = fig.add_axes([0.36, yc - 0.07, 0.215, 0.14])
-        ax.plot(a0, ncurve, color=color, lw=2.4)
-        ax.axhline(0, color="0.85", lw=0.7, zorder=0)
-        ax.set_ylim(-0.62, 0.62); ax.set_xticks([-1, 0, 1]); ax.set_yticks([-0.5, 0, 0.5])
+    def box(x, w, y, h, text, color, fs=8.6, status=False):
+        bg.add_patch(FancyBboxPatch((x, y - h / 2), w, h, boxstyle="round,pad=0.008,rounding_size=0.02",
+                     linewidth=(2.0 if status else 1.5), edgecolor=color, facecolor=color + "14"))
+        if status:
+            head, _, tail = text.partition("\n")
+            bg.text(x + w / 2, y + 0.03, head, ha="center", va="center", fontsize=11, weight="bold", color=color)
+            bg.text(x + w / 2, y - 0.032, tail, ha="center", va="center", fontsize=8.4, color="0.2")
+        else:
+            bg.text(x + w / 2, y, text, ha="center", va="center", fontsize=fs, color="black")
+
+    def arr(x0, x1, y, color):
+        bg.add_patch(FancyArrowPatch((x0, y), (x1, y), arrowstyle="-|>", mutation_scale=12, color=color, lw=1.6))
+
+    bg.text(0.285, 0.42, "normalised response", rotation=90, va="center", ha="center", fontsize=8, color="0.45")
+    for r in rows:
+        y, c = r["y"], r["c"]
+        box(0.01, 0.255, y, 0.165, r["backend"], c, fs=8.3)             # col 1 backend
+        arr(0.272, 0.305, y, c)
+        ax = fig.add_axes([0.315, y - 0.058, 0.115, 0.12])             # col 2 response curve
+        ax.plot(a0, r["ncurve"], color=c, lw=2.2)
+        ax.axhline(0, color="0.85", lw=0.6, zorder=0)
+        ax.set_ylim(-0.62, 0.62); ax.set_xticks([-1, 0, 1]); ax.set_yticks([])
         ax.tick_params(labelsize=6.5, length=2)
-        ax.set_ylabel("norm.\nresponse", fontsize=7, labelpad=1)
         for s in ax.spines.values():
             s.set_color("0.6")
-        ax.text(0.5, 1.06, shape, transform=ax.transAxes, ha="center", va="bottom", fontsize=8.3, color=color, style="italic")
-        ax.set_xlabel(r"action $a_0$", fontsize=7.5, labelpad=1) if bottom else ax.set_xticklabels([])
-        bg.add_patch(FancyArrowPatch((0.59, yc), (0.64, yc), arrowstyle="-|>", mutation_scale=14, color=color, lw=1.7))
-        # right: real 24 h zone-temperature trace, thin line (warm-start style)
-        axr = fig.add_axes([0.665, yc - 0.07, 0.235, 0.14])
-        th, tz = tr; w = th <= 24.0
-        axr.axhspan(COMFORT_LO, COMFORT_HI, color="#1b7837", alpha=0.13, zorder=0)
-        axr.plot(th[w], tz[w], color=color, lw=0.9, zorder=2)
-        axr.set_ylim(14, 32); axr.set_xlim(0, 24)
-        axr.set_xticks([0, 12, 24]); axr.set_yticks([15, 21, 24, 30])
-        axr.tick_params(labelsize=6.5, length=2)
-        for s in axr.spines.values():
-            s.set_color("0.6")
-        axr.set_ylabel("zone T (°C)", fontsize=7, labelpad=1)
-        axr.text(0.5, 1.06, verdict, transform=axr.transAxes, ha="center", va="bottom", fontsize=10.5, weight="bold", color=color)
-        axr.set_xlabel("hours", fontsize=7.5, labelpad=1) if bottom else axr.set_xticklabels([])
+        ax.text(0.5, 1.04, r["shape"], transform=ax.transAxes, ha="center", va="bottom", fontsize=8.2, color=c, style="italic")
+        arr(0.45, 0.485, y, c)
+        box(0.49, 0.205, y, 0.155, r["ppo"], c, fs=8.6)                # col 3 PPO behaviour
+        arr(0.70, 0.735, y, c)
+        box(0.74, 0.25, y, 0.165, f"{r['status']}\n{r['outcome']}", c, status=True)  # col 4 outcome
+
+    bg.text(0.5, 0.035, "RMSE$_T$ = 24 h predictive temperature error   ·   "
+            "$m_s$ = live maintenance score (lower is better)   ·   "
+            "violation = fraction of time outside the 21-24 °C comfort band",
+            ha="center", fontsize=8.3, color="0.35")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{OUT}.pdf", bbox_inches="tight")
     fig.savefig(f"{OUT}.png", dpi=100, bbox_inches="tight")
     plt.close(fig)
-    print(f"Wrote {OUT}.pdf and {OUT}.png")
+    print(f"Wrote {OUT}  [sat v3={sat_v3:.0f} acc={sat_acc:.0f} hyb={sat_hyb:.0f}]")
 
 
 if __name__ == "__main__":
