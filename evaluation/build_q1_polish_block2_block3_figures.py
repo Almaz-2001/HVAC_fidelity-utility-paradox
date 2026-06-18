@@ -60,7 +60,8 @@ TRACE_PATHS = {
     "hybrid": "outputs/block2_thermostatic_hybrid_v3_v35_l010/traces/typical_heat_window_thermostatic.csv",
 }
 
-TRACE_COLORS = {"pure v3": GREY, "direct v3.5": RED, "hybrid": TEAL}
+# unified paper colour scheme: v3 = green (usable), v3.5 = red (collapse), hybrid = blue
+TRACE_COLORS = {"pure v3": "#1b7837", "direct v3.5": "#b2182b", "hybrid": "#2166ac"}
 
 
 def fig_block2_closed_loop_disturbance() -> None:
@@ -76,9 +77,9 @@ def fig_block2_closed_loop_disturbance() -> None:
 
     for name, df in traces.items():
         axes[1].plot(t, df["t_zone_c"], label=name, color=TRACE_COLORS[name], linewidth=1.5)
-    axes[1].axhspan(21, 24, color=TEAL, alpha=0.12, label="comfort band 21-24 degC")
+    axes[1].axhspan(21, 24, color="#1b7837", alpha=0.07, label="comfort band 21-24 degC")
     style(axes[1], "(b) Zone temperature response", ylabel="$T_{zone}$ (degC)")
-    axes[1].legend(ncol=4, frameon=False, fontsize=8)
+    axes[1].legend(ncol=4, frameon=False, fontsize=10)
 
     for name, df in traces.items():
         axes[2].plot(t, df["t_supply_cmd_c"], label=name, color=TRACE_COLORS[name], linewidth=1.3)
