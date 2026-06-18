@@ -72,7 +72,7 @@ def main() -> None:
              status="USABLE", outcome="$m_s\\approx0.08$"),
         dict(y=0.42, c=ORANGE, ncurve=n_v35, shape="rough",
              backend="Accurate single-model\nv3.5: RMSE$_T$ 0.644 °C, 7.9×\nmatched-v3: RMSE$_T$ 0.876 °C, 9.4×",
-             ppo=f"bang-bang\n{sat_acc:.0f}% saturation",
+             ppo="near bang-bang\nsaturation",
              status="COLLAPSE", outcome="$m_s>1$"),
         dict(y=0.18, c=BLUE, ncurve=n_v3, shape="smooth + censored",
              backend="Hybrid\nv3 rollout + frozen v3.5 censor",
