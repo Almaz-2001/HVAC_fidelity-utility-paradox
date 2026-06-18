@@ -66,7 +66,7 @@ def main() -> None:
     rows = [
         (0.625, GREEN, n_v3, "Coarse black-box v3", "24 h RMSE 1.557 °C · $m_s$≈0.08",
          "smooth · monotone", "✓ USABLE", tr_v3),
-        (0.405, ORANGE, n_v35, "Accurate twin (v3.5 / matched-v3)", "RMSE 0.644/0.876 °C · roughness 7.9–9.4× · $m_s$ > 1",
+        (0.405, ORANGE, n_v35, "Accurate twin (v3.5 / matched-v3)", "RMSE 0.644/0.876 °C · roughness 7.9 to 9.4× · $m_s$ > 1",
          "rough · non-monotone", "✗ COLLAPSE", tr_acc),
         (0.185, BLUE, n_v3, "Hybrid (v3 rollout + v3.5 censor)", "$m_s$=0.041 (typ.) · violation <5%",
          "smooth (v3 dynamics)", "✓ ROBUST", tr_hyb),

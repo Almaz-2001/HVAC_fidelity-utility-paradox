@@ -25,7 +25,7 @@ XS = [0.13, 0.38, 0.63, 0.88]
 LANES = [
     ("#1b7837", 0.72, ["v3 black-box · 1 h step\nRMSE 1.557 °C", "smooth · monotone\nroughness 1.0×",
                         "modulating\n24% saturation", "stable transfer\n$m_s$≈0.08"]),
-    ("#b2182b", 0.45, ["v3.5 / matched v3\nRMSE 0.644/0.876 °C", "rough · non-monotone\n7.9–9.4× rougher",
+    ("#b2182b", 0.45, ["v3.5 / matched v3\nRMSE 0.644/0.876 °C", "rough · non-monotone\n7.9 to 9.4× rougher",
                        "near bang-bang\n100% saturation", "closed-loop collapse\n$m_s$>1, >77% viol."]),
     ("#2166ac", 0.18, ["hybrid: v3 rollout\n+ frozen v3.5 censor", "smooth (v3) +\nplausibility censor",
                        "modulating\n25% saturation", "robust transfer\n$m_s$=0.041, viol <5%"]),
