@@ -1,3 +1,16 @@
+"""Build a journal-style Overleaf package for Results I / Block 1.
+
+The section follows only Block 1 of ``roadmap.md``:
+
+1. v3 direct-TSup surrogate training.
+2. v3.5 Stage A/B/C inverse calibration.
+3. Corpus-matched v3 retraining.
+4. Hou-and-Evins reporting and speed benchmark.
+
+Controller transfer, direct-v3.5 PPO failure, hybrid PPO training, and
+transfer-gap diagnostics are deliberately excluded because they begin in
+Block 2 of the roadmap.
+"""
 
 from __future__ import annotations
 
@@ -224,17 +237,20 @@ def fig03_stage_abc(ep: dict, power: dict, corpus: pd.DataFrame) -> None:
     style(axes[0], "(a) Stage B physical-parameter identification", "epoch", "$C_{zon}$ ($10^5$ J/K)")
     axes[0].legend(frameon=False, fontsize=8)
 
+    # normalised improvement (% reduction) so different units (deg C, kW) are not mixed
+    # on one axis; the raw before->after values are kept as sub-labels for context
     x = np.arange(len(labels))
-    axes[1].bar(x - 0.17, before, width=0.34, color=AMBER, label="before", edgecolor="#111827", linewidth=0.4)
-    axes[1].bar(x + 0.17, after, width=0.34, color=GREEN, label="after", edgecolor="#111827", linewidth=0.4)
-    y_top = float(before.max()) * 1.35
-    axes[1].set_ylim(0, y_top)
-    for i, (b, a) in enumerate(zip(before, after)):
-        axes[1].text(i, max(b, a) + y_top * 0.035, f"{(a-b)/b*100:+.1f}%", ha="center", fontsize=8.5, weight="bold")
+    red = (before - after) / before * 100.0
+    units = ["°C", "°C", "kW"]
+    names = ["1-step RMSE$_T$", "24 h RMSE$_T$", "Power MAE"]
+    sub = [f"{names[i]}\n{before[i]:.2f}$\\to${after[i]:.2f} {units[i]}" for i in range(len(labels))]
+    axes[1].bar(x, red, width=0.55, color=GREEN, edgecolor="#111827", linewidth=0.4)
+    for i, r in enumerate(red):
+        axes[1].text(i, r + 1.6, f"−{r:.1f}%", ha="center", fontsize=9.5, weight="bold")
     axes[1].set_xticks(x)
-    axes[1].set_xticklabels(labels)
-    style(axes[1], "(b) Calibration effect on fidelity metrics", ylabel="metric value")
-    axes[1].legend(frameon=False, fontsize=8)
+    axes[1].set_xticklabels(sub, fontsize=8.5)
+    axes[1].set_ylim(0, float(red.max()) * 1.2)
+    style(axes[1], "(b) Calibration reduces every fidelity error", ylabel="reduction after calibration (%)")
     fig.suptitle("Stage A/B/C calibration improves prediction while keeping the physical parameter bounded", fontsize=13, weight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.92])
     save(fig, "rie_fig03_stage_abc_diagnostics")
@@ -376,6 +392,9 @@ def table_sample(sample: pd.DataFrame) -> str:
         ("v35_collected_15min_exploration", "15-min exploration corpus"),
     ]:
         r = sample.loc[sample.dataset_id == key].iloc[0]
+        # Insert a space after each comma so the long comma-separated lists can
+        # wrap inside the tabularx X columns (otherwise they overflow into the
+        # neighbouring column and overlap).
         policy_mix = tex_escape(str(r.controller_or_policy_mix).replace(",", ", "))
         scenario_mix = tex_escape(str(r.season_or_scenario_mix).replace(",", ", "))
         rows.append(
@@ -446,6 +465,8 @@ def table_scaling_features(scaling: pd.DataFrame) -> str:
 def table_stage(ep: dict, power: dict, corpus: pd.DataFrame) -> str:
     raw_24 = float(corpus.loc[corpus.variant == "v35_raw", "rmse_24h_c"].iloc[0])
     cal_24 = float(corpus.loc[corpus.variant == "v35_calibrated", "rmse_24h_c"].iloc[0])
+    # (label, before, after, display_scale, decimals) with metric-appropriate
+    # significant figures rather than a blanket 3-decimal format.
     rows = [
         (r"1-step RMSE$_T$ (\si{\celsius})", float(ep["baseline_rmse_c"]), float(ep["calibrated_rmse_c"]), 1.0, 3),
         (r"24 h rollout RMSE$_T$ (\si{\celsius})", raw_24, cal_24, 1.0, 3),
@@ -1167,7 +1188,7 @@ def main() -> None:
     power = read_json("outputs/surrogate_v35_inverse_boptest_15min_power_head_only/calibration_summary_boptest_v35.json")
     params = count_v3_params()
 
-    
+    # v3 supervised training trajectory (canonical hourly run).
     try:
         v3_hist = read_csv("outputs/surrogate_v2/train_history_v2.csv")
         v3_best = v3_hist.loc[v3_hist["val_loss"].idxmin()]
@@ -1177,7 +1198,7 @@ def main() -> None:
     except Exception:
         v3_best_epoch, v3_total_epochs, v3_val_r2 = 185, 215, 0.991
 
-    
+    # 24 h tail bound and wall-clock feasibility extrapolation (5e6 PPO steps).
     p95_24h = float(cal_horizon.loc[cal_horizon["horizon_h"] == 24, "temp_p95_abs_error_c"].iloc[0])
     ppo_steps = 5_000_000
     hybrid_sps = float(speed.loc[speed.backend == "hybrid_v3_v35_surrogate", "env_steps_per_sec"].iloc[0])
@@ -1185,7 +1206,10 @@ def main() -> None:
     hybrid_walltime_min = ppo_steps / hybrid_sps / 60.0
     boptest_walltime_h = ppo_steps / boptest_sps / 3600.0
 
-    
+    # Persistence (naive) baseline + temperature NMBE from the free-run rollout.
+    # Use the CANONICAL power_head_only checkpoint (the episodeaware rollout is the
+    # intermediate first-pass head; the temperature head is identical because the
+    # second pass freezes it, so only the power channel differs).
     cal_rollout = read_csv("outputs/surrogate_v35_rollout_prepared_15min_power_head_only/calibrated_v35/all_full_rollouts.csv")
     pers1, pers24 = [], []
     for _, g in cal_rollout.groupby("episode_id"):
@@ -1198,7 +1222,7 @@ def main() -> None:
     mean_t_zone = float(cal_rollout["actual_t_zone"].mean())
     nmbe_t_cal = float(cal_rollout["temp_error_c"].mean())
 
-    
+    # C_zon convergence-stability band (late Stage B epochs) and physical interpretation.
     sb = read_csv("outputs/surrogate_v35_inverse_boptest_15min_episodeaware/stage_b_history_v35.csv")
     c_late = sb["c_zon_j_per_k"].to_numpy()[-20:]
     czon_std = float(np.std(c_late))
@@ -1209,7 +1233,7 @@ def main() -> None:
     equiv_air_mass = c_final / cp_air
     equiv_air_volume = equiv_air_mass / rho_air
 
-    
+    # Power channel ASHRAE-G14 metrics from the CANONICAL calibrated head.
     mean_power = float(cal_rollout["actual_p_total_w"].mean())
     cv_rmse_power = float(np.sqrt((cal_rollout["power_error_w"] ** 2).mean())) / mean_power * 100.0
     nmbe_power = float(cal_rollout["power_error_w"].mean()) / mean_power * 100.0
@@ -1227,7 +1251,7 @@ def main() -> None:
     except Exception:
         pass
 
-    
+    # Model-probing items (no training): C_zon Fisher CI + physics audit + fig09.
     try:
         czon_ci = compute_czon_fisher_ci(ep)
     except Exception as exc:
@@ -1239,7 +1263,8 @@ def main() -> None:
         print(f"[warn] physics audit skipped: {exc}")
         phys = None
 
-
+    # C_zon uncertainty sentence: Fisher/Laplace CI if available, else the
+    # optimizer-convergence band only.
     if czon_ci is not None:
         czon_uncertainty_tex = (
             "Beyond the point estimate, two complementary uncertainty checks apply. "
@@ -1253,6 +1278,7 @@ def main() -> None:
             f"Beyond the point estimate, the identification is well conditioned: over the final 20 Stage~B epochs the \\(\\Czon\\) trajectory is stable to within \\(\\pm{czon_std:,.0f}\\)~J/K ({czon_std_pct:.2f}\\% of its value), so the result is not a wandering optimum."
         )
 
+    # Physics-consistency audit block (paragraph + figure) or empty on failure.
     if phys is not None:
         phys_fig = (
             "\n\\begin{figure}[H]\n  \\centering\n"
