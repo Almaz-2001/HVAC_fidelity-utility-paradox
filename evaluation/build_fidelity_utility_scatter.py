@@ -81,10 +81,12 @@ def make_figure(rows: list[dict]) -> None:
     fig, ax = plt.subplots(figsize=(7.2, 5.2))
 
     ymax = max(r["m_s_mean"] for r in rows) * 1.18
-    # shaded usable / collapse zones (m_s = 1 is a clear live failure)
+    # shaded collapse / usable zones + threshold lines (engineering reference levels)
     ax.axhspan(1.0, ymax, color="#b2182b", alpha=0.06, zorder=0)
     ax.axhspan(0.0, 1.0, color="#1b7837", alpha=0.05, zorder=0)
-    ax.axhline(1.0, color="0.6", lw=0.9, ls=":", zorder=1)
+    ax.axhspan(0.0, 0.1, color="#1b7837", alpha=0.16, zorder=0)   # tight "usable" band m_s < 0.1
+    ax.axhline(1.0, color="#b2182b", lw=1.0, ls="--", zorder=1)
+    ax.axhline(0.1, color="#1b7837", lw=0.8, ls=":", zorder=1)
 
     # paradox trend through the three single-model surrogates (ordered by RMSE)
     singles = sorted([r for r in rows if r["is_single"]], key=lambda r: r["rmse_24h_c"])
@@ -103,27 +105,25 @@ def make_figure(rows: list[dict]) -> None:
         handles.append(Line2D([0], [0], marker=marker, color="none", markerfacecolor=c,
                               markeredgecolor="white", markersize=11, label=legend_label[r["controller"]]))
 
-    # zone labels (placed in the empty corners)
-    xlo, xhi = 0.55, 1.62
+    # zone / threshold labels (normal, non-inverted axis)
+    xlo, xhi = 0.55, 1.70
     ax.text(xlo + 0.02, ymax * 0.97, "collapse  ($m_s>1$)", color="#b2182b", fontsize=10,
             va="top", ha="left", weight="bold")
-    ax.text(xhi - 0.02, 0.04 * ymax + 0.02, "usable", color="#1b7837", fontsize=10,
-            va="bottom", ha="right", weight="bold")
+    ax.text(xhi - 0.02, 1.02, "$m_s=1$ collapse threshold", color="#b2182b", fontsize=8, va="bottom", ha="right")
+    ax.text(xhi - 0.02, 0.135, "usable region ($m_s<0.1$)", color="#1b7837", fontsize=9, va="bottom", ha="right", weight="bold")
 
-    # one short callout for the special hybrid case only
+    # callout for the hybrid: it has no single rollout RMSE -> placed at v3's RMSE
     hy = next(r for r in rows if not r["is_single"])
-    ax.annotate("hybrid breaks\nthe trade-off", (hy["rmse_24h_c"], hy["m_s_mean"]),
-                textcoords="offset points", xytext=(-6, 34), fontsize=9, ha="right",
-                color=color["robust"],
-                arrowprops=dict(arrowstyle="->", color=color["robust"], lw=1.2))
+    ax.annotate("hybrid — plotted at v3 RMSE\n(rollout dynamics are v3)", (hy["rmse_24h_c"], hy["m_s_mean"]),
+                textcoords="offset points", xytext=(-8, 30), fontsize=8.5, ha="right",
+                color=color["robust"], arrowprops=dict(arrowstyle="->", color=color["robust"], lw=1.2))
 
-    ax.set_xlim(xhi, xlo)  # inverted: "more accurate" (lower RMSE) to the right
+    ax.set_xlim(xlo, xhi)  # normal axis: lower RMSE (more accurate) on the left
     ax.set_ylim(-0.02, ymax)
-    ax.set_xlabel(r"24-h rollout RMSE ($^\circ$C)      $\longrightarrow$ more accurate surrogate")
-    ax.set_ylabel(r"live maintenance score $m_s$      $\longrightarrow$ worse controller")
+    ax.set_xlabel(r"24-h rollout RMSE$_T$ ($^\circ$C)   (lower = more predictive fidelity)")
+    ax.set_ylabel(r"live maintenance score $m_s$   (higher = worse controller)")
     ax.set_title("Fidelity–utility paradox: lower RMSE does not imply lower $m_s$")
-    ax.legend(handles=handles, loc="center", fontsize=9, frameon=True, framealpha=0.9,
-              bbox_to_anchor=(0.5, 0.5))
+    ax.legend(handles=handles, loc="upper right", fontsize=8.5, frameon=True, framealpha=0.92)
     ax.grid(alpha=0.18)
     fig.tight_layout()
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)
