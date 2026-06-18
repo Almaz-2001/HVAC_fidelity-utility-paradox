@@ -573,6 +573,7 @@ def fig13_block3_verdict_heatmap():
     annotations = []
     for _, r in tm.iterrows():
         rowv, rowa = [], []
+        ratio = float(r["m_s_rl"]) / float(r["pass_threshold_m_s"])   # controller-side m_s_RL / tau
         for reg in regimes:
             verdict = r["none_controller_verdict"] if reg in ["none", "partial"] else r["full_controller_verdict"]
             if r["testcase"] == "singlezone_commercial_hydronic":
@@ -582,7 +583,7 @@ def fig13_block3_verdict_heatmap():
                 code = 1 if verdict == "PASS" else -1
                 txt = verdict
             rowv.append(code if txt != "COND PASS" else 0)
-            rowa.append(txt)
+            rowa.append(f"{txt}\n$m_s/\\tau$={ratio:.2f}")   # show the number behind the verdict
         vals.append(rowv)
         annotations.append(rowa)
     fig, ax = plt.subplots(figsize=(8, 4.8))
@@ -592,8 +593,11 @@ def fig13_block3_verdict_heatmap():
     ax.set_yticks(range(len(tests)), [t.replace("bestest_", "").replace("_", "\n") for t in tests])
     for i in range(len(tests)):
         for j in range(len(regimes)):
-            ax.text(j, i, annotations[i][j], ha="center", va="center", fontsize=9, fontweight="bold")
-    ax.set_title("Block 3 controller transfer verdict heatmap")
+            ax.text(j, i, annotations[i][j], ha="center", va="center", fontsize=8.5, fontweight="bold")
+    ax.set_xlabel("surrogate recalibration regime")
+    ax.set_title("Frozen-controller transfer verdict and $m_s^{RL}/\\tau$\n"
+                 "(identical across regimes: the controller is frozen, only the surrogate is recalibrated)",
+                 fontsize=10)
     save(fig, "final17_fig13_block3_controller_transfer_heatmap")
 
 
