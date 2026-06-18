@@ -54,8 +54,8 @@ def main() -> None:
     bg = fig.add_axes([0, 0, 1, 1]); bg.axis("off"); bg.set_xlim(0, 1); bg.set_ylim(0, 1)
     bg.text(0.5, 0.965, "The Fidelity–Utility Paradox in Surrogate-Based RL for HVAC Control",
             ha="center", fontsize=15, weight="bold")
-    bg.text(0.5, 0.905, "More accurate surrogate $\\rightarrow$ rougher action surface $\\rightarrow$ PPO collapse.   "
-            "Hybrid separates rollout smoothness from physical censoring.",
+    bg.text(0.5, 0.905, "More accurate surrogate $\\rightarrow$ rougher action surface $\\rightarrow$ PPO collapse; "
+            "hybrid separates rollout smoothness from physical censoring.",
             ha="center", fontsize=10.5, style="italic", color="0.3")
     for x, t in [(0.15, "Surrogate training\nenvironment"),
                  (0.48, "Normalised action → next-\ntemperature response"),
@@ -66,7 +66,7 @@ def main() -> None:
     rows = [
         (0.625, GREEN, n_v3, "Coarse black-box v3", "24 h RMSE 1.557 °C · $m_s$≈0.08",
          "smooth · monotone", "✓ USABLE", tr_v3),
-        (0.405, ORANGE, n_v35, "Accurate twin (v3.5 / matched-v3)", "RMSE 0.644/0.876 °C · roughness 7.9–9.4× · $m_s$>1",
+        (0.405, ORANGE, n_v35, "Accurate twin (v3.5 / matched-v3)", "RMSE 0.644/0.876 °C · roughness 7.9–9.4× · $m_s$ > 1",
          "rough · non-monotone", "✗ COLLAPSE", tr_acc),
         (0.185, BLUE, n_v3, "Hybrid (v3 rollout + v3.5 censor)", "$m_s$=0.041 (typ.) · violation <5%",
          "smooth (v3 dynamics)", "✓ ROBUST", tr_hyb),
@@ -78,7 +78,7 @@ def main() -> None:
         bg.add_patch(FancyBboxPatch((0.015, yc - 0.085), 0.265, 0.17, boxstyle="round,pad=0.008,rounding_size=0.02",
                      linewidth=1.8, edgecolor=color, facecolor=color + "14"))
         bg.text(0.1475, yc + 0.035, name, ha="center", va="center", fontsize=9.5, weight="bold", color="black")
-        bg.text(0.1475, yc - 0.035, badge, ha="center", va="center", fontsize=7.6, color="0.25")
+        bg.text(0.1475, yc - 0.037, badge, ha="center", va="center", fontsize=8.4, color="0.2")
         bg.add_patch(FancyArrowPatch((0.285, yc), (0.335, yc), arrowstyle="-|>", mutation_scale=14, color=color, lw=1.7))
         # centre: NORMALISED response shape (same scale for all backends)
         ax = fig.add_axes([0.36, yc - 0.07, 0.215, 0.14])

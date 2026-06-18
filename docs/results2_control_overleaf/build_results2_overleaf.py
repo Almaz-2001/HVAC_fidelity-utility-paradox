@@ -782,7 +782,7 @@ Policy/backend & Scenario & $m_s$ & Violation (\%) & RMSE$_T$ ($^\circ$C) & Ener
   \label{{fig:ms_decomp}}
 \end{{figure}}
 
-The time-series and action diagnostics in Figures~\ref{{fig:closed_loop_traces}} and~\ref{{fig:action_phase}} explain the mechanism. Direct v3.5 learns a bang-bang-like control law that drives the live simulator outside the comfort band; in phase space it places extreme actions in temperature-error regimes the live building does not support. We note explicitly that this destabilization mechanism is \emph{{hypothesized}} (higher advantage-estimator variance under sharper surrogate predictions, and/or overfitting to sub-step physical structure unusable at the 15-min cadence) and is not directly measured here; discriminating the two is deferred to future work.
+The time-series and action diagnostics in Figures~\ref{{fig:closed_loop_traces}} and~\ref{{fig:action_phase}} explain the mechanism. Direct v3.5 learns a bang-bang-like control law that drives the live simulator outside the comfort band; in phase space it places extreme actions in temperature-error regimes the live building does not support. The \emph{{full training-trajectory loss-landscape}} mechanism is not directly measured here; however, the surrogate-side response-surface roughness and the policy-side action saturation that drive this behaviour \emph{{are}} measured directly in Section~\ref{{ssec:coarse-graining}} (Table~\ref{{tab:surface_sharpness}}, Figure~\ref{{fig:surface_curves}}). What remains hypothesized is which micro-cause dominates (higher advantage-estimator variance under sharper surrogate predictions vs.\ overfitting to sub-step physical structure unusable at the 15-min cadence); discriminating the two is deferred to future work.
 
 \begin{{figure}}[H]
   \centering
@@ -1093,7 +1093,7 @@ Block 2 establishes four controller-side claims. First, predictive fidelity and 
 \subsection{{Limitations}}
 
 \begin{{itemize}}
-  \item \textbf{{Mechanism not measured.}} The direct-v3.5 destabilization is established only in \emph{{direction}}; the gradient-variance vs sub-step-overfit hypotheses are not discriminated here.
+  \item \textbf{{Mechanism: surrogate side measured, full loss-landscape open.}} The surrogate-side response-surface roughness and the policy-side action saturation are measured (Section~\ref{{ssec:coarse-graining}}); what is \emph{{not}} measured is the full training-trajectory loss landscape, and the gradient-variance vs sub-step-overfit micro-causes are not discriminated here.
   \item \textbf{{Single testcase.}} All Block 2 results are on \texttt{{bestest\_air}}; cross-building transfer is Block 3.
   \item \textbf{{MORL seed stability.}} The canonical MORL claim is narrowed: N=5 CV is ${ctx['n50_cv']}$--${ctx['n75_cv']}$; the single-seed canonical is the best of five and final-epoch evaluation is fixed by protocol.
   \item \textbf{{Per-family PPO hyperparameters differ}} (rollout length / batch size / budget); they were set per training script, so cross-family KPI differences are not a controlled hyperparameter ablation.
