@@ -116,3 +116,39 @@ graphical_abstract:
     - outputs/block2_thermostatic_hybrid_v3_v35_l010/traces/peak_heat_window_thermostatic.csv
   metrics: [rel_roughness, m_s, action_saturation_pct]
   audit_note: "RMSE values and the ~85x throughput figure are canonical results cited in the paper; all other numbers are read from the source files above."
+
+# Supplementary figures (every figure in the supplementary PDF), with its generator
+# script and primary source artefact. Schematics carry no data source.
+supplementary_figures:
+  # --- Block 1 (docs/results1_digital_twin_overleaf/build_results1_overleaf.py) ---
+  rie_fig01_block1_artifact_chain:    {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, kind: schematic}
+  rie_fig02_surrogate_design:         {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, kind: schematic}
+  rie_fig04_predictive_validity:      {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: reports/hou_evins_predictive_validity_table.csv}
+  rie_fig06_runtime_feasibility:      {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: reports/speed_benchmark_table.csv}
+  rie_fig07_episode_replicability:    {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: outputs/surrogate_v3_rollout_prepared_15min/}
+  rie_fig08_v3_learning_curve:        {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: outputs/surrogate_v2/train_history_v2.csv}
+  rie_fig09_physics_consistency:      {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: reports/hou_evins_input_independence_table.csv}
+  block1_q1_fig10_transfer_gap_diagnostics: {script: evaluation/build_block1_q1_figures.py, source: reports/hybrid_transfer_comparison.csv}
+  # --- Block 2 schematics (docs/results2_control_overleaf/build_results2_overleaf.py) ---
+  fig_block2_pipeline:                {script: docs/results2_control_overleaf/build_results2_overleaf.py, kind: schematic}
+  fig_block2_morl_pipeline:           {script: docs/results2_control_overleaf/build_results2_overleaf.py, kind: schematic}
+  fig_block2_hdrl_architecture:       {script: docs/results2_control_overleaf/build_results2_overleaf.py, kind: schematic}
+  fig_block2_ms_decomposition:        {script: docs/results2_control_overleaf/build_results2_overleaf.py, source: "outputs/block2_*/summary.csv (per-controller r_time, r_sev)"}
+  # --- Block 2 data figures ---
+  final17_fig06_live_boptest_controller_comparison: {script: evaluation/build_final_q1_main_figures_17.py, source: outputs/block2_thermostatic_hybrid_v3_v35_l010/summary.csv}
+  final17_fig09_morl_5d_failure_17d_success:        {script: evaluation/build_final_q1_main_figures_17.py, source: reports/block2_morl_5d_reconstructed_comparison.csv}
+  block2_warmstart_negative_eval_kpis:    {script: evaluation/build_article_real_figures.py, source: outputs/block2_thermostatic_warmstart_utility/comparison_summary.csv}
+  block2_q1_polish_closed_loop_disturbance: {script: evaluation/build_q1_polish_block2_block3_figures.py, source: "outputs/.../traces/*.csv (pure v3, direct v3.5, hybrid)"}
+  block2_q1_polish_morl_pareto_ellipses:  {script: evaluation/build_q1_polish_block2_block3_figures.py, source: reports/morl_pareto_front_table.csv}
+  block2_hdrl_lambda_sweep_sensitivity:   {script: evaluation/build_article_real_figures.py, source: reports/block2_hdrl_lambda_sweep_summary.csv}
+  block2_morl_17d_seasonal_heatmap:       {script: evaluation/build_article_real_figures.py, source: reports/morl_neutral_canonical_monthly_variance_diagnostic.csv}
+  block2_morl_seasonal_variance_inversion: {script: evaluation/build_morl_seasonal_variance_inversion.py, source: reports/morl_neutral_canonical_monthly_variance_diagnostic.csv}
+  # --- Block 3 (docs/results3_transferability_overleaf/build_results3_overleaf.py + final_q1) ---
+  fig_block3_protocol:                {script: docs/results3_transferability_overleaf/build_results3_overleaf.py, kind: schematic}
+  fig_block3_adapter:                 {script: docs/results3_transferability_overleaf/build_results3_overleaf.py, kind: schematic}
+  fig_block3_regime_progression:      {script: docs/results3_transferability_overleaf/build_results3_overleaf.py, source: reports/block3_transfer_matrix.csv}
+  fig_block3_controller_bar:          {script: docs/results3_transferability_overleaf/build_results3_overleaf.py, source: reports/block3_transfer_matrix.csv}
+  final17_fig13_block3_controller_transfer_heatmap: {script: evaluation/build_final_q1_main_figures_17.py, source: reports/block3_transfer_matrix.csv}
+  final17_fig15_full_stage_transfer_rmse_improvement: {script: evaluation/build_final_q1_main_figures_17.py, source: reports/block3_transfer_matrix.csv}
+  final17_fig17_hypothesis_closure_matrix: {script: evaluation/build_final_q1_main_figures_17.py, source: reports/block3_transfer_matrix.csv}
+  final_eng_fig12_czon_hypothesis_interval: {script: evaluation/build_final_q1_main_figures_17.py, source: reports/block3_transfer_matrix.csv}
