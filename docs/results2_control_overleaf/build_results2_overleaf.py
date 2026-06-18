@@ -1032,7 +1032,7 @@ Preference / statistic & RMSE$_T$ ($^\circ$C) & Violation (\%) & $m_s$ & Interpr
 \begin{{figure}}[H]
   \centering
   \includegraphics[width=0.86\linewidth]{{block2_q1_polish_morl_pareto_ellipses.pdf}}
-  \caption{{MORL comfort--energy Pareto front with N=5 confidence ellipses for the two canonical points. Non-canonical points are seed-42 only.}}
+  \caption{{MORL comfort--energy Pareto front. \textbf{{Non-canonical points are seed-42 only}}; the $N=5$ confidence ellipses are drawn \emph{{only}} for the two canonical operating points (neutral 50/50 and practical 75/25), which are the audited multi-seed results. The front should therefore be read as a best-seed envelope, not a deployment guarantee.}}
   \label{{fig:morl_pareto}}
 \end{{figure}}
 

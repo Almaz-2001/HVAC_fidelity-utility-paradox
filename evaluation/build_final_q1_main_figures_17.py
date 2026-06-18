@@ -450,6 +450,9 @@ def fig08_hdrl_lambda_sweep():
         ax.set_xlabel("λ_temp")
         ax.set_title(title)
         ax.grid(alpha=0.25)
+    # engineering reference levels
+    axes[0].axhline(1.0, color="0.45", ls=":", lw=1.0); axes[0].text(axes[0].get_xlim()[1], 1.0, " $m_s=1$", va="bottom", ha="right", fontsize=7, color="0.4")
+    axes[1].axhline(5.0, color="0.45", ls=":", lw=1.0); axes[1].text(axes[1].get_xlim()[1], 5.0, " 5% comfort bar", va="bottom", ha="right", fontsize=7, color="0.4")
     axes[0].legend(fontsize=8)
     fig.suptitle("HDRL λ_temp sweep: regularization is controller-family specific")
     save(fig, "final17_fig08_hdrl_lambda_temp_sweep")
