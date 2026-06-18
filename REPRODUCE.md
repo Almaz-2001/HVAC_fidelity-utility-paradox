@@ -35,7 +35,9 @@ data-driven number (e.g. the 0.644 / 1.557 / 0.876 °C rollout RMSEs, the contro
 scores `m_s = 1.046` for direct v3.5, `1.14`/`1.21` for the matched-resolution v3
 ablation, and `0.041` typical for the hybrid, the 60.2–87.8 % transfer-RMSE gains)
 is recomputed from the committed `reports/`/`outputs/` files and matches the
-published manuscript.
+published manuscript. The figure → generator-script → source-artefact mapping for
+every main figure and the graphical abstract is catalogued in
+[`paper_artifacts/figure_manifest.yaml`](paper_artifacts/figure_manifest.yaml).
 
 > **Scope note.** This is a results-reproducibility package: the typeset LaTeX
 > manuscript and supplementary PDFs (the journal's artifact) are not included. What

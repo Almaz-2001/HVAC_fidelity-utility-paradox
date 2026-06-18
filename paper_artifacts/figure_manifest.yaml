@@ -1,0 +1,118 @@
+# Figure provenance manifest
+#
+# Every main-paper and graphical-abstract figure, the generator script that produces
+# it, and the versioned source artefacts it reads. No numerical values are entered by
+# hand into the plotting scripts except display labels, axis limits, and pre-specified
+# threshold constants (e.g. the comfort band 21-24 deg C, m_s = 1, the 1.25x-PI transfer
+# threshold). Conceptual/schematic figures carry no data source; their annotated numbers
+# are the canonical results established elsewhere in the paper and reproduced from the
+# CSVs listed for the corresponding result figures.
+#
+# Regenerate every figure (no BOPTEST needed) with:
+#   python docs/results1_digital_twin_overleaf/build_results1_overleaf.py
+#   python docs/results2_control_overleaf/build_results2_overleaf.py
+#   python docs/results3_transferability_overleaf/build_results3_overleaf.py
+#   python evaluation/build_mechanism_surface_diagnostic.py   # Fig 7
+#   python evaluation/build_fidelity_utility_scatter.py       # Fig 5
+#   python evaluation/build_conceptual_overview.py            # Fig 1
+#   python evaluation/build_graphical_abstract.py             # graphical abstract
+
+main_figures:
+  Figure_1:
+    title: Fidelity-utility causal overview (paradox map)
+    label: fig:concept
+    script: evaluation/build_conceptual_overview.py
+    kind: schematic
+    audit_note: "Conceptual schematic; the badge numbers are the canonical results of Figures 2/5/7 (see their source CSVs)."
+
+  Figure_2:
+    title: Stage B C_zon identification and calibration improvement
+    label: fig:stage-abc
+    script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py
+    source_files:
+      - outputs/surrogate_v35_inverse_boptest_15min_episodeaware/stage_b_history_v35.csv
+      - reports/block1_corpus_matched_comparison.csv
+    metrics: [c_zon_j_per_k, rmse_24h_c, power_mae_w]
+    audit_note: "Panel (b) shows normalised % reduction per metric to avoid mixing deg C and kW."
+
+  Figure_3:
+    title: Matched-corpus predictive-fidelity attribution
+    label: fig:matched
+    script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py
+    source_files:
+      - reports/block1_corpus_matched_comparison.csv
+    metrics: [rmse_24h_c]
+
+  Figure_4:
+    title: Hybrid per-step reward-shaping mechanism (schematic)
+    label: fig:hybrid_reward
+    script: docs/results2_control_overleaf/build_results2_overleaf.py
+    kind: schematic
+    source_files:
+      - configs/morl_surrogate_ppo/env.yaml
+      - reports/hybrid_evidence_closure.md
+    metrics: [lambda_T, lambda_P, temp_disagree_mean_c, power_disagree_mean_w]
+
+  Figure_5:
+    title: Fidelity-utility scatter (24 h rollout RMSE vs live m_s)
+    label: fig:paradox_scatter
+    script: evaluation/build_fidelity_utility_scatter.py
+    source_files:
+      - reports/block1_corpus_matched_comparison.csv
+      - reports/hou_evins_architecture_justification_table.csv
+      - reports/block2_v3_15min_closed_loop_comparison.csv
+      - outputs/block2_thermostatic_hybrid_v3_v35_l010/summary.csv
+    generated_table: reports/block2_fidelity_utility_scatter.csv
+    metrics: [rmse_24h_c, m_s_peak, m_s_typ]
+    thresholds: ["m_s = 1 (collapse)", "m_s < 0.1 (usable band)"]
+
+  Figure_6:
+    title: Action phase portrait (empirical state-action density)
+    label: fig:action_phase
+    script: evaluation/build_q1_polish_block2_block3_figures.py
+    source_files:
+      - outputs/bestest_air_article7_style_15min/traces/peak_heat_window_thermostatic.csv
+      - outputs/block2_bestest_air_15min_thermostatic_v35/traces/peak_heat_window_thermostatic.csv
+      - outputs/block2_thermostatic_hybrid_v3_v35_l010/traces/peak_heat_window_thermostatic.csv
+    metrics: [a0, t_zone_c]
+
+  Figure_7:
+    title: Response-surface roughness mechanism (shape, roughness, saturation)
+    label: fig:surface_curves
+    script: evaluation/build_mechanism_surface_diagnostic.py
+    source_files:
+      - outputs/surrogate_v2/rc_node_v3_tsupply.pt
+      - outputs/surrogate_v3_15min_matched/rc_node_v3_15min_matched.pt
+      - outputs/surrogate_v35_inverse_boptest_15min_power_head_only/calibration_summary_boptest_v35.json
+      - outputs/bestest_air_article7_style_15min/traces/peak_heat_window_thermostatic.csv
+      - outputs/bestest_air_pure_v3_15min/traces/peak_heat_window_thermostatic.csv
+      - outputs/block2_bestest_air_15min_thermostatic_v35/traces/peak_heat_window_thermostatic.csv
+    generated_table: reports/block2_mechanism_surface_sharpness.csv
+    metrics: [rel_roughness, action_saturation_pct]
+
+  Figure_8:
+    title: Block 3 hydronic-family topology (schematic)
+    label: fig:topology
+    script: docs/results3_transferability_overleaf/build_results3_overleaf.py
+    kind: schematic
+
+  Figure_9:
+    title: Block 3 comfort-energy deployment plane
+    label: fig:deployment_plane
+    script: evaluation/build_q1_polish_block2_block3_figures.py
+    source_files:
+      - reports/block3_transfer_matrix.csv
+    metrics: [m_s_rl, pass_threshold_m_s, energy_delta_pct_vs_pi]
+    thresholds: ["m_s_RL / (1.25 m_s_PI) = 1", "energy delta = 0%"]
+
+graphical_abstract:
+  title: Four-column causal chain (backend -> surface -> PPO -> live outcome)
+  script: evaluation/build_graphical_abstract.py
+  source_files:
+    - reports/block2_mechanism_surface_sharpness.csv
+    - reports/block2_fidelity_utility_scatter.csv
+    - outputs/bestest_air_article7_style_15min/traces/peak_heat_window_thermostatic.csv
+    - outputs/block2_bestest_air_15min_thermostatic_v35/traces/peak_heat_window_thermostatic.csv
+    - outputs/block2_thermostatic_hybrid_v3_v35_l010/traces/peak_heat_window_thermostatic.csv
+  metrics: [rel_roughness, m_s, action_saturation_pct]
+  audit_note: "RMSE values and the ~85x throughput figure are canonical results cited in the paper; all other numbers are read from the source files above."
