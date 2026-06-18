@@ -10,6 +10,7 @@ Output: docs/results2_control_overleaf/figures/block2_conceptual_overview.pdf
 """
 
 from __future__ import annotations
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -18,19 +19,30 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "evaluation"))
+import _figstyle as fs
+
 FIG_OUT = ROOT / "docs/results2_control_overleaf/figures/block2_conceptual_overview.pdf"
 
 COLS = ["Surrogate (fidelity)", "Action response surface", "PPO policy", "Live BOPTEST transfer"]
 XS = [0.13, 0.38, 0.63, 0.88]
-LANES = [
-    ("#1b7837", 0.72, ["v3 black-box · 1 h step\nRMSE 1.557 °C", "smooth · monotone\nroughness 1.0×",
-                        "modulating\n24% saturation", "stable transfer\n$m_s$≈0.08"]),
-    ("#b2182b", 0.45, ["v3.5 / matched v3\nRMSE 0.644/0.876 °C", "rough · non-monotone\n7.9 to 9.4× rougher",
-                       "near bang-bang\n100% saturation", "closed-loop collapse\n$m_s$>1, >77% viol."]),
-    ("#2166ac", 0.18, ["hybrid: v3 rollout\n+ frozen v3.5 censor", "smooth (v3) +\nplausibility censor",
-                       "modulating\n25% saturation", "robust transfer\n$m_s$=0.041, viol <5%"]),
-]
 BW, BH = 0.205, 0.17
+
+
+def build_lanes():
+    """Lane content with all numbers loaded from committed artefacts (no hand entry)."""
+    n = fs.paper_numbers(ROOT)
+    r, rf, m, s = n["rmse"], n["rough_fold"], n["m_s"], n["saturation"]
+    lo, hi = sorted([rf["v35"], rf["matched"]])
+    return [
+        (fs.V3, 0.72, [f"v3 black-box · 1 h step\nRMSE {r['v3']:.3f} °C", "smooth · monotone\nroughness 1.0×",
+                       f"modulating\n{s['v3']:.0f}% saturation", f"stable transfer\n$m_s$≈{m['v3']:.2f}"]),
+        (fs.ACCURATE, 0.45, [f"v3.5 / matched v3\nRMSE {r['v35']:.3f}/{r['matched']:.3f} °C",
+                             f"rough · non-monotone\n{lo:.1f} to {hi:.1f}× rougher",
+                             f"near bang-bang\n{s['v35']:.0f}% saturation", "closed-loop collapse\n$m_s$ > 1"]),
+        (fs.HYBRID, 0.18, ["hybrid: v3 rollout\n+ frozen v3.5 censor", "smooth (v3) +\nplausibility censor",
+                           f"modulating\n{s['hybrid']:.0f}% saturation", f"robust transfer\n$m_s$={m['hybrid_typ']:.3f}"]),
+    ]
 
 
 def box(ax, x, y, text, color, status=False):
@@ -55,7 +67,7 @@ def main() -> None:
     for x, label in zip(XS, COLS):
         ax.text(x, 0.95, label, ha="center", va="center", fontsize=10.5, weight="bold", color="0.25")
 
-    for color, y, texts in LANES:
+    for color, y, texts in build_lanes():
         for j, (x, t) in enumerate(zip(XS, texts)):
             box(ax, x, y, t, color, status=(j == len(XS) - 1))   # last column = formal status
             if j < len(XS) - 1:
