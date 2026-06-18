@@ -78,15 +78,16 @@ def fig_reward_shaping(ctx: dict) -> None:
             ha="center", fontsize=9.2, style="italic", color=SLATE)
     # Diagram band y in [0.30, 0.78].
     _box(ax, 0.02, 0.46, 0.17, 0.20, "state $s_t$,\naction $a_t$", NAVY, "#eef5fb")
-    _box(ax, 0.27, 0.60, 0.22, 0.16, "v3 rollout dynamics\n$T_{v3},\\,P_{v3}$", TEAL, "#edf8f7")
-    _box(ax, 0.27, 0.34, 0.22, 0.16, "frozen v3.5 censor\n$T_{v3.5},\\,P_{v3.5}$", GREEN, "#eef8ee")
+    # unified colours: v3 = green (usable rollout), v3.5 = burgundy (the accurate twin)
+    _box(ax, 0.27, 0.60, 0.22, 0.16, "v3 rollout dynamics\n$T_{v3},\\,P_{v3}$", GREEN, "#eef8ee")
+    _box(ax, 0.27, 0.34, 0.22, 0.16, "frozen v3.5 censor\n$T_{v3.5},\\,P_{v3.5}$", BURGUNDY, "#fbeae8")
     _box(ax, 0.55, 0.46, 0.18, 0.20, "disagreement\n$|\\Delta T|,\\,|\\Delta P|$", AMBER, "#fff6ea")
     _box(ax, 0.785, 0.42, 0.195, 0.28,
          "reward\n$r=r_{c}+r_{s}+r_{e}$\n$-\\lambda_T|\\Delta T|-\\lambda_P|\\Delta P|$", PURPLE, "#f4f1fa", fs=8.0)
-    _arrow(ax, (0.19, 0.56), (0.27, 0.66), TEAL)
-    _arrow(ax, (0.19, 0.56), (0.27, 0.44), GREEN)
-    _arrow(ax, (0.49, 0.66), (0.55, 0.58), TEAL)
-    _arrow(ax, (0.49, 0.42), (0.55, 0.52), GREEN)
+    _arrow(ax, (0.19, 0.56), (0.27, 0.66), GREEN)
+    _arrow(ax, (0.19, 0.56), (0.27, 0.44), BURGUNDY)
+    _arrow(ax, (0.49, 0.66), (0.55, 0.58), GREEN)
+    _arrow(ax, (0.49, 0.42), (0.55, 0.52), BURGUNDY)
     _arrow(ax, (0.73, 0.56), (0.785, 0.56), AMBER)
     # Bottom annotation row, well below the diagram band (no overlap).
     ax.text(0.5, 0.12,
