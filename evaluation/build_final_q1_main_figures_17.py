@@ -466,7 +466,9 @@ def fig09_morl_5d_17d():
     bars = [("5D\n(current rerun)", rerun5, COLORS["red"]),
             ("5D\n(frozen audit)", frozen5, "#7a1f1f"),
             ("17D\npower-only", d17, COLORS["green"])]
-    metrics = [("rmse_c", "RMSE_T\n(°C)"), ("violation_pct", "Violation\n%"), ("within_1c_pct", "Within\n1°C %"), ("m_s", "m_s"), ("energy_kwh", "Energy\nkWh")]
+    # 3 control-relevant metrics only; energy/within-1C live in the table (the 5D->17D
+    # argument is about control viability via the observation interface, not energy)
+    metrics = [("rmse_c", "RMSE_T\n(°C)"), ("violation_pct", "Violation\n%"), ("m_s", "$m_s$")]
     labels = [b[0] for b in bars]
     colors = [b[2] for b in bars]
     fig, axes = plt.subplots(1, len(metrics), figsize=(13, 3.8))
