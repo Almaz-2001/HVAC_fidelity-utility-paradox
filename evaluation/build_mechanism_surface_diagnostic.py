@@ -117,44 +117,38 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-        import pandas as pd
     except Exception as exc:  # pragma: no cover - figure is optional
         print(f"[figure skipped: matplotlib unavailable: {exc}]")
         return
 
     order = ["v3 hourly (1h)", "v3 matched (15min)", "v3.5 calibrated"]
-    short = {"v3 hourly (1h)": "v3 hourly (usable)",
-             "v3 matched (15min)": "matched-resolution v3 (collapse)",
-             "v3.5 calibrated": "calibrated v3.5 (collapse)"}
+    leg = {"v3 hourly (1h)": "v3 hourly — smooth",
+           "v3 matched (15min)": "matched v3 — rough",
+           "v3.5 calibrated": "v3.5 — rough"}
     tick = {"v3 hourly (1h)": "v3\nhourly", "v3 matched (15min)": "matched\nv3", "v3.5 calibrated": "v3.5"}
     colors = {"v3 hourly (1h)": "#1b7837", "v3 matched (15min)": "#d6604d", "v3.5 calibrated": "#b2182b"}
+    style = {"v3 hourly (1h)": "-", "v3 matched (15min)": "--", "v3.5 calibrated": "-."}  # colour-blind safety
     admap = dict(adapters)
     rr = {r["surrogate"]: r["rel_roughness"] for r in rows}
     base = rr["v3 hourly (1h)"]
     xs = list(range(len(order)))
 
-    fig = plt.figure(figsize=(10.6, 6.0))
-    gs = fig.add_gridspec(3, 2, width_ratios=[1.25, 1.0], hspace=0.7, wspace=0.42)
+    fig = plt.figure(figsize=(11.0, 3.7))
+    gs = fig.add_gridspec(1, 3, wspace=0.34)
 
-    # (A) measured response over the state grid (faint = per state, bold = mean)
-    last = None
-    for i, name in enumerate(order):
-        ax = fig.add_subplot(gs[i, 0]); last = ax
-        cs = per_state_curves(admap[name])
-        for c in cs:
-            ax.plot(A0, c, color=colors[name], lw=0.7, alpha=0.28, zorder=1)
-        ax.plot(A0, np.mean(cs, axis=0), color=colors[name], lw=2.4, zorder=3)
-        ax.axhline(0, color="0.85", lw=0.6, zorder=0)
-        ax.set_title(f"{short[name]} — rel. roughness {rr[name]:.2f} "
-                     f"(${'1.0' if name == order[0] else f'{rr[name]/base:.1f}'}\\times$)",
-                     fontsize=8.4, color=colors[name])
-        ax.set_ylabel(r"$\Delta\hat T$ ($^\circ$C)", fontsize=8.5)
-        ax.tick_params(labelsize=7)
-        if i < 2:
-            ax.set_xticklabels([])
-    last.set_xlabel(r"supply-temperature action $a_0$", fontsize=9.5)
-    fig.text(0.285, 0.995, "(A) Measured action$\\rightarrow$next-temperature response over a grid of states",
-             fontsize=9, ha="center", va="top", weight="bold")
+    # (A) NORMALISED response shape -- all three on one common scale (shape, not amplitude)
+    axA = fig.add_subplot(gs[0, 0])
+    for name in order:
+        m = np.mean(per_state_curves(admap[name]), axis=0)
+        n = (m - m.mean()) / (m.max() - m.min())
+        axA.plot(A0, n, color=colors[name], ls=style[name], lw=2.3,
+                 label=f"{leg[name]} ({'1.0' if name == order[0] else f'{rr[name]/base:.1f}'}$\\times$)")
+    axA.axhline(0, color="0.85", lw=0.6, zorder=0)
+    axA.set_xlabel(r"supply-temperature action $a_0$", fontsize=9)
+    axA.set_ylabel("normalised response", fontsize=9)
+    axA.set_title("(A) Action$\\rightarrow$next-temperature shape", fontsize=9.5, weight="bold")
+    axA.legend(fontsize=7.5, frameon=False, loc="upper left")
+    axA.tick_params(labelsize=8); axA.grid(alpha=0.18)
 
     # (B) canonical relative roughness (matches the main table) with per-state spread
     axB = fig.add_subplot(gs[0, 1])
@@ -163,49 +157,23 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
     axB.bar(xs, vals, yerr=errs, capsize=3, color=[colors[n] for n in order], edgecolor="0.3", linewidth=0.6,
             error_kw=dict(elinewidth=0.9, ecolor="0.35"))
     for x, v, e in zip(xs, vals, errs):
-        axB.text(x, v + e + 0.05, f"$\\times${v/base:.1f}", ha="center", va="bottom", fontsize=8.5, weight="bold")
+        axB.text(x, v + e + 0.05, f"$\\times${v/base:.1f}", ha="center", va="bottom", fontsize=9, weight="bold")
     axB.set_xticks(xs); axB.set_xticklabels([tick[n] for n in order], fontsize=8)
     axB.set_ylabel(r"rel. roughness $\overline{|\partial^2\hat T|}/\overline{|\partial\hat T|}$", fontsize=8.5)
-    axB.set_title("(B) Scale-free non-smoothness\n(bar = canonical; whisker = per-state std)", fontsize=8.6, weight="bold")
+    axB.set_title("(B) Scale-free non-smoothness", fontsize=9.5, weight="bold")
     axB.set_ylim(0, max(v + e for v, e in zip(vals, errs)) * 1.2)
     axB.grid(axis="y", alpha=0.2)
 
     # (C) measured policy-side consequence: closed-loop action saturation (|a0|>0.9)
-    axC = fig.add_subplot(gs[1, 1])
+    axC = fig.add_subplot(gs[0, 2])
     sat = [_saturation_pct(TRACE_DIRS[n]) for n in order]
     axC.bar(xs, sat, color=[colors[n] for n in order], edgecolor="0.3", linewidth=0.6)
     for x, s in zip(xs, sat):
-        axC.text(x, s + 1.5, f"{s:.0f}%", ha="center", va="bottom", fontsize=8.5, weight="bold")
+        axC.text(x, s + 1.5, f"{s:.0f}%", ha="center", va="bottom", fontsize=9, weight="bold")
     axC.set_xticks(xs); axC.set_xticklabels([tick[n] for n in order], fontsize=8)
     axC.set_ylabel("action saturation\n($|a_0|>0.9$, % steps)", fontsize=8.5)
-    axC.set_title("(C) Live policy bang-bang\n(measured on BOPTEST)", fontsize=8.6, weight="bold")
+    axC.set_title("(C) Live policy bang-bang", fontsize=9.5, weight="bold")
     axC.set_ylim(0, 112); axC.grid(axis="y", alpha=0.2)
-
-    # (D) cause vs effect: surrogate roughness vs live controller score
-    axD = fig.add_subplot(gs[2, 1])
-    sc = pd.read_csv(ROOT / "reports/block2_fidelity_utility_scatter.csv")
-    ms = {c: float(sc[sc.controller.str.startswith(c)].iloc[0]["m_s_mean"])
-          for c in ["v3 (", "matched", "v3.5", "hybrid"]}
-    pts = [(rr["v3 hourly (1h)"], ms["v3 ("], colors["v3 hourly (1h)"], "o", "v3"),
-           (rr["v3 matched (15min)"], ms["matched"], colors["v3 matched (15min)"], "o", "matched v3"),
-           (rr["v3.5 calibrated"], ms["v3.5"], colors["v3.5 calibrated"], "o", "v3.5"),
-           (base, ms["hybrid"], "#2166ac", "D", "hybrid")]
-    axD.axhline(1.0, color="0.7", lw=0.8, ls=":")
-    for x, y, c, m, lab in pts:
-        axD.scatter(x, y, s=70, color=c, marker=m, edgecolor="white", linewidth=0.8, zorder=3)
-    # v3 and hybrid sit at the same point (hybrid rolls out on v3) -> one shared label
-    axD.annotate("v3, hybrid\n(usable)", (base, ms["hybrid"]), xytext=(12, 2), textcoords="offset points",
-                 fontsize=7.2, color="0.25", ha="left", va="center")
-    axD.annotate("matched v3", (rr["v3 matched (15min)"], ms["matched"]), xytext=(-6, 6),
-                 textcoords="offset points", fontsize=7.2, color=colors["v3 matched (15min)"], ha="right", weight="bold")
-    axD.annotate("v3.5", (rr["v3.5 calibrated"], ms["v3.5"]), xytext=(-6, -13),
-                 textcoords="offset points", fontsize=7.2, color=colors["v3.5 calibrated"], ha="right", weight="bold")
-    axD.set_xlim(-0.05, max(rr.values()) * 1.30)
-    axD.set_ylim(-0.1, 1.45)
-    axD.set_xlabel("surrogate rel. roughness", fontsize=8.5)
-    axD.set_ylabel("live $m_s$", fontsize=8.5)
-    axD.set_title("(D) Rougher surrogate $\\rightarrow$ worse\ncontroller (measured)", fontsize=8.6, weight="bold")
-    axD.grid(alpha=0.2)
 
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_OUT, bbox_inches="tight")
