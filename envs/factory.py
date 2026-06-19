@@ -8,11 +8,7 @@ from envs.backends.boptest_backend import BOPTESTBackend
 class EnvFactory:
     @staticmethod
     def create(config: Dict[str, Any]) -> HVACBaseEnv:
-        backend = (config.get("backend") or "sinergym").lower()
-
-        if backend == "sinergym":
-            from envs.backends.sinergym_backend import SinergymBackend
-            return SinergymBackend(config)
+        backend = (config.get("backend") or "boptest").lower()
 
         if backend == "boptest":
             return BOPTESTBackend(config)
@@ -22,6 +18,5 @@ class EnvFactory:
             return SurrogateBackend(config)
 
         raise ValueError(
-            f"Unknown backend: {backend}."
-            f"Available: sinergym, boptest, surrogate"
+            f"Unknown backend: {backend}. Available: boptest, surrogate"
         )
