@@ -574,6 +574,15 @@ Artifact provenance and rebuild commands for every table and figure are catalogu
   \label{{fig:block2_pipeline}}
 \end{{figure}}
 
+This pipeline is only feasible because the surrogate backends are orders of magnitude faster than the live emulator (Fig.~\ref{{fig:runtime_feasibility}}): millions of policy-gradient steps that would take days against BOPTEST complete in hours in-process.
+
+\begin{{figure}}[H]
+  \centering
+  \includegraphics[width=0.70\linewidth]{{block2_runtime_fidelity.pdf}}
+  \caption{{\textbf{{Surrogates make policy-gradient training computationally feasible.}} Environment throughput (env steps/s, log scale) versus 24\,h rollout RMSE$_T$ for the BOPTEST emulator (ground truth) and the three in-process surrogate backends. The surrogates run $85$--$220\times$ faster than the BOPTEST RTE HTTP testbed, turning a days-long PPO run into hours; the hybrid is plotted at v3's rollout RMSE because it rolls out on v3. Data-derived from measured throughput (\texttt{{reports/speed\_benchmark\_table.csv}}, single benchmark run, CPU, 100 episodes of 96 steps) and the 24\,h rollout-RMSE artefacts.}}
+  \label{{fig:runtime_feasibility}}
+\end{{figure}}
+
 \begin{{table}}[H]
 \centering
 \small
@@ -762,7 +771,7 @@ Policy/backend & Scenario & $m_s$ & Violation (\%) & RMSE$_T$ ($^\circ$C) & Ener
 \begin{{figure}}[pos={{!ht}}]
   \centering
   \includegraphics[width=0.78\linewidth]{{block2_fidelity_utility_scatter.pdf}}
-  \caption{{The fidelity--utility paradox in one view: surrogate predictive fidelity (24\,h rollout RMSE, $x$) versus downstream control utility (live maintenance score $m_s$, $y$; marker = peak/typical mean, vertical segment = the peak/typical window \emph{{range}}, not a statistical confidence interval). The dashed red line is the $m_s=1$ collapse threshold and the shaded band is the usable region ($m_s<0.1$). Across the three single-model surrogates the relationship is \emph{{inverted}}---the \emph{{more}} accurate the twin, the \emph{{worse}} the controller: the least accurate hourly v3 (RMSE $1.557\,^\circ$C) is the only usable training environment ($m_s\approx0.08$), while the more accurate matched-resolution v3 ($0.876\,^\circ$C) and the most accurate calibrated v3.5 ($0.644\,^\circ$C) both collapse ($m_s>1$). The role-separating hybrid breaks the trade-off: it rolls out on v3 (so its environment fidelity equals v3's, hence plotted at $1.557\,^\circ$C) but the frozen v3.5 censor drives $m_s$ to the usable regime. Lower predictive RMSE does not imply lower $m_s$.}}
+  \caption{{The fidelity--utility paradox, separated into the single-model effect and the hybrid resolution. \textbf{{(A)}} The three single-model surrogates: a \emph{{lower}} 24\,h rollout RMSE$_T$ (more predictive fidelity, $x$) goes with a \emph{{higher}} live maintenance score $m_s$ ($y$, worse controller). The least accurate hourly v3 ($1.557\,^\circ$C) is the only usable training environment ($m_s\approx0.08$), while the more accurate matched-resolution v3 ($0.876\,^\circ$C) and calibrated v3.5 ($0.644\,^\circ$C) both collapse above the $m_s=1$ line. \textbf{{(B)}} The role-separating hybrid breaks the trade-off: it is plotted at v3's rollout RMSE because v3 supplies the transition dynamics while the frozen v3.5 enters \emph{{only}} as a per-step reward censor, yet it lands in the usable band. Filled markers = peak window, open = typical window (shown separately, not a vertical segment); error bars = $\pm1$ seed s.d.\ over $N=3$ seeds for v3, matched-v3 and the hybrid (\texttt{{reports/block2\_thermostatic\_seed\_band.csv}}), while direct v3.5 is single-seed. Dashed red line = $m_s=1$ collapse; shaded band = usable region ($m_s<0.1$).}}
   \label{{fig:paradox_scatter}}
 \end{{figure}}
 
@@ -794,7 +803,7 @@ The time-series and action diagnostics in Figures~\ref{{fig:closed_loop_traces}}
 \begin{{figure}}[H]
   \centering
   \includegraphics[width=0.96\linewidth]{{block2_q1_polish_phase_density.pdf}}
-  \caption{{Phase portrait as empirical state-action density. The saturation bands near $a_0=\pm1$ expose the bang-bang behavior of direct v3.5 PPO.}}
+  \caption{{Action-density phase portrait of the three thermostatic controllers on the live BOPTEST \texttt{{typical\_heat\_window}}: empirical hexbin density of the normalised supply-temperature action $a_0$ (one hue per backend) against the thermal error $T_{{\mathrm{{zone}}}}-T_{{\mathrm{{set}}}}$, on \emph{{identical}} axes, with the marginal $a_0$ distribution in the right strip of each panel and the measured saturation share ($|a_0|\geq0.9$). The red bands mark the actuator-saturation region. Direct v3.5 collapses onto $a_0=-1$ (100\% saturation, a bang-bang law) whereas the usable hourly v3 and the hybrid modulate ($\approx$19--20\%). Data: closed-loop traces in \texttt{{outputs/.../traces/typical\_heat\_window\_thermostatic.csv}}.}}
   \label{{fig:action_phase}}
 \end{{figure}}
 
@@ -861,7 +870,7 @@ Surrogate backend & Slope $\overline{{|\partial\hat T/\partial a_0|}}$ & Rel.\ r
 \begin{{figure}}[H]
   \centering
   \includegraphics[width=0.96\linewidth]{{block2_surface_response_curves.pdf}}
-  \caption{{The surrogates that fail downstream expose a rougher action-response surface, and that roughness drives the policy to a bang-bang law on the live emulator. Probed directly on each surrogate's one-step action map (no controller, no BOPTEST). \textbf{{(A)}} Normalised action$\to$next-temperature response $\hat T(a_0)$ (each backend's grid-mean curve, centred and scaled to a common range so the comparison is of \emph{{shape}}, not amplitude; line styles aid colour-blind reading): the usable hourly v3 is smooth and monotone, both collapsing backends are visibly non-monotone. \textbf{{(B)}} Scale-free relative roughness (mean curvature $\div$ mean slope; bars = canonical aggregate matching Table~\ref{{tab:surface_sharpness}}, whiskers = standard deviation of the per-state ratio over the grid): the collapsing backends are $7.9$--$9.4\times$ rougher than the usable v3. \textbf{{(C)}} The measured policy-side consequence---the fraction of closed-loop BOPTEST steps with a saturated action ($|a_0|>0.9$): the usable hourly v3 modulates ($24\%$) whereas both collapsing backends are driven to a near bang-bang law ($100\%$). This is the surrogate-side \emph{{cause}} whose policy-side \emph{{effect}} is the action gap of Fig.~\ref{{fig:action_phase}}. Data: \texttt{{reports/block2\_mechanism\_surface\_sharpness.csv}}.}}
+  \caption{{Measured roughness mechanism, four panels (probed directly on each surrogate's one-step action map -- no controller, no BOPTEST). \textbf{{(A)}} Action$\to$next-temperature response $\hat T(a_0)$: thin lines are the per-state curves over the zone-temperature$\times$ambient grid, the thick line is the per-backend median (centred and scaled to a common range so the comparison is of \emph{{shape}}; line styles aid colour-blind reading) -- the usable hourly v3 is smooth and monotone, both collapsing backends are visibly non-monotone. \textbf{{(B)}} Scale-free relative roughness (mean curvature $\div$ mean slope) as a \emph{{distribution}} over the state grid (box + per-state points; $\times$ = canonical aggregate matching Table~\ref{{tab:surface_sharpness}}): the collapsing backends are $7.9$--$9.4\times$ rougher than the usable v3. \textbf{{(C)}} Measured policy-side symptom -- fraction of closed-loop BOPTEST steps with a saturated action ($|a_0|>0.9$): hourly v3 modulates ($24\%$), both collapsing backends are near bang-bang ($100\%$). \textbf{{(D)}} The live BOPTEST outcome (maintenance score $m_s$, peak window) past the $m_s=1$ collapse line. The ordering is \emph{{mechanistically consistent}} with the paradox -- rougher surface, more saturation, worse live $m_s$ -- but is an association, not a proven causal law (the full training-trajectory loss-landscape is not measured; see Fig.~\ref{{fig:action_phase}} for the paired policy-side effect). Data: \texttt{{reports/block2\_mechanism\_surface\_sharpness.csv}} and the closed-loop traces.}}
   \label{{fig:surface_curves}}
 \end{{figure}}
 
@@ -955,7 +964,14 @@ HDRL here is a \emph{{seasonal}} hierarchy. A high-level seasonal selector route
   \label{{fig:hdrl_arch}}
 \end{{figure}}
 
-The HDRL experiment asks whether the thermostatic hybrid setting $\lambda_T=0.10$ transfers to this hierarchical controller. It does not (Table~\ref{{tab:hdrl}}). The mechanism is over-regularization: because each seasonal specialist already encodes comfort-aware structure (season-tuned shaping plus the high-level gate), the additional v3.5 temperature-disagreement censor constrains an already comfort-aware low-level loop, biasing it toward conservative under-heating; performance therefore degrades monotonically with $\lambda_T$, and the correct transfer keeps only the power channel ($\lambda_T=0$). HDRL performs best at $\lambda_T=0.00$ on both windows and degrades monotonically as temperature-disagreement regularization is increased. This shows the correct physical-censor strength depends on the controller family and its action decomposition, not on a universal weight.
+The HDRL experiment asks whether the thermostatic hybrid setting $\lambda_T=0.10$ transfers to this hierarchical controller. It does not (Table~\ref{{tab:hdrl}}). The mechanism is over-regularization: because each seasonal specialist already encodes comfort-aware structure (season-tuned shaping plus the high-level gate), the additional v3.5 temperature-disagreement censor constrains an already comfort-aware low-level loop, biasing it toward conservative under-heating; performance therefore degrades monotonically with $\lambda_T$, and the correct transfer keeps only the power channel ($\lambda_T=0$). HDRL performs best at $\lambda_T=0.00$ on both windows and degrades monotonically as temperature-disagreement regularization is increased. This shows the correct physical-censor strength depends on the controller family and its action decomposition, not on a universal weight (Fig.~\ref{{fig:lambda_specificity}}).
+
+\begin{{figure}}[H]
+  \centering
+  \includegraphics[width=0.70\linewidth]{{block2_lambda_specificity.pdf}}
+  \caption{{\textbf{{The optimal censor weight $\lambda_T$ is controller-family specific.}} Live BOPTEST maintenance score $m_s$ (cross-window mean of the peak and typical windows) versus $\lambda_T$ for each controller family; $\star$ marks the per-family optimum. Thermostatic PPO improves with the censor (optimum $\lambda_T=0.10$, the canonical hybrid), HDRL is best \emph{{without}} it ($\lambda_T=0.00$) and degrades monotonically, and MORL adopts $\lambda_T=0.00$. HDRL has a dense four-point sweep; PPO is shown at its two measured endpoints (pure v3 $=\lambda_T0$, hybrid $=0.10$) and MORL at its single adopted configuration. The panel compares the \emph{{location}} of each optimum, not absolute $m_s$ across families (they use different observation/action interfaces). Data: \texttt{{reports/block2\_hdrl\_lambda\_sweep\_summary.csv}}, \texttt{{block2\_fidelity\_utility\_scatter.csv}}, \texttt{{block2\_morl\_comparison\_summary.csv}}.}}
+  \label{{fig:lambda_specificity}}
+\end{{figure}}
 
 \begin{{table}}[H]
 \centering

@@ -120,65 +120,90 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
     except Exception as exc:  # pragma: no cover - figure is optional
         print(f"[figure skipped: matplotlib unavailable: {exc}]")
         return
+    sys.path.insert(0, str(ROOT / "evaluation"))
+    import _figstyle as fs
+    fs.apply()
 
     order = ["v3 hourly (1h)", "v3 matched (15min)", "v3.5 calibrated"]
-    leg = {"v3 hourly (1h)": "v3 hourly — smooth",
-           "v3 matched (15min)": "matched v3 — rough",
-           "v3.5 calibrated": "v3.5 — rough"}
-    tick = {"v3 hourly (1h)": "v3\nhourly", "v3 matched (15min)": "matched\nv3", "v3.5 calibrated": "v3.5"}
-    colors = {"v3 hourly (1h)": "#1b7837", "v3 matched (15min)": "#d6604d", "v3.5 calibrated": "#b2182b"}
-    style = {"v3 hourly (1h)": "-", "v3 matched (15min)": "--", "v3.5 calibrated": "-."}  # colour-blind safety
+    KEY = {"v3 hourly (1h)": "v3", "v3 matched (15min)": "matched", "v3.5 calibrated": "v35"}
+    style = {"v3": "-", "matched": "--", "v35": "-."}             # colour-blind safety
+    tick = {"v3": "v3\nhourly", "matched": "matched\nv3", "v35": "v3.5"}
     admap = dict(adapters)
     rr = {r["surrogate"]: r["rel_roughness"] for r in rows}
     base = rr["v3 hourly (1h)"]
     xs = list(range(len(order)))
+    col = [fs.COLOR[KEY[n]] for n in order]
+    ms = fs.paper_numbers(ROOT)["m_s"]
 
-    fig = plt.figure(figsize=(11.0, 3.7))
-    gs = fig.add_gridspec(1, 3, wspace=0.34)
+    fig, axes = plt.subplots(1, 4, figsize=(13.6, 3.7))
+    fig.subplots_adjust(left=0.06, right=0.99, top=0.84, bottom=0.20, wspace=0.42)
+    axA, axB, axC, axD = axes
 
-    # (A) NORMALISED response shape -- all three on one common scale (shape, not amplitude)
-    axA = fig.add_subplot(gs[0, 0])
+    # (A) measured action->next-temperature shape: per-state curves (thin) + median (thick)
     for name in order:
-        m = np.mean(per_state_curves(admap[name]), axis=0)
-        n = (m - m.mean()) / (m.max() - m.min())
-        axA.plot(A0, n, color=colors[name], ls=style[name], lw=2.3,
-                 label=f"{leg[name]} ({'1.0' if name == order[0] else f'{rr[name]/base:.1f}'}$\\times$)")
+        k = KEY[name]
+        curves = np.array(per_state_curves(admap[name]))        # centred dT (deg C), one per state
+        med = np.median(curves, axis=0)
+        rng = med.max() - med.min()
+        for c in curves:
+            axA.plot(A0, c / rng, color=fs.COLOR[k], lw=0.6, alpha=0.16, zorder=1)
+        axA.plot(A0, med / rng, color=fs.COLOR[k], ls=style[k], lw=2.4, zorder=3,
+                 label=f"{fs.LABEL[k]} ({'1.0' if k == 'v3' else f'{rr[name]/base:.1f}'}$\\times$)")
     axA.axhline(0, color="0.85", lw=0.6, zorder=0)
     axA.set_xlabel(r"supply-temperature action $a_0$", fontsize=9)
-    axA.set_ylabel("normalised response", fontsize=9)
-    axA.set_title("(A) Action$\\rightarrow$next-temperature shape", fontsize=9.5, weight="bold")
+    axA.set_ylabel("normalised response (shape)", fontsize=9)
+    axA.set_title("(A) Action→next-T map: shape + per-state spread", fontsize=9, weight="bold")
     axA.legend(fontsize=7.5, frameon=False, loc="upper left")
     axA.tick_params(labelsize=8); axA.grid(alpha=0.18)
 
-    # (B) canonical relative roughness (matches the main table) with per-state spread
-    axB = fig.add_subplot(gs[0, 1])
-    vals = [rr[n] for n in order]
-    errs = [float(np.nanstd(per_state_rel(admap[n]))) for n in order]
-    axB.bar(xs, vals, yerr=errs, capsize=3, color=[colors[n] for n in order], edgecolor="0.3", linewidth=0.6,
-            error_kw=dict(elinewidth=0.9, ecolor="0.35"))
-    for x, v, e in zip(xs, vals, errs):
-        axB.text(x, v + e + 0.05, f"$\\times${v/base:.1f}", ha="center", va="bottom", fontsize=9, weight="bold")
-    axB.set_xticks(xs); axB.set_xticklabels([tick[n] for n in order], fontsize=8)
+    # (B) scale-free relative-roughness DISTRIBUTION over the state grid (box + jittered points)
+    data = [per_state_rel(admap[n]) for n in order]
+    bp = axB.boxplot(data, positions=xs, widths=0.55, patch_artist=True, showfliers=False,
+                     medianprops=dict(color="0.15", lw=1.3))
+    for patch, c in zip(bp["boxes"], col):
+        patch.set_facecolor(c); patch.set_alpha(0.35); patch.set_edgecolor(c)
+    rng_state = np.random.default_rng(0)
+    for x, d, c, n in zip(xs, data, col, order):
+        axB.scatter(x + rng_state.uniform(-0.12, 0.12, len(d)), d, s=14, color=c,
+                    edgecolor="white", linewidth=0.4, zorder=3)
+        axB.text(x, max(d) * 1.04 + 0.05, f"$\\times${rr[n]/base:.1f}", ha="center", va="bottom",
+                 fontsize=9, weight="bold", color=c)
+    axB.set_xticks(xs); axB.set_xticklabels([tick[KEY[n]] for n in order], fontsize=8)
     axB.set_ylabel(r"rel. roughness $\overline{|\partial^2\hat T|}/\overline{|\partial\hat T|}$", fontsize=8.5)
-    axB.set_title("(B) Scale-free non-smoothness", fontsize=9.5, weight="bold")
-    axB.set_ylim(0, max(v + e for v, e in zip(vals, errs)) * 1.2)
-    axB.grid(axis="y", alpha=0.2)
+    axB.set_title("(B) Roughness distribution over states", fontsize=9, weight="bold")
+    axB.set_ylim(0, max(max(d) for d in data) * 1.18); axB.grid(axis="y", alpha=0.2)
 
-    # (C) measured policy-side consequence: closed-loop action saturation (|a0|>0.9)
-    axC = fig.add_subplot(gs[0, 2])
+    # (C) measured policy-side symptom: closed-loop action saturation (|a0|>0.9)
     sat = [_saturation_pct(TRACE_DIRS[n]) for n in order]
-    axC.bar(xs, sat, color=[colors[n] for n in order], edgecolor="0.3", linewidth=0.6)
+    axC.bar(xs, sat, color=col, edgecolor="0.3", linewidth=0.6, width=0.62)
     for x, s in zip(xs, sat):
         axC.text(x, s + 1.5, f"{s:.0f}%", ha="center", va="bottom", fontsize=9, weight="bold")
-    axC.set_xticks(xs); axC.set_xticklabels([tick[n] for n in order], fontsize=8)
-    axC.set_ylabel("action saturation\n($|a_0|>0.9$, % steps)", fontsize=8.5)
-    axC.set_title("(C) Live policy bang-bang", fontsize=9.5, weight="bold")
+    fs.threshold(axC, 90, "near bang-bang", axis="h", color="0.45", ls=":", pos=0.5, fontsize=7.5)
+    axC.set_xticks(xs); axC.set_xticklabels([tick[KEY[n]] for n in order], fontsize=8)
+    axC.set_ylabel("action saturation ($|a_0|>0.9$, % steps)", fontsize=8.5)
+    axC.set_title("(C) Policy saturation (live)", fontsize=9, weight="bold")
     axC.set_ylim(0, 112); axC.grid(axis="y", alpha=0.2)
 
+    # (D) live BOPTEST outcome: maintenance score m_s with the m_s=1 collapse threshold
+    msv = [ms["v3"], ms["matched"], ms["v35"]]
+    axD.bar(xs, msv, color=col, edgecolor="0.3", linewidth=0.6, width=0.62)
+    for x, v in zip(xs, msv):
+        axD.text(x, v + 0.03, f"{v:.2f}", ha="center", va="bottom", fontsize=9, weight="bold")
+    axD.axhspan(0, fs.MS_USABLE, color=fs.V3, alpha=0.12, zorder=0)
+    fs.threshold(axD, fs.MS_COLLAPSE, "$m_s=1$ collapse", axis="h", color=fs.ACCURATE, pos=0.97, fontsize=7.5)
+    axD.set_xticks(xs); axD.set_xticklabels([tick[KEY[n]] for n in order], fontsize=8)
+    axD.set_ylabel("live maintenance score $m_s$", fontsize=8.5)
+    axD.set_title("(D) Live BOPTEST outcome", fontsize=9, weight="bold")
+    axD.set_ylim(0, max(msv) * 1.22); axD.grid(axis="y", alpha=0.2)
+
+    fig.suptitle("Measured roughness mechanism: rougher action surface → policy saturation → live collapse "
+                 "(association, not a proven causal law)", fontsize=11, weight="bold", y=0.99)
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_OUT, bbox_inches="tight")
+    fig.savefig(FIG_OUT.with_suffix(".png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"Wrote {FIG_OUT}  [saturation %: " + ", ".join(f"{n.split()[0]} {s:.0f}" for n, s in zip(order, sat)) + "]")
+    print(f"Wrote {FIG_OUT} (+ .png)  [sat %: " + ", ".join(f"{KEY[n]} {s:.0f}" for n, s in zip(order, sat)) +
+          " | m_s: " + ", ".join(f"{KEY[n]} {v:.2f}" for n, v in zip(order, msv)) + "]")
 
 
 def main() -> None:

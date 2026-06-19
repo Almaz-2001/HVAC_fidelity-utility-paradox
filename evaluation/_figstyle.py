@@ -17,8 +17,37 @@ V3 = "#1b7837"          # coarse black-box v3, usable
 ACCURATE = "#b2182b"    # calibrated v3.5 (accurate single-model), collapse
 MATCHED = "#d6604d"     # matched-resolution v3 (accurate single-model), collapse
 HYBRID = "#2166ac"      # role-separating hybrid, robust
+PI = "#737373"          # PI / baseline controller, neutral
 EDGE = "#222222"
 NEUTRAL = "#6f4e7c"
+
+# --- canonical model registry (same order, colour and marker in EVERY figure) ---
+# Order mandated by the reviewer: v3 hourly -> matched v3 -> direct v3.5 -> hybrid -> PI.
+# Marker shapes are distinct in grayscale so the figures survive B/W printing.
+ORDER = ["v3", "matched", "v35", "hybrid", "pi"]
+COLOR = {"v3": V3, "matched": MATCHED, "v35": ACCURATE, "hybrid": HYBRID, "pi": PI}
+MARKER = {"v3": "o", "matched": "s", "v35": "^", "hybrid": "D", "pi": "X"}
+LABEL = {"v3": "v3 hourly", "matched": "matched-v3 (15 min)",
+         "v35": "direct v3.5", "hybrid": "hybrid", "pi": "PI baseline"}
+ROLE = {"v3": "usable", "matched": "collapse", "v35": "collapse",
+        "hybrid": "robust", "pi": "baseline"}
+
+
+def style(key: str) -> dict:
+    """matplotlib kwargs (color+marker) for a model key; spread into plot/scatter."""
+    return {"color": COLOR[key], "marker": MARKER[key]}
+
+
+def legend_handles(keys, *, with_role=False, markersize=9):
+    """Line2D marker handles in canonical order for a shared model legend."""
+    from matplotlib.lines import Line2D
+    out = []
+    for k in keys:
+        lab = LABEL[k] + (f" — {ROLE[k]}" if with_role else "")
+        out.append(Line2D([0], [0], lw=0, marker=MARKER[k], markerfacecolor=COLOR[k],
+                          markeredgecolor="white", markeredgewidth=0.8,
+                          markersize=markersize, label=lab))
+    return out
 
 # --- engineering threshold / reference constants (pre-specified, not data) ---
 COMFORT_LO, COMFORT_HI = 21.0, 24.0     # deg C occupied comfort band
@@ -26,6 +55,19 @@ MS_COLLAPSE = 1.0                        # m_s = 1 live-failure threshold
 MS_USABLE = 0.1                          # tight usable band
 VIOLATION_BAR = 5.0                      # 5 % comfort-violation reference
 TAU_FACTOR = 1.25                        # transfer threshold tau = 1.25 x PI
+
+
+def threshold(ax, y, label, *, color="0.35", ls="--", lw=1.1, axis="h", fontsize=8, pos=0.99):
+    """Draw a pre-specified reference line with an inline label (axis='h' or 'v')."""
+    (ax.axhline if axis == "h" else ax.axvline)(y, color=color, lw=lw, ls=ls, zorder=1)
+    if not label:
+        return
+    if axis == "h":
+        ax.text(pos, y, " " + label, transform=ax.get_yaxis_transform(),
+                ha="right", va="bottom", fontsize=fontsize, color=color)
+    else:
+        ax.text(y, pos, " " + label, transform=ax.get_xaxis_transform(),
+                rotation=90, ha="right", va="top", fontsize=fontsize, color=color)
 
 TRACE_DIRS = {                           # peak-window closed-loop traces
     "v3": "bestest_air_article7_style_15min",
@@ -76,6 +118,7 @@ def paper_numbers(root: Path) -> dict:
         "m_s": {
             "v3": ms("v3 ("), "matched": ms("matched"), "v35": ms("v3.5"),
             "hybrid_mean": ms("hybrid"), "hybrid_typ": ms("hybrid", "m_s_typ"),
+            "hybrid_peak": ms("hybrid", "m_s_peak"),
         },
         "saturation": {k: _sat(root, k) for k in ("v3", "matched", "v35", "hybrid")},
         "speedup": float(spd.loc["hybrid_v3_v35_surrogate"]["speedup_vs_boptest_rte"]),

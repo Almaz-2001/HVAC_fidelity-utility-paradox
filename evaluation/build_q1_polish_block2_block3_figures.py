@@ -23,6 +23,10 @@ from matplotlib.patches import Ellipse
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "reports" / "figures" / "article_real"
 
+import sys as _sys
+_sys.path.insert(0, str(ROOT / "evaluation"))
+import _figstyle as fs
+
 BLUE = "#2f5d8c"
 TEAL = "#21867a"
 ORANGE = "#b25f2c"
@@ -97,24 +101,43 @@ def fig_block2_closed_loop_disturbance() -> None:
 
 
 def fig_block2_phase_density() -> None:
-    """Empirical phase portraits as density maps: action versus temperature error."""
-    fig, axes = plt.subplots(1, 3, figsize=(12.0, 4.2), sharex=True, sharey=True)
-    for ax, (name, rel) in zip(axes, TRACE_PATHS.items()):
+    """Action-density phase portrait (hexbin) of policy action vs thermal error,
+    with a marginal action histogram and saturation share, identical axes per backend."""
+    from matplotlib.colors import LinearSegmentedColormap
+    keys = {"pure v3": "v3", "direct v3.5": "v35", "hybrid": "hybrid"}
+    T_SET = 22.5
+    xlim, ylim = (-4.5, 4.5), (-1.08, 1.08)
+    fig = plt.figure(figsize=(12.4, 4.4))
+    gs = fig.add_gridspec(1, 6, width_ratios=[4, 1, 4, 1, 4, 1], wspace=0.10)
+    for i, (name, rel) in enumerate(TRACE_PATHS.items()):
+        k = keys[name]; c = fs.COLOR[k]
         df = read(rel)
-        err = df["t_zone_c"].astype(float) - 22.5
+        err = df["t_zone_c"].astype(float) - T_SET
         act = df["a0"].astype(float)
-        hb = ax.hexbin(err, act, gridsize=38, cmap="viridis", mincnt=1, linewidths=0, alpha=0.95)
-        ax.axhline(-1, color="#333333", linestyle=":", linewidth=0.8)
-        ax.axhline(1, color="#333333", linestyle=":", linewidth=0.8)
-        ax.axhline(0, color="#333333", linewidth=0.7)
-        ax.axvline(0, color="#333333", linewidth=0.7)
-        ax.axhspan(0.92, 1.0, color=RED, alpha=0.12)
-        ax.axhspan(-1.0, -0.92, color=RED, alpha=0.12)
-        style(ax, name, xlabel="$T_{zone}-22.5$ degC", ylabel="normalized action $a_0$")
-        sat = float(((act.abs() > 0.92).mean()) * 100.0)
-        ax.text(0.03, 0.94, f"saturation share: {sat:.1f}%", transform=ax.transAxes, fontsize=8, va="top")
-    fig.colorbar(hb, ax=axes.ravel().tolist(), shrink=0.85, label="empirical state-action density")
-    fig.suptitle("Block 2 phase portrait: empirical density of policy action versus thermal error", fontsize=14, weight="bold")
+        cmap = LinearSegmentedColormap.from_list("", ["#ffffff", c])
+        axh = fig.add_subplot(gs[0, 2 * i])
+        axm = fig.add_subplot(gs[0, 2 * i + 1], sharey=axh)
+        axh.hexbin(err, act, gridsize=34, cmap=cmap, mincnt=1, linewidths=0, extent=(*xlim, *ylim))
+        axh.axhspan(0.9, ylim[1], color=fs.ACCURATE, alpha=0.09, zorder=0)        # saturation bands
+        axh.axhspan(ylim[0], -0.9, color=fs.ACCURATE, alpha=0.09, zorder=0)
+        for yb in (0.9, -0.9):
+            axh.axhline(yb, color=fs.ACCURATE, ls=":", lw=0.8)
+        axh.axhline(0, color="0.6", lw=0.7); axh.axvline(0, color="0.6", lw=0.7)
+        axh.set_xlim(*xlim); axh.set_ylim(*ylim)
+        sat = float((act.abs() >= 0.9).mean() * 100.0)
+        style(axh, fs.LABEL[k], xlabel=r"$T_{zone}-T_{set}$ (°C)",
+              ylabel=("normalised action $a_0$" if i == 0 else None))
+        axh.text(0.04, 0.5, f"saturation\n{sat:.0f}%", transform=axh.transAxes, fontsize=8.5,
+                 va="center", ha="left", weight="bold", color=c,
+                 bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=c, alpha=0.8))
+        # marginal action distribution (shares the a0 axis)
+        axm.hist(act, bins=44, orientation="horizontal", color=c, alpha=0.78, range=ylim)
+        axm.axhspan(0.9, ylim[1], color=fs.ACCURATE, alpha=0.09)
+        axm.axhspan(ylim[0], -0.9, color=fs.ACCURATE, alpha=0.09)
+        axm.set_ylim(*ylim); axm.axis("off")
+    fig.suptitle("Action-density phase portrait: policy action vs thermal error "
+                 "(identical axes; red bands = saturation $|a_0|\\geq0.9$; right strip = marginal $a_0$)",
+                 fontsize=12, weight="bold")
     save(fig, "block2_q1_polish_phase_density")
 
 
@@ -198,30 +221,43 @@ def fig_block3_czon_hypothesis_box() -> None:
 
 
 def fig_block3_deployment_quadrants() -> None:
+    """Deployment plane with the comfort/safety margin M_k = tau_k - m_s^RL on the x-axis
+    (pass <=> M_k > 0), energy delta on y, and four interpreted quadrants."""
     tm = read("reports/block3_transfer_matrix.csv")
-    x = tm["m_s_rl"].astype(float) / tm["pass_threshold_m_s"].astype(float)
-    y = tm["energy_delta_pct_vs_pi"].astype(float)
+    margin = (tm["pass_threshold_m_s"].astype(float) - tm["m_s_rl"].astype(float)).to_numpy()
+    y = tm["energy_delta_pct_vs_pi"].astype(float).to_numpy()
     labels = ["heat pump", "hydronic", "commercial"]
-    fig, ax = plt.subplots(figsize=(8.4, 5.8))
-    xmax = max(1.35, float(x.max()) + 0.12)
-    ymin = min(-12, float(y.min()) - 5)
-    ymax = max(42, float(y.max()) + 7)
-    ax.axvspan(0, 1, ymin=0, ymax=(0 - ymin) / (ymax - ymin), color=TEAL, alpha=0.10)
-    ax.axvspan(1, xmax, ymin=0, ymax=(0 - ymin) / (ymax - ymin), color=ORANGE, alpha=0.10)
-    ax.axvspan(0, 1, ymin=(0 - ymin) / (ymax - ymin), ymax=1, color="#d9b44a", alpha=0.16)
-    ax.axvspan(1, xmax, ymin=(0 - ymin) / (ymax - ymin), ymax=1, color=RED, alpha=0.08)
-    ax.axvline(1.0, color="#222222", linestyle="--", linewidth=1.2)
-    ax.axhline(0.0, color="#222222", linestyle="--", linewidth=1.2)
-    colors = [BLUE, PURPLE, TEAL]
-    for xi, yi, lab, c in zip(x, y, labels, colors):
-        ax.scatter([xi], [yi], s=95, color=c, edgecolor="#222222", zorder=3)
-        ax.text(float(xi) + 0.025, float(yi) + 1.2, lab, fontsize=9, weight="bold")
-    ax.text(0.08, ymin + 2, "deployment-ready\nthreshold pass + energy saving", fontsize=8, color="#135f55")
-    ax.text(1.03, ymin + 2, "comfort/safety fail\nbut energy saving", fontsize=8, color="#8a4d17")
-    ax.text(0.08, ymax - 5, "threshold pass\nbut energy penalty", fontsize=8, color="#7a5d00")
-    ax.set_xlim(0, xmax)
-    ax.set_ylim(ymin, ymax)
-    style(ax, "Block 3 comfort-energy deployment plane with interpreted quadrants", "$m_s^{RL} / (1.25 m_s^{PI})$", "Energy delta vs PI (%)")
+    pal = [BLUE, PURPLE, TEAL]
+
+    fig, ax = plt.subplots(figsize=(8.8, 6.0))
+    xpad = max(0.15, float(np.abs(margin).max()) * 0.5)
+    xlo, xhi = float(margin.min()) - xpad, float(margin.max()) + xpad
+    ypad = max(6.0, float(y.max() - y.min()) * 0.3)
+    ylo, yhi = min(-8.0, float(y.min()) - ypad), max(12.0, float(y.max()) + ypad)
+    fy = (0 - ylo) / (yhi - ylo)
+    # quadrant tints: right = pass (M>0); bottom = energy saving (y<0)
+    ax.axvspan(0, xhi, ymin=0, ymax=fy, color=fs.V3, alpha=0.10)          # deployable
+    ax.axvspan(0, xhi, ymin=fy, ymax=1, color="#d9b44a", alpha=0.16)      # safe but inefficient
+    ax.axvspan(xlo, 0, ymin=0, ymax=fy, color=ORANGE, alpha=0.12)         # unsafe energy saving
+    ax.axvspan(xlo, 0, ymin=fy, ymax=1, color=fs.ACCURATE, alpha=0.10)    # reject
+    ax.axvline(0, color="0.2", ls="--", lw=1.3)
+    ax.axhline(0, color="0.2", ls="--", lw=1.3)
+
+    for xi, yi, lab, c in zip(margin, y, labels, pal):
+        ax.scatter([xi], [yi], s=120, color=c, edgecolor="white", linewidth=1.0, zorder=4)
+        ax.annotate(lab, (xi, yi), xytext=(7, 7), textcoords="offset points", fontsize=9, weight="bold")
+    # quadrant captions centred in each region
+    xr, xl = (0 + xhi) / 2, (xlo + 0) / 2
+    yb, yt = (ylo + 0) / 2, (0 + yhi) / 2
+    ax.text(xr, yb, "DEPLOYABLE\npass + energy saving", ha="center", va="center", fontsize=8.5, color="#135f55", weight="bold")
+    ax.text(xr, yt, "safe but inefficient\npass + energy penalty", ha="center", va="center", fontsize=8, color="#7a5d00")
+    ax.text(xl, yb, "unsafe energy saving\nfail + energy saving", ha="center", va="center", fontsize=8, color="#8a4d17")
+    ax.text(xl, yt, "REJECT\nfail + energy penalty", ha="center", va="center", fontsize=8.5, color="#7d1f1f", weight="bold")
+
+    ax.set_xlim(xlo, xhi); ax.set_ylim(ylo, yhi)
+    style(ax, "Block 3 deployment plane: comfort/safety margin vs energy",
+          r"comfort/safety margin $M_k=\tau_k-m_s^{RL}$   ($M_k>0$ = pass; $\tau_k=1.25\,m_s^{PI}$)",
+          "energy $\\Delta$ vs PI (%)")
     save(fig, "block3_q1_polish_deployment_quadrants")
 
 

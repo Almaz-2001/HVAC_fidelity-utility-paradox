@@ -1,3 +1,16 @@
+"""Build the data-driven Overleaf package for Results III / Block 3.
+
+The section follows Block 3 of ``roadmap.md`` (Sections 14-15): pre-specified
+transferability of the v3+v3.5 hybrid recipe to three BOPTEST hydronic-family
+testcases under three recalibration regimes (none / partial / full).
+
+Design (identical to Results I/II): every numeric table is read from versioned
+artifacts in ``reports/``; pre-specified hypotheses, predictions, and audit
+anchors are verified literals from ``configs/block3_testcase_manifest.yaml`` and
+the git audit chain. Figures are referenced from ``figures/`` (already produced
+by the Block 3 evaluation scripts); this builder writes ``main.tex`` only.
+Provenance map: roadmap Section 15.
+"""
 
 from __future__ import annotations
 
@@ -248,7 +261,7 @@ def fig_protocol() -> None:
         _arrow(ax, (x, 0.56), (x + 0.02, 0.56), SLATE)
     ax.text(0.5, 0.135, "two component verdicts: controller-side $m_s^{\\mathrm{RL}}\\leq\\tau_k$ (per testcase) and surrogate-side full Stage A/B/C RMSE gain.",
             ha="center", fontsize=8.4, color="#374151")
-    ax.text(0.5, 0.06, "The analysis-plan manifest is bit-identical between the open (1861e48) and close (7ada793) commits; only result appendices are appended.",
+    ax.text(0.5, 0.06, "The analysis-plan manifest is bit-identical between the open (1861e48) and close (b915bfc) commits; only result appendices are appended.",
             ha="center", fontsize=8.0, style="italic", color=SLATE)
     _save(fig, "fig_block3_protocol")
 
@@ -402,7 +415,7 @@ Symbol & Unit & Meaning \\
 
 \subsection{{Pre-specification and audit anchors}}
 
-Block 3 is pre-specified through \texttt{{configs/block3\_testcase\_manifest.yaml}}. The initial manifest commit (\texttt{{1861e48}}) was made before any non-\texttt{{bestest\_air}} BOPTEST run; the pre-specification block is bit-identical between that commit and the close commit, with only result appendices added. The audit anchors are: \texttt{{1861e48}} (pre-specification manifest), \texttt{{2f9d596}} (record pre-specification SHA), \texttt{{eb7091e}} / \texttt{{46fbaa9}} / \texttt{{645626e}} (the three actuator adapters and the stretch-testcase predictions), \texttt{{7ada793}} (close SHA), and \texttt{{cb7025f}} (component-level interpretation). Because the hypothesis definitions were frozen before the runs, every number below was predictable but not predicted.
+Block 3 is pre-specified through \texttt{{configs/block3\_testcase\_manifest.yaml}}. The initial manifest commit (\texttt{{1861e48}}) was made before any non-\texttt{{bestest\_air}} BOPTEST run; the pre-specification block is bit-identical between that commit and the close commit, with only result appendices added. The audit anchors are: \texttt{{1861e48}} (pre-specification manifest), \texttt{{2f9d596}} (record pre-specification SHA), \texttt{{eb7091e}} / \texttt{{46fbaa9}} / \texttt{{645626e}} (the three actuator adapters and the stretch-testcase predictions), \texttt{{b915bfc}} (Block~3 closure: hydronic transfer matrix and stretch-testcase falsification), \texttt{{7ada793}} (record of the close-commit SHA in the manifest), and \texttt{{cb7025f}} (component-level interpretation). Because the hypothesis definitions were frozen before the runs, every number below was predictable but not predicted.
 
 \subsection{{Testcases, actuator adapters, and recalibration regimes}}
 
@@ -484,7 +497,7 @@ where $\dot{{Q}}_{{\mathrm{{hyd}}}}$ is the delivered hydronic heat (whose actua
 \begin{{figure}}[H]
   \centering
   \includegraphics[width=0.97\linewidth]{{fig_block3_topology.pdf}}
-  \caption{{Comparative HVAC topology of the source case and the three hydronic targets (source $\to$ distribution $\to$ zone). Transfer changes the heat source, distribution path, and actuator set, while the zone energy balance \eqref{{eq:hydronic_balance}} and $C_{{\mathrm{{zon}}}}$ are shared.}}
+  \caption{{Schematic (no data). Comparative HVAC topology of the source case and the three hydronic targets (source $\to$ distribution $\to$ zone). Transfer changes the heat source, distribution path, and actuator set, while the single-zone energy balance and the zone thermal capacitance $C_{{\mathrm{{zon}}}}$ are shared across the family.}}
   \label{{fig:topology}}
 \end{{figure}}
 
@@ -553,7 +566,7 @@ Testcase & $m_s^{{\mathrm{{RL}}}}$ & $m_s^{{\mathrm{{PI}}}}$ & $\tau_k$ & Ctrl. 
 \begin{{figure}}[H]
   \centering
   \includegraphics[width=0.84\linewidth]{{block3_q1_polish_deployment_quadrants.pdf}}
-  \caption{{Comfort--energy deployment plane. The residential cases save energy but fail the comfort/safety threshold; the commercial case passes the threshold but moves into the energy-penalty quadrant.}}
+  \caption{{Comfort--energy deployment plane for the frozen RL policy transferred zero-shot to the hydronic family. The $x$-axis is the comfort/safety margin $M_k=\tau_k-m_s^{{RL}}$ relative to the pre-specified pass threshold $\tau_k=1.25\,m_s^{{PI}}$ (pass $\Leftrightarrow M_k>0$); the $y$-axis is the energy change versus the PI baseline. The four quadrants read directly: \emph{{deployable}} (pass + energy saving), \emph{{safe but inefficient}} (pass + energy penalty), \emph{{unsafe energy saving}} (fail + saving), \emph{{reject}} (fail + penalty). The residential hydronic cases (heat pump, hydronic) save energy but fall just left of the pass line, while the commercial case passes the comfort threshold at an energy penalty---none of the frozen-policy transfers land in the deployable quadrant, which is the regime-boundedness the recalibration step addresses. Data: \texttt{{reports/block3\_transfer\_matrix.csv}}.}}
   \label{{fig:deployment_plane}}
 \end{{figure}}
 
@@ -644,7 +657,7 @@ Table~\ref{{tab:hypothesis}} closes the pre-specified hypotheses. The methodolog
 \begin{{table}}[H]
 \centering
 \small
-\caption{{Pre-specified hypothesis closure (manifest \texttt{{hypothesis\_status\_final}}, audit anchor \texttt{{7ada793}}).}}
+\caption{{Pre-specified hypothesis closure (manifest \texttt{{hypothesis\_status\_final}}, written at the Block~3 closure commit \texttt{{b915bfc}}).}}
 \label{{tab:hypothesis}}
 \begin{{tabularx}}{{\linewidth}}{{l >{{\raggedright\arraybackslash}}p{{42mm}} l >{{\raggedright\arraybackslash}}X}}
 \toprule

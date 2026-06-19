@@ -37,6 +37,10 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 BASE = Path(__file__).resolve().parent
 FIG = BASE / "figures"
 
+import sys as _sys
+_sys.path.insert(0, str(BASE.parents[1] / "evaluation"))
+import _figstyle as fs
+
 NAVY = "#1f4e79"
 TEAL = "#008080"
 AMBER = "#c9822b"
@@ -225,34 +229,52 @@ def fig03_stage_abc(ep: dict, power: dict, corpus: pd.DataFrame) -> None:
     final = float(ep["c_zon_final_j_per_k"])
     raw_24 = float(corpus.loc[corpus.variant == "v35_raw", "rmse_24h_c"].iloc[0])
     cal_24 = float(corpus.loc[corpus.variant == "v35_calibrated", "rmse_24h_c"].iloc[0])
-    before = np.array([float(ep["baseline_rmse_c"]), raw_24, float(power["baseline_power_mae_w"]) / 1000.0])
-    after = np.array([float(ep["calibrated_rmse_c"]), cal_24, float(power["calibrated_power_mae_w"]) / 1000.0])
-    labels = ["1-step\nRMSE_T (C)", "24 h\nRMSE_T (C)", "Power\nMAE (kW)"]
+    before = [float(ep["baseline_rmse_c"]), raw_24, float(power["baseline_power_mae_w"])]   # 1-step C, 24h C, W
+    after = [float(ep["calibrated_rmse_c"]), cal_24, float(power["calibrated_power_mae_w"])]
+    RAW, CAL = AMBER, GREEN                                  # raw v3.5 -> calibrated v3.5 (consistent across Block 1)
 
-    fig, axes = plt.subplots(1, 2, figsize=(11.4, 4.6), gridspec_kw={"width_ratios": [1.05, 1.0]})
-    axes[0].axhspan(prior * 0.9 / 1e5, prior * 1.1 / 1e5, color=LIGHT, label="prior +/-10%")
-    axes[0].axhline(prior / 1e5, color=SLATE, linestyle="--", linewidth=1.2, label="prior")
-    axes[0].plot(hist["epoch"], hist["c_zon_j_per_k"] / 1e5, color=GREEN, linewidth=2.4)
-    axes[0].scatter([hist["epoch"].iloc[-1]], [final / 1e5], s=55, color=BURGUNDY, edgecolor="#111827", zorder=3, label="final")
-    style(axes[0], "(a) Stage B physical-parameter identification", "epoch", "$C_{zon}$ ($10^5$ J/K)")
-    axes[0].legend(frameon=False, fontsize=8)
+    fig, axes = plt.subplots(1, 3, figsize=(13.4, 4.2))
 
-    # normalised improvement (% reduction) so different units (deg C, kW) are not mixed
-    # on one axis; the raw before->after values are kept as sub-labels for context
-    x = np.arange(len(labels))
-    red = (before - after) / before * 100.0
-    units = ["°C", "°C", "kW"]
-    names = ["1-step RMSE$_T$", "24 h RMSE$_T$", "Power MAE"]
-    sub = [f"{names[i]}\n{before[i]:.2f}$\\to${after[i]:.2f} {units[i]}" for i in range(len(labels))]
-    axes[1].bar(x, red, width=0.55, color=GREEN, edgecolor="#111827", linewidth=0.4)
-    for i, r in enumerate(red):
-        axes[1].text(i, r + 1.6, f"−{r:.1f}%", ha="center", fontsize=9.5, weight="bold")
-    axes[1].set_xticks(x)
-    axes[1].set_xticklabels(sub, fontsize=8.5)
-    axes[1].set_ylim(0, float(red.max()) * 1.2)
-    style(axes[1], "(b) Calibration reduces every fidelity error", ylabel="reduction after calibration (%)")
-    fig.suptitle("Stage A/B/C calibration improves prediction while keeping the physical parameter bounded", fontsize=13, weight="bold")
-    fig.tight_layout(rect=[0, 0, 1, 0.92])
+    # (a) Stage B C_zon identification, with prior +/-10% band and final estimate
+    a = axes[0]
+    a.axhspan(prior * 0.9 / 1e5, prior * 1.1 / 1e5, color=LIGHT, label="prior ±10%")
+    a.axhline(prior / 1e5, color=SLATE, linestyle="--", linewidth=1.2, label="prior")
+    a.plot(hist["epoch"], hist["c_zon_j_per_k"] / 1e5, color=GREEN, linewidth=2.4)
+    a.scatter([hist["epoch"].iloc[-1]], [final / 1e5], s=55, color=BURGUNDY, edgecolor="#111827",
+              zorder=3, label=f"final {final/1e5:.3f}")
+    style(a, "(a) Stage B: $C_{zon}$ identification", "epoch", "$C_{zon}$ ($10^5$ J/K)")
+    a.legend(frameon=False, fontsize=8)
+
+    # (b) ABSOLUTE before/after error -- RMSE_T (deg C) on the left axis, Power MAE (W) on a
+    # separate right axis so deg C and W are never mixed on one scale (small-multiples rule)
+    b = axes[1]; b2 = b.twinx()
+    xr = [0, 1]
+    b.bar([x - 0.19 for x in xr], before[:2], width=0.38, color=RAW, edgecolor="#111827", linewidth=0.4, label="raw v3.5")
+    b.bar([x + 0.19 for x in xr], after[:2], width=0.38, color=CAL, edgecolor="#111827", linewidth=0.4, label="calibrated v3.5")
+    b2.bar([2.6 - 0.19], [before[2]], width=0.38, color=RAW, edgecolor="#111827", linewidth=0.4)
+    b2.bar([2.6 + 0.19], [after[2]], width=0.38, color=CAL, edgecolor="#111827", linewidth=0.4)
+    for x, bef, aft in zip([0, 1, 2.6], before, after):
+        (b if x < 2 else b2).text(x + 0.19, aft, f"−{(bef-aft)/bef*100:.0f}%", ha="center", va="bottom",
+                                  fontsize=8, weight="bold", color="#14532d")
+    b.set_xticks([0, 1, 2.6]); b.set_xticklabels(["1-step\nRMSE$_T$", "24 h\nRMSE$_T$", "Power\nMAE"], fontsize=8.5)
+    b.set_ylabel("RMSE$_T$ (°C)"); b2.set_ylabel("Power MAE (W)")
+    b.set_ylim(0, max(before[:2]) * 1.35); b2.set_ylim(0, before[2] * 1.35)
+    style(b, "(b) Absolute error: raw → calibrated")
+    b.legend(frameon=False, fontsize=7.8, loc="upper center", ncol=1)
+
+    # (c) one-step temperature-residual distribution: calibration tightens the residuals
+    c = axes[2]
+    for label, rel, color in [
+        ("raw v3.5", "outputs/surrogate_v35_rollout_prepared_15min_episodeaware/raw_v35/all_full_rollouts.csv", RAW),
+        ("calibrated v3.5", "outputs/surrogate_v35_rollout_prepared_15min_episodeaware/calibrated_v35/all_full_rollouts.csv", CAL)]:
+        err = read_csv(rel)["temp_error_c"].dropna().to_numpy()
+        c.hist(err, bins=70, range=(-3, 3), density=True, color=color, alpha=0.55, label=f"{label} (σ={err.std():.2f})")
+    c.axvline(0, color="0.5", lw=0.8)
+    style(c, "(c) One-step residual distribution", "prediction error (°C)", "density")
+    c.legend(frameon=False, fontsize=8)
+
+    fig.suptitle("Stage A/B/C calibration: bounded $C_{zon}$, lower absolute error, tighter residuals", fontsize=12.5, weight="bold")
+    fig.tight_layout(rect=[0, 0, 1, 0.93])
     save(fig, "rie_fig03_stage_abc_diagnostics")
 
 
@@ -302,39 +324,42 @@ def fig04_predictive_validity() -> None:
 
 
 def fig05_matched_corpus(corpus: pd.DataFrame, corpus_json: dict) -> None:
+    """Waterfall: the v3-hourly -> calibrated-v3.5 24 h RMSE gain split into the
+    15-min resolution contribution and the Stage A/B/C physics-calibration contribution."""
     vals = {r["variant"]: float(r["rmse_24h_c"]) for _, r in corpus.iterrows()}
     dec = corpus_json["decomposition"]
-    fig, axes = plt.subplots(1, 2, figsize=(11.4, 4.6), gridspec_kw={"width_ratios": [0.92, 1.08]})
+    start, mid, end = vals["v3_hourly"], vals["v3_15min_matched"], vals["v35_calibrated"]
+    raw = vals["v35_raw"]
+    dc, dk = float(dec["delta_corpus_c"]), float(dec["delta_calibration_c"])
+    sc, sk = float(dec["corpus_share_of_total_pct"]), float(dec["calibration_share_of_total_pct"])
 
-    labels = ["v3 hourly", "v3 15-min", "raw v3.5", "cal. v3.5"]
-    values = [vals["v3_hourly"], vals["v3_15min_matched"], vals["v35_raw"], vals["v35_calibrated"]]
-    colors = [NAVY, TEAL, AMBER, GREEN]
-    axes[0].bar(labels, values, color=colors, edgecolor="#111827", linewidth=0.4)
-    for i, v in enumerate(values):
-        axes[0].text(i, v + 0.04, f"{v:.3f}", ha="center", fontsize=8.5)
-    axes[0].tick_params(axis="x", rotation=15)
-    style(axes[0], "(a) Four-variant 24 h RMSE comparison", ylabel="24 h RMSE$_T$ (C)")
+    fig, ax = plt.subplots(figsize=(9.4, 4.9))
+    W = 0.60
+    ax.bar(0, start, width=W, color=fs.V3, edgecolor="#111827", linewidth=0.4)                       # v3 hourly level
+    ax.bar(1, dc, bottom=mid, width=W, color=fs.MATCHED, edgecolor="#111827", linewidth=0.4)         # resolution drop
+    ax.bar(2, mid, width=W, color=fs.MATCHED, alpha=0.5, edgecolor="#111827", linewidth=0.4)         # matched-v3 level
+    ax.bar(3, dk, bottom=end, width=W, color=fs.ACCURATE, edgecolor="#111827", linewidth=0.4)        # calibration drop
+    ax.bar(4, end, width=W, color=fs.ACCURATE, edgecolor="#111827", linewidth=0.4)                   # calibrated v3.5 level
 
-    start = vals["v3_hourly"]
-    mid = vals["v3_15min_matched"]
-    end = vals["v35_calibrated"]
-    dc = float(dec["delta_corpus_c"])
-    dk = float(dec["delta_calibration_c"])
-    axes[1].bar([0], [start], color=NAVY, width=0.55)
-    axes[1].bar([1], [-dc], bottom=[start], color=TEAL, width=0.55)
-    axes[1].bar([2], [-dk], bottom=[mid], color=GREEN, width=0.55)
-    axes[1].bar([3], [end], color=PURPLE, width=0.55)
-    axes[1].set_xticks([0, 1, 2, 3])
-    axes[1].set_xticklabels(
-        [
-            f"start\n{start:.3f}",
-            f"corpus\n-{dc:.3f}\n{dec['corpus_share_of_total_pct']:.1f}%",
-            f"Stage A/B/C\n-{dk:.3f}\n{dec['calibration_share_of_total_pct']:.1f}%",
-            f"final\n{end:.3f}",
-        ]
-    )
-    style(axes[1], "(b) Attribution of the v3-to-v3.5 gain", ylabel="24 h RMSE$_T$ (C)")
-    fig.suptitle("Matched-corpus control experiment bounds the calibration claim", fontsize=13, weight="bold")
+    # dashed connectors between successive running totals
+    for (x0, x1, y) in [(0, 1, start), (1, 2, mid), (2, 3, mid), (3, 4, end)]:
+        ax.plot([x0 + W / 2, x1 - W / 2], [y, y], ls=":", color="0.5", lw=1.0, zorder=1)
+    # level/delta value labels
+    for x, v in [(0, start), (2, mid), (4, end)]:
+        ax.text(x, v + 0.03, f"{v:.3f}", ha="center", va="bottom", fontsize=9, weight="bold")
+    ax.text(1, mid + dc / 2, f"−{dc:.3f}\nresolution\n({sc:.0f}%)", ha="center", va="center", fontsize=8, color="white", weight="bold")
+    ax.text(3, end + dk / 2, f"−{dk:.3f}\nStage A/B/C\n({sk:.0f}%)", ha="center", va="center", fontsize=8, color="white", weight="bold")
+    # raw v3.5 reference: the v3.5 architecture WITHOUT calibration does not even beat matched-v3
+    ax.axhline(raw, color=AMBER, ls="--", lw=1.3, zorder=2)
+    ax.text(4.5, raw, f" raw v3.5 (uncalibrated) {raw:.3f}\n architecture alone < matched-v3", va="center", ha="right",
+            fontsize=7.6, color=AMBER, style="italic")
+
+    ax.set_xticks([0, 1, 2, 3, 4])
+    ax.set_xticklabels(["v3 hourly", "− resolution", "matched-v3\n(15 min)", "− calibration", "calibrated\nv3.5"], fontsize=8.6)
+    ax.set_ylim(0, max(start, raw) * 1.12)
+    style(ax, r"Matched-corpus decomposition: $\Delta$RMSE = $\Delta_{\mathrm{resolution}}$ + $\Delta_{\mathrm{physics\text{-}calibration}}$",
+          ylabel="24 h rollout RMSE$_T$ (°C)")
+    fig.tight_layout()
     save(fig, "rie_fig05_matched_corpus_attribution")
 
 
