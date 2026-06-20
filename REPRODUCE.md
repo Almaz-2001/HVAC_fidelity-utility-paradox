@@ -14,9 +14,21 @@ pip install -r requirements.txt
 
 ## Level B — regenerate all figures, tables, and numbers (no BOPTEST)
 
-Each block has one data-driven generator. Run from the repository root; each reads
-the committed `reports/`, `outputs/` (audit artifacts), and `data/` files and writes
-the section's `main.tex` plus its figures.
+**One command — regenerate every main + supplementary figure and the graphical abstract:**
+
+```bash
+python make_figures.py          # ~1 min, no BOPTEST, no GPU  (or: ./make_all_figures.sh)
+python make_figures.py --list   # show the ordered generator list it will run
+```
+
+`make_figures.py` reads [`paper_artifacts/figure_manifest.yaml`](paper_artifacts/figure_manifest.yaml)
+and runs every generator it lists in dependency order (the scripts that rewrite the
+`reports/*.csv` consumed by `_figstyle.paper_numbers()` run first; Fig 1/4/8 and the
+graphical abstract run last), printing a per-script PASS/FAIL summary.
+
+**Or run the three per-block builders individually.** Each reads the committed
+`reports/`, `outputs/` (audit artifacts), and `data/` files and writes the section's
+`main.tex` (with every table) plus its figures:
 
 ```bash
 # Block 1 — digital-twin fidelity (surrogate accuracy, C_zon, Fisher CI, physics audit)
