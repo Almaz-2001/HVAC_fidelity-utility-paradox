@@ -33,6 +33,12 @@ main_figures:
     metrics: [rmse_24h_c, rel_roughness, action_saturation_pct, m_s]
     audit_note: "Every cell is loaded from the committed CSVs above via _figstyle.paper_numbers(); no hand-typed values."
 
+  Figure_methodology_overview:
+    title: System / method overview (backends -> controller families -> live BOPTEST)
+    label: fig:system_overview
+    script: evaluation/build_system_overview.py
+    kind: schematic
+
   Figure_2:
     title: Stage B C_zon identification and calibration improvement
     label: fig:stage-abc
