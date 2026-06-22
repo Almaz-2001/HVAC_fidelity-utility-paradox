@@ -549,6 +549,13 @@ def write_tex(ctx: dict) -> None:
 \section{{Controller Learning, Hybrid Regularization, and MORL Seed Stability}}
 \label{{sec:results2-control}}
 
+\begin{{figure}}[pos={{!ht}}]
+  \centering
+  \includegraphics[width=0.98\linewidth]{{block2_conceptual_overview.pdf}}
+  \caption{{Quantified evidence chain for the fidelity--utility paradox. Each row is a training backend (v3 hourly, matched-resolution v3, direct v3.5, hybrid); columns report the measured links from predictive fidelity to live utility: \textbf{{(A)}} 24\,h rollout RMSE$_T$ ($^\circ$C), \textbf{{(B)}} scale-free action-surface roughness ($\times$ the usable v3), \textbf{{(C)}} policy saturation ($|a_0|\geq0.9$, \% steps), \textbf{{(D)}} live $m_s$ with the $m_s=1$ collapse line and usable band. The paradox is the contradiction between (A) and (D): the RMSE$_T$ order (v3.5 $<$ matched-v3 $<$ v3) reverses in live $m_s$. Data: \texttt{{reports/block2\_fidelity\_utility\_scatter.csv}}.}}
+  \label{{fig:concept}}
+\end{{figure}}
+
 Block 1 established a deliberately asymmetric surrogate result: the compact v3 surrogate is the more useful rollout environment for reinforcement learning (RL), whereas the calibrated v3.5 RC--NeuralODE is the more accurate predictive digital twin. Block 2 tests the controller-side consequence of that asymmetry on the live BOPTEST \texttt{{bestest\_air}} runtime environment. The central question is not whether a controller can be trained on a surrogate, but which functional role each surrogate should play inside the learning loop.
 
 The experiments compare five controller families: pure-v3 thermostatic PPO, direct-v3.5 PPO, hybrid-v3/v3.5 PPO, hierarchical DRL (HDRL), and preference-conditioned MORL. All policies are trained on surrogate backends and then evaluated in closed loop against BOPTEST. One asymmetry must be stated up front: unlike thermostatic PPO and HDRL --- which are evaluated strictly zero-shot after surrogate-only training --- MORL additionally includes a short live-BOPTEST finetuning stage, so MORL is used to probe preference-conditioned robustness and seed stability rather than strict zero-shot surrogate transfer. Two targeted 14-day windows are used for the main thermostatic/HDRL comparison: \texttt{{peak\_heat\_window}} (January, daily-mean ambient $-24.4\,^\circ$C) and \texttt{{typical\_heat\_window}} (February, $+2.4\,^\circ$C). MORL and PI reference values additionally use the 12-month yearly evaluation protocol. This difference is intentional: the targeted windows expose controller-family mechanisms, while the yearly protocol exposes seed stability and preference robustness.
