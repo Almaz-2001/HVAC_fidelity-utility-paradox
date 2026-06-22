@@ -39,6 +39,12 @@ main_figures:
     script: evaluation/build_system_overview.py
     kind: schematic
 
+  Figure_paper_organization:
+    title: Organization of the paper (section-flow roadmap)
+    label: fig:paper_org
+    script: evaluation/build_paper_organization.py
+    kind: schematic
+
   Figure_2:
     title: Stage B C_zon identification and calibration improvement
     label: fig:stage-abc
