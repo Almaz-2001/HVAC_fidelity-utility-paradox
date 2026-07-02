@@ -141,8 +141,8 @@ def fig02_backend_architecture():
     arrow(ax, (6.9, 4.1), (8.3, 4.15))
     arrow(ax, (6.1, 3.5), (8.5, 2.75))
     arrow(ax, (2.5, 2.75), (8.25, 4.0), COLORS["green"])
-    ax.text(5.4, 5.35, "Same state-action pair is evaluated by two roles: rollout dynamics (v3) and frozen physics check (v3.5)", ha="center", fontsize=10)
-    ax.set_title("v3 / v3.5 / hybrid backend architecture")
+    ax.text(5.4, 5.35, "Same state-action pair is evaluated by two roles: rollout dynamics (BB) and frozen physics check (GB)", ha="center", fontsize=10)
+    ax.set_title("BB / GB / hybrid backend architecture")
     save(fig, "final17_fig02_backend_architecture")
 
 
@@ -213,7 +213,7 @@ def fig_eng_closed_loop_traces():
     for ax in axes:
         ax.grid(alpha=0.2)
     axes[0].legend(ncol=4, fontsize=8, loc="upper right")
-    fig.suptitle("Live BOPTEST closed-loop traces: pure v3 vs direct v3.5 vs hybrid")
+    fig.suptitle("Live BOPTEST closed-loop traces: pure BB vs direct GB vs hybrid")
     save(fig, "final_eng_fig08_live_boptest_closed_loop_traces")
 
 
@@ -231,7 +231,7 @@ def fig_eng_action_phase_portrait():
         axes[0].hist(action, bins=np.linspace(-1, 1, 45), density=True, histtype="step", lw=2, color=colors[name], label=name)
         sample = df.iloc[:: max(1, len(df) // 550)]
         temp_error = sample["t_zone_c"].astype(float) - 22.5
-        sc = axes[1].scatter(temp_error, sample["a0"], c=sample["t_amb_c"], cmap="viridis", s=9, alpha=0.55, label=name if name == "direct v3.5" else None)
+        sc = axes[1].scatter(temp_error, sample["a0"], c=sample["t_amb_c"], cmap="viridis", s=9, alpha=0.55, label=("direct GB" if name == "direct v3.5" else None))
         axes[1].plot([], [], "o", color=colors[name], label=name)
     axes[0].axvline(-1, color="#999999", ls=":")
     axes[0].axvline(1, color="#999999", ls=":")
@@ -269,7 +269,7 @@ def fig_eng_block3_deployment_plane():
     ax.text(1.1, -8, "comfort fail\nenergy saving", fontsize=8, color=COLORS["red"], ha="center")
     ax.set_xlabel("Threshold-normalized safety metric: m_s_RL / (1.25 × m_s_PI)")
     ax.set_ylabel("Energy Δ% vs PI")
-    ax.set_title("Block 3 comfort-energy deployment plane")
+    ax.set_title("Comfort-energy deployment plane")
     ax.grid(alpha=0.2)
     save(fig, "final_eng_fig11_block3_deployment_plane")
 
@@ -319,8 +319,8 @@ def fig03_stage_calibration_improvement():
     cal = [vals[k][1] for k in labels]
     x = np.arange(len(labels))
     fig, ax = plt.subplots(figsize=(9, 4.5))
-    ax.bar(x - 0.18, raw, width=0.36, color=COLORS["orange"], label="Raw v3.5")
-    ax.bar(x + 0.18, cal, width=0.36, color=COLORS["blue"], label="Calibrated v3.5")
+    ax.bar(x - 0.18, raw, width=0.36, color=COLORS["orange"], label="Raw GB")
+    ax.bar(x + 0.18, cal, width=0.36, color=COLORS["blue"], label="Calibrated GB")
     for xi, a, b in zip(x, raw, cal):
         ax.text(xi, max(a, b) * 1.04, f"↓{(a-b)/a*100:.0f}%", ha="center", fontsize=9)
     ax.set_xticks(x, labels)
@@ -426,15 +426,15 @@ def fig07_hybrid_reward_mechanism():
     ax.set_xlim(0, 12)
     ax.set_ylim(0, 5)
     box(ax, 0.4, 2.3, 1.8, 0.8, "Policy\nπθ(s)", "#E8F4FA")
-    box(ax, 3.0, 3.25, 2.2, 0.85, "v3 rollout dynamics\nT, P prediction", "#EAF7EA")
-    box(ax, 3.0, 1.25, 2.2, 0.85, "frozen v3.5 twin\nsame state-action", "#FFF3D6")
+    box(ax, 3.0, 3.25, 2.2, 0.85, "BB rollout dynamics\nT, P prediction", "#EAF7EA")
+    box(ax, 3.0, 1.25, 2.2, 0.85, "frozen GB twin\nsame state-action", "#FFF3D6")
     box(ax, 6.0, 3.25, 2.1, 0.85, "base reward\ncomfort + smooth + energy", "#F7F7F7")
     box(ax, 6.0, 1.25, 2.1, 0.85, f"disagreement\nmean |ΔT|={temp_mean:.2f}°C\nmean |ΔP|={pwr_mean:.0f} W", "#F7F7F7", fontsize=8)
     box(ax, 9.0, 2.2, 2.55, 1.05, "hybrid reward\nr = r_c + r_s + r_e\n− λT|ΔT| − λP|ΔP|", "#F1E8F7")
     for s, e in [((2.2, 2.7), (3.0, 3.65)), ((2.2, 2.7), (3.0, 1.65)), ((5.2, 3.65), (6.0, 3.65)), ((5.2, 1.65), (6.0, 1.65)), ((8.1, 3.65), (9.0, 2.95)), ((8.1, 1.65), (9.0, 2.45))]:
         arrow(ax, s, e)
     ax.text(7.05, 0.72, f"overall p95: |ΔT|={temp_p95:.2f}°C, |ΔP|={pwr_p95:.0f} W", ha="center", fontsize=8, color=COLORS["gray"])
-    ax.set_title("Hybrid reward-shaping mechanism: v3 rollout with frozen-v3.5 physical censor")
+    ax.set_title("Hybrid reward-shaping mechanism: BB rollout with frozen-GB physical censor")
     save(fig, "final17_fig07_hybrid_reward_shaping_mechanism")
 
 
@@ -541,7 +541,7 @@ def fig11_block3_protocol():
         box(ax, x, 2.1, w, 1.25, lab, color, fontsize=8.5)
     for i in range(len(xs) - 1):
         arrow(ax, (xs[i] + widths[i], 2.72), (xs[i + 1], 2.72))
-    ax.set_title("Block 3 version-locked transferability protocol")
+    ax.set_title("Transferability protocol")
     save(fig, "final17_fig11_block3_transferability_protocol")
 
 

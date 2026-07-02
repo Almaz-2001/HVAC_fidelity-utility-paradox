@@ -2,11 +2,11 @@
 # These reproduce every figure, table, and number of Blocks 1-3 without BOPTEST
 # ("Level B" in REPRODUCE.md). Python 3.11 is the reference interpreter.
 stable-baselines3==2.1.0
-torch
-gymnasium
+torch>=1.13
+gymnasium>=0.28.1,<0.30
 numpy<2.0.0
-pandas
-matplotlib
+pandas>=1.5,<2.2
+matplotlib>=3.5
 pyyaml>=6.0
 requests            # BOPTEST RTE HTTP client (any live-simulator evaluation)
 

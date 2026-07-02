@@ -127,7 +127,7 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
     order = ["v3 hourly (1h)", "v3 matched (15min)", "v3.5 calibrated"]
     KEY = {"v3 hourly (1h)": "v3", "v3 matched (15min)": "matched", "v3.5 calibrated": "v35"}
     style = {"v3": "-", "matched": "--", "v35": "-."}             # colour-blind safety
-    tick = {"v3": "v3\nhourly", "matched": "matched\nv3", "v35": "v3.5"}
+    tick = {"v3": "BB\nhourly", "matched": "BB\n15 min", "v35": "GB"}
     admap = dict(adapters)
     rr = {r["surrogate"]: r["rel_roughness"] for r in rows}
     base = rr["v3 hourly (1h)"]
@@ -135,8 +135,8 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
     col = [fs.COLOR[KEY[n]] for n in order]
     ms = fs.paper_numbers(ROOT)["m_s"]
 
-    fig, axes = plt.subplots(1, 4, figsize=(13.6, 3.7))
-    fig.subplots_adjust(left=0.06, right=0.99, top=0.84, bottom=0.20, wspace=0.42)
+    fig, axes = plt.subplots(1, 4, figsize=(13.6, 4.5))
+    fig.subplots_adjust(left=0.06, right=0.99, top=0.87, bottom=0.16, wspace=0.42)
     axA, axB, axC, axD = axes
 
     # (A) measured action->next-temperature shape: per-state curves (thin) + median (thick)
@@ -150,11 +150,11 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
         axA.plot(A0, med / rng, color=fs.COLOR[k], ls=style[k], lw=2.4, zorder=3,
                  label=f"{fs.LABEL[k]} ({'1.0' if k == 'v3' else f'{rr[name]/base:.1f}'}$\\times$)")
     axA.axhline(0, color="0.85", lw=0.6, zorder=0)
-    axA.set_xlabel(r"supply-temperature action $a_0$", fontsize=9)
-    axA.set_ylabel("normalised response (shape)", fontsize=9)
-    axA.set_title("(A) Action→next-T map: shape + per-state spread", fontsize=9, weight="bold")
-    axA.legend(fontsize=7.5, frameon=False, loc="upper left")
-    axA.tick_params(labelsize=8); axA.grid(alpha=0.18)
+    axA.set_xlabel(r"supply-temperature action $a_0$", fontsize=10)
+    axA.set_ylabel("normalised response (shape)", fontsize=10)
+    axA.set_title("(A) Action→next-T response shape", fontsize=10, weight="bold")
+    axA.legend(fontsize=9, frameon=False, loc="upper left")
+    axA.tick_params(labelsize=9); axA.grid(alpha=0.18)
 
     # (B) scale-free relative-roughness DISTRIBUTION over the state grid (box + jittered points)
     data = [per_state_rel(admap[n]) for n in order]
@@ -167,37 +167,37 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
         axB.scatter(x + rng_state.uniform(-0.12, 0.12, len(d)), d, s=14, color=c,
                     edgecolor="white", linewidth=0.4, zorder=3)
         axB.text(x, max(d) * 1.04 + 0.05, f"$\\times${rr[n]/base:.1f}", ha="center", va="bottom",
-                 fontsize=9, weight="bold", color=c)
-    axB.set_xticks(xs); axB.set_xticklabels([tick[KEY[n]] for n in order], fontsize=8)
-    axB.set_ylabel(r"rel. roughness $\overline{|\partial^2\hat T|}/\overline{|\partial\hat T|}$", fontsize=8.5)
-    axB.set_title("(B) Roughness distribution over states", fontsize=9, weight="bold")
+                 fontsize=10, weight="bold", color=c)
+    axB.set_xticks(xs); axB.set_xticklabels([tick[KEY[n]] for n in order], fontsize=9.5)
+    axB.set_ylabel(r"rel. roughness $\overline{|\partial^2\hat T|}/\overline{|\partial\hat T|}$", fontsize=9.5)
+    axB.set_title("(B) Roughness over states", fontsize=10, weight="bold")
     axB.set_ylim(0, max(max(d) for d in data) * 1.18); axB.grid(axis="y", alpha=0.2)
 
     # (C) measured policy-side symptom: closed-loop action saturation (|a0|>0.9)
     sat = [_saturation_pct(TRACE_DIRS[n]) for n in order]
     axC.bar(xs, sat, color=col, edgecolor="0.3", linewidth=0.6, width=0.62)
     for x, s in zip(xs, sat):
-        axC.text(x, s + 1.5, f"{s:.0f}%", ha="center", va="bottom", fontsize=9, weight="bold")
-    fs.threshold(axC, 90, "near bang-bang", axis="h", color="0.45", ls=":", pos=0.5, fontsize=7.5)
-    axC.set_xticks(xs); axC.set_xticklabels([tick[KEY[n]] for n in order], fontsize=8)
-    axC.set_ylabel("action saturation ($|a_0|>0.9$, % steps)", fontsize=8.5)
-    axC.set_title("(C) Policy saturation (live)", fontsize=9, weight="bold")
+        axC.text(x, s + 1.5, f"{s:.0f}%", ha="center", va="bottom", fontsize=10, weight="bold")
+    fs.threshold(axC, 90, "near bang-bang", axis="h", color="0.45", ls=":", pos=0.5, fontsize=9.5)
+    axC.set_xticks(xs); axC.set_xticklabels([tick[KEY[n]] for n in order], fontsize=9.5)
+    axC.set_ylabel("action saturation ($|a_0|>0.9$, % steps)", fontsize=9.5)
+    axC.set_title("(C) Policy saturation (live)", fontsize=10, weight="bold")
     axC.set_ylim(0, 112); axC.grid(axis="y", alpha=0.2)
 
     # (D) live BOPTEST outcome: maintenance score m_s with the m_s=1 collapse threshold
     msv = [ms["v3"], ms["matched"], ms["v35"]]
     axD.bar(xs, msv, color=col, edgecolor="0.3", linewidth=0.6, width=0.62)
     for x, v in zip(xs, msv):
-        axD.text(x, v + 0.03, f"{v:.2f}", ha="center", va="bottom", fontsize=9, weight="bold")
+        axD.text(x, v + 0.03, f"{v:.2f}", ha="center", va="bottom", fontsize=10, weight="bold")
     axD.axhspan(0, fs.MS_USABLE, color=fs.V3, alpha=0.12, zorder=0)
-    fs.threshold(axD, fs.MS_COLLAPSE, "$m_s=1$ collapse", axis="h", color=fs.ACCURATE, pos=0.97, fontsize=7.5)
-    axD.set_xticks(xs); axD.set_xticklabels([tick[KEY[n]] for n in order], fontsize=8)
-    axD.set_ylabel("live maintenance score $m_s$", fontsize=8.5)
-    axD.set_title("(D) Live BOPTEST outcome", fontsize=9, weight="bold")
+    fs.threshold(axD, fs.MS_COLLAPSE, "$m_s=1$ collapse", axis="h", color=fs.ACCURATE, pos=0.97, fontsize=9.5)
+    axD.set_xticks(xs); axD.set_xticklabels([tick[KEY[n]] for n in order], fontsize=9.5)
+    axD.set_ylabel("live maintenance score $m_s$", fontsize=9.5)
+    axD.set_title("(D) Live BOPTEST outcome", fontsize=10, weight="bold")
     axD.set_ylim(0, max(msv) * 1.22); axD.grid(axis="y", alpha=0.2)
 
     fig.suptitle("Measured roughness mechanism: rougher action surface → policy saturation → live collapse "
-                 "(association, not a proven causal law)", fontsize=11, weight="bold", y=0.99)
+                 "(association, not a proven causal law)", fontsize=12, weight="bold", y=0.99)
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_OUT, bbox_inches="tight")
     fig.savefig(FIG_OUT.with_suffix(".png"), dpi=150, bbox_inches="tight")

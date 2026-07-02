@@ -96,7 +96,7 @@ def fig_block2_closed_loop_disturbance() -> None:
         axes[3].plot(t, df["p_total_w"] / 1000.0, label=name, color=TRACE_COLORS[name], linewidth=1.2)
     style(axes[3], "(d) HVAC power", xlabel="Time since start of typical window (h)", ylabel="Power (kW)")
 
-    fig.suptitle("Block 2 closed-loop traces with physical bounds and ambient disturbance", fontsize=14, weight="bold")
+    fig.suptitle("Closed-loop traces with physical bounds and ambient disturbance", fontsize=14, weight="bold")
     save(fig, "block2_q1_polish_closed_loop_disturbance")
 
 
@@ -255,7 +255,7 @@ def fig_block3_deployment_quadrants() -> None:
     ax.text(xl, yt, "REJECT\nfail + energy penalty", ha="center", va="center", fontsize=8.5, color="#7d1f1f", weight="bold")
 
     ax.set_xlim(xlo, xhi); ax.set_ylim(ylo, yhi)
-    style(ax, "Block 3 deployment plane: comfort/safety margin vs energy",
+    style(ax, "Deployment plane: comfort/safety margin vs energy",
           r"comfort/safety margin $M_k=\tau_k-m_s^{RL}$   ($M_k>0$ = pass; $\tau_k=1.25\,m_s^{PI}$)",
           "energy $\\Delta$ vs PI (%)")
     save(fig, "block3_q1_polish_deployment_quadrants")
@@ -283,7 +283,7 @@ def fig_block3_radar_transfer_profiles() -> None:
     ax.set_xticklabels(labels)
     ax.set_ylim(0, 1)
     ax.set_yticks([0.25, 0.5, 0.75, 1.0])
-    ax.set_title("Block 3 transfer profile radar: surrogate gain vs controller deployability", pad=20, weight="bold")
+    ax.set_title("Transfer profile radar: surrogate gain vs controller deployability", pad=20, weight="bold")
     ax.legend(loc="upper right", bbox_to_anchor=(1.28, 1.12), frameon=False)
     save(fig, "block3_q1_polish_transfer_radar")
 

@@ -92,8 +92,8 @@ def fig_czon_prior_band() -> None:
 def fig_horizon_ci() -> None:
     specs = [
         ("v3", "outputs/surrogate_v3_rollout_prepared_15min/v3/window_errors.csv", BLUE),
-        ("raw v3.5", "outputs/surrogate_v35_rollout_prepared_15min_episodeaware/raw_v35/window_errors.csv", ORANGE),
-        ("calibrated v3.5", "outputs/surrogate_v35_rollout_prepared_15min_episodeaware/calibrated_v35/window_errors.csv", TEAL),
+        ("raw GB", "outputs/surrogate_v35_rollout_prepared_15min_episodeaware/raw_v35/window_errors.csv", ORANGE),
+        ("calibrated GB", "outputs/surrogate_v35_rollout_prepared_15min_episodeaware/calibrated_v35/window_errors.csv", TEAL),
     ]
     fig, ax = plt.subplots(figsize=(9.4, 5.0))
     for label, rel, color in specs:
@@ -140,8 +140,8 @@ def normal_qq_points(values: np.ndarray, n: int = 1200) -> tuple[np.ndarray, np.
 def fig_residual_distribution_qq() -> None:
     specs = [
         ("v3", "outputs/surrogate_v3_rollout_prepared_15min/v3/all_full_rollouts.csv", BLUE),
-        ("raw v3.5", "outputs/surrogate_v35_rollout_prepared_15min_episodeaware/raw_v35/all_full_rollouts.csv", ORANGE),
-        ("calibrated v3.5", "outputs/surrogate_v35_rollout_prepared_15min_episodeaware/calibrated_v35/all_full_rollouts.csv", TEAL),
+        ("raw GB", "outputs/surrogate_v35_rollout_prepared_15min_episodeaware/raw_v35/all_full_rollouts.csv", ORANGE),
+        ("calibrated GB", "outputs/surrogate_v35_rollout_prepared_15min_episodeaware/calibrated_v35/all_full_rollouts.csv", TEAL),
     ]
     fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.0))
     residuals: dict[str, np.ndarray] = {}
@@ -162,14 +162,14 @@ def fig_residual_distribution_qq() -> None:
     axes[1].set_xlim(0, 5.0)
     axes[1].set_ylim(0, 1.01)
     inset = inset_axes(axes[0], width="42%", height="42%", loc="upper left", borderpad=1.2)
-    tq, oq = normal_qq_points(residuals["calibrated v3.5"])
+    tq, oq = normal_qq_points(residuals["calibrated GB"])
     inset.scatter(tq, oq, s=4, color=TEAL, alpha=0.45)
     lim = max(abs(tq).max(), abs(oq).max())
     inset.plot([-lim, lim], [-lim, lim], color="#333333", linewidth=1.0)
     inset.set_title("Q-Q: calibrated", fontsize=8)
     inset.tick_params(labelsize=7)
     inset.grid(True, color="#eeeeee", linewidth=0.6)
-    fig.suptitle("Residual distribution, tolerance CDF, and calibrated-v3.5 Q-Q diagnostic", fontsize=13, weight="bold")
+    fig.suptitle("Residual distribution, tolerance CDF, and calibrated-GB Q-Q diagnostic", fontsize=13, weight="bold")
     save(fig, "block1_q1_polish_residual_distribution_qq_cdf")
 
 
@@ -207,7 +207,7 @@ def fig_matched_waterfall_accent() -> None:
     ax.set_xticks([0, 1, 2, 3])
     ax.set_xticklabels(
         [
-            "v3 hourly\n1.557 degC",
+            "BB (hourly)\n1.557 degC",
             "15-min corpus\n74.6% of gain",
             "Stage A/B/C\n25.4% of gain",
             "calibrated v3.5\n0.644 degC",

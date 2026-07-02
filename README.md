@@ -9,22 +9,27 @@ data-driven generators and figures behind every result. The typeset manuscript a
 supplementary PDFs are the journal's artifact and are not vendored here.
 
 > **Headline result — the fidelity–utility paradox.** On the BOPTEST
-> `bestest_air` testcase, a physically-calibrated grey-box surrogate (v3.5,
+> `bestest_air` testcase, a physically-calibrated grey-box surrogate **GB** (v3.5,
 > RC–Neural-ODE) is the *more accurate* predictor (24 h rollout RMSE
-> 0.644 °C vs 1.557 °C for a black-box surrogate v3), yet used directly as a
+> 0.644 °C vs 1.557 °C for a black-box surrogate **BB**), yet used directly as a
 > reinforcement-learning training environment it produces an *unusable* controller
 > (maintenance score `m_s = 1.046`, >77 % comfort violation). Training on the
-> predictively weaker v3 yields a usable controller. The effect tracks a
+> predictively weaker **BB** yields a usable controller. The effect tracks a
 > fidelity/smoothing trade-off, not the model class: retraining the *same* black-box
 > surrogate at the finer 15-min control resolution makes it strictly *more* accurate
 > (0.876 °C) yet also unusable as a training environment (`m_s = 1.14`/`1.21`,
-> >85 % violation), on a par with the calibrated twin. A **hybrid** that uses v3 for
-> smooth rollout dynamics and a *frozen* v3.5 as a per-step reward-shaping censor
+> >85 % violation), on a par with the calibrated twin. A **hybrid** that uses **BB** for
+> smooth rollout dynamics and a *frozen* **GB** as a per-step reward-shaping censor
 > recovers the best **cross-window robustness** (`m_s = 0.041` typical, <5 % violation
 > on both windows) at ~85× the live-simulator throughput. The optimal censor weight is
 > **controller-family specific**, and cross-testcase transfer resolves into a
 > component-level boundary: the inverse-calibration pipeline transfers, the frozen
 > policy does not.
+
+> **Naming.** The manuscript uses **BB** (black-box surrogate) and **GB** (grey-box
+> RC–Neural-ODE) throughout; the code and these docs retain the legacy artifact names
+> **v3** (= BB) and **v3.5** (= GB). The internal "Block 1 / 2 / 3" organisation
+> corresponds to **Results I / II / III** of the paper.
 
 ---
 
@@ -32,7 +37,7 @@ supplementary PDFs are the journal's artifact and are not vendored here.
 
 ```
 configs/        YAML configs for surrogates, controllers, and the Block 3 protocol
-surrogate/      surrogate model definitions (v3 black-box, v3.5 RC-Neural-ODE)
+surrogate/      surrogate model definitions (v3 = BB black-box, v3.5 = GB RC-Neural-ODE)
 layers/         shared neural-network building blocks
 envs/           BOPTEST gym environments, observation wrappers, reward shaping
 training/       training pipelines (PPO, HDRL, MORL surrogate-pretrain pipeline)

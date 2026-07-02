@@ -5,6 +5,10 @@ figure, table, and reported number of Blocks 1–3 directly from the shipped
 artifacts — no BOPTEST and no GPU, in minutes. **Level C** re-runs the experiments
 end-to-end and requires a BOPTEST instance and substantial compute.
 
+> **Naming.** Code artifacts keep the legacy names **v3** (= BB, black-box surrogate) and
+> **v3.5** (= GB, grey-box RC–Neural-ODE); the manuscript uses BB/GB. Blocks 1/2/3
+> correspond to Results I/II/III of the paper.
+
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt

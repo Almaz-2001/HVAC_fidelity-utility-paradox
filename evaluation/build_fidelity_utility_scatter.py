@@ -111,7 +111,7 @@ def make_figure(rows: list[dict]) -> None:
         _draw_point(axA, r)
     _zones(axA, ymax)
     axA.set_title("(A) Single-model paradox: more accurate → worse live $m_s$", fontsize=10.5, weight="bold")
-    axA.annotate("more accurate twin", (0.62, ymax * 0.5), fontsize=8.5, color="0.4",
+    axA.annotate("more accurate twin", (0.62, ymax * 0.5), fontsize=9.5, color="0.4",
                  ha="left", rotation=0)
     axA.annotate("", xy=(0.55, ymax * 0.42), xytext=(0.95, ymax * 0.42),
                  arrowprops=dict(arrowstyle="->", color="0.5", lw=1.1))
@@ -123,9 +123,9 @@ def make_figure(rows: list[dict]) -> None:
     _draw_point(axB, byk["hybrid"])
     _zones(axB, ymax)
     hy = byk["hybrid"]
-    axB.annotate("hybrid: plotted at v3's RMSE\n(v3 supplies rollout dynamics;\nfrozen v3.5 = reward censor only)",
+    axB.annotate("hybrid: plotted at BB's RMSE\n(BB supplies rollout dynamics;\nfrozen GB = reward censor only)",
                  (hy["rmse_24h_c"], hy["m_s_mean"]), xytext=(-10, 60), textcoords="offset points",
-                 fontsize=8, ha="right", color=fs.HYBRID,
+                 fontsize=9, ha="right", color=fs.HYBRID,
                  arrowprops=dict(arrowstyle="->", color=fs.HYBRID, lw=1.2))
     axB.set_title("(B) Role-separated hybrid recovers usable control", fontsize=10.5, weight="bold")
 
@@ -142,14 +142,14 @@ def make_figure(rows: list[dict]) -> None:
     mh = fs.legend_handles(["v3", "matched", "v35", "hybrid"], with_role=True, markersize=9)
     wh = [Line2D([0], [0], lw=0, marker="o", color="0.3", mfc="0.3", mec="0.3", ms=9, label="peak window"),
           Line2D([0], [0], lw=0, marker="o", color="0.3", mfc="white", mec="0.3", ms=9, label="typical window")]
-    axA.legend(handles=mh, loc="lower left", fontsize=8, frameon=True, framealpha=0.92)
-    axB.legend(handles=wh, loc="lower left", fontsize=8, frameon=True, framealpha=0.92,
-               title="markers", title_fontsize=8)
+    axA.legend(handles=mh, loc="lower left", fontsize=9, frameon=True, framealpha=0.92)
+    axB.legend(handles=wh, loc="lower left", fontsize=9, frameon=True, framealpha=0.92,
+               title="markers", title_fontsize=9)
 
     fig.suptitle("Fidelity–utility paradox: lower RMSE$_T$ does not imply lower live $m_s$",
                  fontsize=12.5, weight="bold", y=0.99)
-    fig.text(0.5, 0.005, "Error bars = ±1 s.d. over N=3 seeds (v3, matched-v3, hybrid; "
-             "reports/block2_thermostatic_seed_band.csv); direct v3.5 is single-seed.",
+    fig.text(0.5, 0.005, "Error bars = ±1 s.d. over N=3 seeds (BB, matched-resolution BB, hybrid); "
+             "direct GB is single-seed.",
              ha="center", fontsize=7.6, color="0.45")
     fig.tight_layout(rect=(0, 0.03, 1, 0.96))
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)

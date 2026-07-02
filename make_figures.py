@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import shutil
 import subprocess
 import sys
 import time
@@ -63,6 +64,48 @@ def ordered(scripts: list[str]) -> list[str]:
     return first + middle + last
 
 
+# Generator output dirs scanned when gathering figures into the manuscript figure folder.
+FIG_SEARCH_DIRS = [
+    "docs/results1_digital_twin_overleaf/figures",
+    "docs/results2_control_overleaf/figures",
+    "docs/results3_transferability_overleaf/figures",
+    "reports/figures/article_real",
+]
+PAPER_FIGS = ROOT / "docs" / "paper_combined" / "figures"
+
+
+def manifest_files() -> list[str]:
+    """Output file stems (`file:`) declared by every main + supplementary figure entry."""
+    m = yaml.safe_load(MANIFEST.read_text(encoding="utf-8"))
+    files: list[str] = []
+    for section in ("main_figures", "supplementary_figures"):
+        for info in (m.get(section) or {}).values():
+            if isinstance(info, dict) and info.get("file"):
+                files.append(info["file"])
+    return files
+
+
+def gather_to_paper_combined() -> int:
+    """Copy each manifest figure's freshest PDF/PNG into docs/paper_combined/figures/ so the
+    vendored figure snapshot always matches the regenerated outputs. Figures written directly
+    into that folder by their generator, and static schematics with no generator output, are
+    left in place."""
+    PAPER_FIGS.mkdir(parents=True, exist_ok=True)
+    search = [ROOT / d for d in FIG_SEARCH_DIRS]
+    gathered = 0
+    for stem in manifest_files():
+        cands = [d / f"{stem}.pdf" for d in search if (d / f"{stem}.pdf").exists()]
+        if not cands:
+            continue
+        src = max(cands, key=lambda p: p.stat().st_mtime)
+        shutil.copy2(src, PAPER_FIGS / f"{stem}.pdf")
+        png = src.with_suffix(".png")
+        if png.exists():
+            shutil.copy2(png, PAPER_FIGS / f"{stem}.png")
+        gathered += 1
+    return gathered
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -94,6 +137,9 @@ def main() -> int:
     failed = [s for s, rc, _ in results if rc != 0]
     print(f"=== {len(passed)}/{len(results)} generators passed "
           f"({sum(d for _, _, d in results):.0f}s total) ===")
+    if not args.only:
+        n = gather_to_paper_combined()
+        print(f"Gathered {n} figures into docs/paper_combined/figures/")
     if failed:
         print("FAILED:")
         for s in failed:

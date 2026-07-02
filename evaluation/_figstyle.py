@@ -27,8 +27,8 @@ NEUTRAL = "#6f4e7c"
 ORDER = ["v3", "matched", "v35", "hybrid", "pi"]
 COLOR = {"v3": V3, "matched": MATCHED, "v35": ACCURATE, "hybrid": HYBRID, "pi": PI}
 MARKER = {"v3": "o", "matched": "s", "v35": "^", "hybrid": "D", "pi": "X"}
-LABEL = {"v3": "v3 hourly", "matched": "matched-v3 (15 min)",
-         "v35": "direct v3.5", "hybrid": "hybrid", "pi": "PI baseline"}
+LABEL = {"v3": "BB (hourly)", "matched": "BB (15 min)",
+         "v35": "GB (direct)", "hybrid": "hybrid", "pi": "PI baseline"}
 ROLE = {"v3": "usable", "matched": "collapse", "v35": "collapse",
         "hybrid": "robust", "pi": "baseline"}
 

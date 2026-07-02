@@ -31,7 +31,7 @@ If BOPTEST RTE is not running yet, start it from the BOPTEST runtime folder on
 the host machine:
 
 ```powershell
-cd C:\Users\user\Desktop\HVAC_DRL_MORL\boptest_rte
+cd <path-to-boptest_rte>
 docker compose up -d
 docker compose ps
 ```
