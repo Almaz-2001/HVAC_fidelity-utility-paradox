@@ -41,7 +41,7 @@ python docs/results1_digital_twin_overleaf/build_results1_overleaf.py
 # Block 2 — downstream control utility (paradox, matched-resolution ablation, hybrid, HDRL, MORL)
 python docs/results2_control_overleaf/build_results2_overleaf.py
 
-# Block 3 — pre-registered transferability (transfer matrix, C_zon invariance)
+# Block 3 — pre-registered transferability (transfer matrix, C_zon ratio consistency)
 python docs/results3_transferability_overleaf/build_results3_overleaf.py
 ```
 

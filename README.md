@@ -14,7 +14,7 @@ supplementary PDFs are the journal's artifact and are not vendored here.
 > 0.644 °C vs 1.557 °C for a black-box surrogate **BB**), yet used directly as a
 > reinforcement-learning training environment it produces an *unusable* controller
 > (maintenance score `m_s = 1.046`, >77 % comfort violation). Training on the
-> predictively weaker **BB** yields a usable controller. The effect tracks a
+> predictively weaker **BB** yields a usable controller. The effect is consistent with a
 > fidelity/smoothing trade-off, not the model class: retraining the *same* black-box
 > surrogate at the finer 15-min control resolution makes it strictly *more* accurate
 > (0.876 °C) yet also unusable as a training environment (`m_s = 1.14`/`1.21`,
@@ -164,12 +164,18 @@ Please cite the manuscript (details to be completed on acceptance):
 @article{HVAC_FidelityUtility_2026,
   title   = {The Fidelity--Utility Paradox in Surrogate-Based Reinforcement
              Learning for HVAC Control},
-  author  = {<AUTHORS>},
+  author  = {Mukhanbet, Aksultan and Sapargali, Almaz and Aibagarov, Serik and
+             Imankulov, Timur and Shinassylov, Shona and Trigo, Paulo},
   journal = {Results in Engineering},
   year    = {2026},
   note    = {Under review}
 }
 ```
+
+## Funding
+
+This research was funded by the Committee of Science of the Ministry of Science and
+Higher Education of the Republic of Kazakhstan (Grant No. AP23488794).
 
 ## License
 
