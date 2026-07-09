@@ -116,26 +116,29 @@ def thermostatic_benchmark_command(variant: str, *, seed: int = 42) -> list[str]
     )
 
 
-def transfer_variant_config(variant: str) -> tuple[str, list[str], str]:
+def transfer_variant_config(variant: str, seed: int = 42) -> tuple[str, list[str], str]:
+    # seed 42 keeps the canonical artifact names; other seeds get a _seedN suffix on
+    # both the model checkpoint and the output directory (multi-seed robustness band).
+    sfx = _seed_suffix(seed)
     if variant == "pure":
-        return "models/ppo_thermostatic.zip", [], "outputs/block13_closed_loop_transfer_pure_v3"
+        return f"models/ppo_thermostatic{sfx}.zip", [], f"outputs/block13_closed_loop_transfer_pure_v3{sfx}"
     if variant == "hybrid_l010":
         return (
-            "models/ppo_thermostatic_hybrid_v3_v35_l010.zip",
+            f"models/ppo_thermostatic_hybrid_v3_v35_l010{sfx}.zip",
             ["--obs-ablation", "no_delta_t", "--power-feature-mode", "clipped_log", "--t-zone-feature-mode", "raw"],
-            "outputs/block13_closed_loop_transfer_hybrid_l010",
+            f"outputs/block13_closed_loop_transfer_hybrid_l010{sfx}",
         )
     if variant == "v35_direct":
         return (
-            "models/ppo_thermostatic_v35_15min_no_delta_t_powerlog_tzone.zip",
+            f"models/ppo_thermostatic_v35_15min_no_delta_t_powerlog_tzone{sfx}.zip",
             ["--obs-ablation", "no_delta_t", "--power-feature-mode", "clipped_log", "--t-zone-feature-mode", "comfort_centered"],
-            "outputs/block13_closed_loop_transfer_no_delta_t_powerlog_tzone",
+            f"outputs/block13_closed_loop_transfer_no_delta_t_powerlog_tzone{sfx}",
         )
     raise ValueError(f"Unknown transfer variant: {variant}")
 
 
-def thermostatic_transfer_command(variant: str) -> list[str]:
-    model, feature_args, out = transfer_variant_config(variant)
+def thermostatic_transfer_command(variant: str, seed: int = 42) -> list[str]:
+    model, feature_args, out = transfer_variant_config(variant, seed)
     return cmd(
         PY,
         "-B",
@@ -342,6 +345,7 @@ def main() -> None:
 
     p = sub.add_parser("thermostatic-transfer")
     p.add_argument("--variant", choices=["pure", "v35_direct", "hybrid_l010", "all"], required=True)
+    p.add_argument("--seed", type=int, default=42, help="Evaluate the model trained with this seed (matches thermostatic-train --seed; 42 keeps canonical paths).")
 
     p = sub.add_parser("thermostatic-diagnose")
     p.add_argument("--variant", choices=["pure", "v35_direct", "hybrid_l010", "all"], required=True)
@@ -390,7 +394,7 @@ def main() -> None:
         variants = ["hybrid_l005", "hybrid_l010", "hybrid_l015"] if args.variant == "hybrid_sweep" else [args.variant]
         commands = [thermostatic_benchmark_command(v, seed=args.seed) for v in variants]
     elif args.command == "thermostatic-transfer":
-        commands = [thermostatic_transfer_command(v) for v in expand_variants(args.variant, ["v35_direct", "pure", "hybrid_l010"])]
+        commands = [thermostatic_transfer_command(v, seed=args.seed) for v in expand_variants(args.variant, ["v35_direct", "pure", "hybrid_l010"])]
     elif args.command == "thermostatic-diagnose":
         commands = [thermostatic_diagnose_command(v) for v in expand_variants(args.variant, ["v35_direct", "pure", "hybrid_l010"])]
     elif args.command == "warmstart":

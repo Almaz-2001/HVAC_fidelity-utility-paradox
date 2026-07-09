@@ -29,10 +29,43 @@ import _figstyle as fs
 SRC = ROOT / "reports/block2_thermostatic_seed_band.csv"
 FIG_OUT = ROOT / "docs/results2_control_overleaf/figures/block2_seed_band.pdf"
 
+GB_COLOR = "#762a83"   # direct v3.5: distinct purple (V3 green / matched salmon / hybrid blue)
+DIRECT_GB_DIRS = {
+    42: ROOT / "outputs/block13_closed_loop_transfer_no_delta_t_powerlog_tzone",
+    43: ROOT / "outputs/block13_closed_loop_transfer_no_delta_t_powerlog_tzone_seed43",
+    44: ROOT / "outputs/block13_closed_loop_transfer_no_delta_t_powerlog_tzone_seed44",
+}
+
+
+def direct_gb_rows():
+    """direct-GB (v3.5) N=3 seed band, aggregated from the committed block13 live-transfer
+    summaries (these are not in reports/block2_thermostatic_seed_band.csv). Same columns as SRC."""
+    wmap = {"peak_heat_window": "peak", "typical_heat_window": "typical"}
+    frames = []
+    for seed, d in DIRECT_GB_DIRS.items():
+        f = d / "summary.csv"
+        if not f.exists():
+            return pd.DataFrame()          # incomplete seed set -> skip direct-GB gracefully
+        s = pd.read_csv(f)[["scenario", "boptest_m_s", "boptest_violation_pct"]].copy()
+        frames.append(s)
+    a = pd.concat(frames, ignore_index=True)
+    a["window"] = a["scenario"].map(wmap)
+    recs = []
+    for window in ("peak", "typical"):
+        g = a[a.window == window]
+        recs.append(dict(controller="direct v3.5", window=window,
+                         m_s_mean=g.boptest_m_s.mean(), m_s_std=g.boptest_m_s.std(ddof=1),
+                         violation_pct_mean=g.boptest_violation_pct.mean(),
+                         violation_pct_std=g.boptest_violation_pct.std(ddof=1),
+                         n_seeds=len(g), seeds="{42,43,44}"))
+    return pd.DataFrame(recs)
+
+
 # controller label in the CSV -> (display name, unified colour); narrative order
 CONTROLLERS = [
     ("pure v3", "Coarse v3\n(hourly)", fs.V3),
     ("matched v3 (15-min)", "Matched-res. v3\n(15-min)", fs.MATCHED),
+    ("direct v3.5", "Direct v3.5\n(GB env)", GB_COLOR),
     ("hybrid (lambda_T=0.10)", "Hybrid\n(v3 + v3.5 censor)", fs.HYBRID),
 ]
 # window -> (marker, filled?, x-offset, legend label)
@@ -48,6 +81,7 @@ def _row(df, ctrl, window):
 def main() -> None:
     fs.apply()
     df = pd.read_csv(SRC)
+    df = pd.concat([df, direct_gb_rows()], ignore_index=True)
     n_seeds = int(df["n_seeds"].max())
     seeds = df["seeds"].iloc[0]
 
