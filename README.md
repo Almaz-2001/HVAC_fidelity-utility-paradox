@@ -15,7 +15,7 @@ supplementary PDFs are the journal's artifact and are not vendored here.
 > reinforcement-learning training environment it produces an *unusable* controller
 > (maintenance score `m_s = 1.046`, >77 % comfort violation). Training on the
 > predictively weaker **BB** yields a usable controller. The effect is consistent with a
-> fidelity/smoothing trade-off, not the model class: retraining the *same* black-box
+> temporal-coarseness (coarse per-step increment) effect, not the model class: retraining the *same* black-box
 > surrogate at the finer 15-min control resolution makes it strictly *more* accurate
 > (0.876 °C) yet also unusable as a training environment (`m_s = 1.14`/`1.21`,
 > >85 % violation), on a par with the calibrated twin. A **hybrid** that uses **BB** for

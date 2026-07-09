@@ -137,6 +137,19 @@ across `N = 5` seeds and several controller families; hours to days).
    python evaluation/run_block2.py seed-band --seeds 42,43,44   # -> reports/block2_thermostatic_seed_band.csv
    ```
 
+   The direct-GB (`v35_direct`) and Delta-t-rescaled (`pure_dt_scaled`) collapse controls
+   are seed-swept the same way but evaluated via `thermostatic-transfer` (they run zero-shot
+   on live BOPTEST rather than through the benchmark loop); every seed stays above the
+   `m_s = 1` collapse line, confirming both collapses are seed-stable:
+   ```bash
+   for s in 42 43 44; do
+     for v in v35_direct pure_dt_scaled; do
+       python evaluation/run_block2.py thermostatic-train    --variant $v --seed $s
+       python evaluation/run_block2.py thermostatic-transfer --variant $v --seed $s
+     done
+   done
+   ```
+
    **Measured paradox mechanism (response-surface smoothness).** This probe needs only
    the three committed surrogate checkpoints (no controller, no BOPTEST): it sweeps each
    surrogate's one-step action map and reports the scale-free relative roughness
