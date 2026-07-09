@@ -115,6 +115,9 @@ class DirectTSupModelAdapter(nn.Module):
         self.comparison_kind = _resolve_kind(comparison_kind) if comparison_kind is not None else None
         base_model = model.surrogate if hasattr(model, "surrogate") else model
         self.P_MAX = float(getattr(base_model, "P_MAX", 5500.0))
+        # Optional Δt-rescaling of the legacy (hourly) increment when deployed at a finer
+        # runtime step: t_next = t_zone + ratio·(model_out − t_zone). 1.0 = canonical (off).
+        self.legacy_dt_rescale: float = 1.0
 
     @staticmethod
     def _forward_kind(
@@ -211,6 +214,9 @@ class DirectTSupModelAdapter(nn.Module):
                 comparison_t = float(comparison_t_tensor[0].detach().cpu())
                 comparison_p = float(comparison_p_tensor[0].detach().cpu())
         primary_t = float(t_next[0].detach().cpu())
+        if self.legacy_dt_rescale != 1.0:
+            # rescale the legacy hourly increment to the runtime step (dimensional consistency)
+            primary_t = t_zone + self.legacy_dt_rescale * (primary_t - t_zone)
         primary_p = float(p_total[0].detach().cpu())
         return {
             "t_next": primary_t,

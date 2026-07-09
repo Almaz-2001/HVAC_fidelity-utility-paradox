@@ -218,6 +218,7 @@ class ThermostaticEnv(Env):
         delta_feature_mode: str = "raw",
         power_feature_mode: str = "raw",
         t_zone_feature_mode: str = "raw",
+        legacy_dt_rescale: bool = False,
         lambda_temp_disagree: float = LAMBDA_TEMP_DISAGREE_DEFAULT,
         lambda_power_disagree: float = LAMBDA_POWER_DISAGREE_DEFAULT,
     ):
@@ -244,6 +245,10 @@ class ThermostaticEnv(Env):
             device=self.device,
             runtime_step_sec=float(step_sec),
         )
+        if legacy_dt_rescale:
+            # Δt-consistency control: rescale the hourly-trained increment to the runtime step.
+            self.model.legacy_dt_rescale = float(step_sec) / 3600.0
+            print(f"[THERMOSTATIC] Legacy Δt-rescale ON: increment × {self.model.legacy_dt_rescale:.3f}")
         self.surrogate_meta = self.model.describe()
         self.lambda_temp_disagree = float(lambda_temp_disagree)
         self.lambda_power_disagree = float(lambda_power_disagree)
@@ -508,6 +513,8 @@ def parse_args():
     parser.add_argument("--delta-feature-mode", choices=sorted(SUPPORTED_DELTA_FEATURE_MODES), default="raw")
     parser.add_argument("--power-feature-mode", choices=sorted(SUPPORTED_POWER_FEATURE_MODES), default="raw")
     parser.add_argument("--t-zone-feature-mode", choices=sorted(SUPPORTED_T_ZONE_FEATURE_MODES), default="raw")
+    parser.add_argument("--legacy-dt-rescale", action="store_true",
+                        help="Rescale the hourly-trained (legacy) increment to the runtime step (Delta-t-consistency control for Major 3).")
     parser.add_argument("--lambda-temp-disagree", type=float, default=LAMBDA_TEMP_DISAGREE_DEFAULT)
     parser.add_argument("--lambda-power-disagree", type=float, default=LAMBDA_POWER_DISAGREE_DEFAULT)
     parser.add_argument("--save-name", default=None, help="Model basename without .zip")
@@ -590,6 +597,7 @@ def main():
         "delta_feature_mode": args.delta_feature_mode,
         "power_feature_mode": args.power_feature_mode,
         "t_zone_feature_mode": args.t_zone_feature_mode,
+        "legacy_dt_rescale": args.legacy_dt_rescale,
         "lambda_temp_disagree": args.lambda_temp_disagree,
         "lambda_power_disagree": args.lambda_power_disagree,
     }

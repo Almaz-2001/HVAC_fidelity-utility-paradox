@@ -65,6 +65,11 @@ def thermostatic_train_command(variant: str, *, smoke: bool = False, seed: int =
         base += cmd("--num-envs", "4", "--total-steps", "50000")
     if variant == "pure":
         save, args = "ppo_thermostatic", cmd("--surrogate-kind", "legacy_v3", "--surrogate-path", SURROGATE_V3)
+    elif variant == "pure_dt_scaled":
+        # Major-3 Delta-t-consistency control: same hourly BB as "pure" but its increment is
+        # rescaled to the 900 s runtime step (disentangles coarse-graining from step mismatch).
+        save = "ppo_thermostatic_dt_scaled"
+        args = cmd("--surrogate-kind", "legacy_v3", "--surrogate-path", SURROGATE_V3, "--legacy-dt-rescale")
     elif variant == "pure_v3_15min":
         # Reviewer mitigation (Threats to validity 8.5): identical recipe to "pure"
         # but trained on the corpus-matched 15-min v3 instead of the hourly v3.
@@ -122,6 +127,8 @@ def transfer_variant_config(variant: str, seed: int = 42) -> tuple[str, list[str
     sfx = _seed_suffix(seed)
     if variant == "pure":
         return f"models/ppo_thermostatic{sfx}.zip", [], f"outputs/block13_closed_loop_transfer_pure_v3{sfx}"
+    if variant == "pure_dt_scaled":
+        return f"models/ppo_thermostatic_dt_scaled{sfx}.zip", [], f"outputs/block13_closed_loop_transfer_pure_dt_scaled{sfx}"
     if variant == "hybrid_l010":
         return (
             f"models/ppo_thermostatic_hybrid_v3_v35_l010{sfx}.zip",
@@ -335,7 +342,7 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("thermostatic-train")
-    p.add_argument("--variant", choices=["pure", "pure_v3_15min", "v35_direct", "hybrid_l005", "hybrid_l010", "hybrid_l015", "hybrid_sweep"], required=True)
+    p.add_argument("--variant", choices=["pure", "pure_dt_scaled", "pure_v3_15min", "v35_direct", "hybrid_l005", "hybrid_l010", "hybrid_l015", "hybrid_sweep"], required=True)
     p.add_argument("--smoke", action="store_true", help="Quick 4-env x 50k-step load/step check instead of the full 10M run.")
     p.add_argument("--seed", type=int, default=42, help="RNG seed; seed 42 keeps canonical names, others get a _seedN suffix.")
 
@@ -344,11 +351,11 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=42, help="Benchmark the model trained with this seed (matches thermostatic-train --seed).")
 
     p = sub.add_parser("thermostatic-transfer")
-    p.add_argument("--variant", choices=["pure", "v35_direct", "hybrid_l010", "all"], required=True)
+    p.add_argument("--variant", choices=["pure", "pure_dt_scaled", "v35_direct", "hybrid_l010", "all"], required=True)
     p.add_argument("--seed", type=int, default=42, help="Evaluate the model trained with this seed (matches thermostatic-train --seed; 42 keeps canonical paths).")
 
     p = sub.add_parser("thermostatic-diagnose")
-    p.add_argument("--variant", choices=["pure", "v35_direct", "hybrid_l010", "all"], required=True)
+    p.add_argument("--variant", choices=["pure", "pure_dt_scaled", "v35_direct", "hybrid_l010", "all"], required=True)
 
     sub.add_parser("warmstart")
 
