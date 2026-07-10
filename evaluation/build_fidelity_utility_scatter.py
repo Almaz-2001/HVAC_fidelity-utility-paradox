@@ -30,9 +30,34 @@ import _figstyle as fs
 FIG_OUT = ROOT / "docs/results2_control_overleaf/figures/block2_fidelity_utility_scatter.pdf"
 CSV_OUT = ROOT / "reports/block2_fidelity_utility_scatter.csv"
 
+# direct-GB (v3.5) N=3 seed s.d., aggregated from committed block13 live-transfer summaries
+_DIRECT_GB_DIRS = [
+    "outputs/block13_closed_loop_transfer_no_delta_t_powerlog_tzone",
+    "outputs/block13_closed_loop_transfer_no_delta_t_powerlog_tzone_seed43",
+    "outputs/block13_closed_loop_transfer_no_delta_t_powerlog_tzone_seed44",
+]
+
 
 def _rd(rel: str) -> pd.DataFrame:
     return pd.read_csv(ROOT / rel)
+
+
+def _direct_gb_std():
+    """(peak, typical) seed s.d. of direct-GB live m_s over the N=3 seeds, or (None, None)."""
+    import numpy as np
+    wmap = {"peak_heat_window": "peak", "typical_heat_window": "typical"}
+    vals = {"peak": [], "typical": []}
+    for d in _DIRECT_GB_DIRS:
+        f = ROOT / d / "summary.csv"
+        if not f.exists():
+            return None, None
+        for _, r in pd.read_csv(f).iterrows():
+            w = wmap.get(r["scenario"])
+            if w:
+                vals[w].append(float(r["boptest_m_s"]))
+    pk = float(np.std(vals["peak"], ddof=1)) if len(vals["peak"]) == 3 else None
+    ty = float(np.std(vals["typical"], ddof=1)) if len(vals["typical"]) == 3 else None
+    return pk, ty
 
 
 def collect() -> list[dict]:
@@ -53,6 +78,7 @@ def collect() -> list[dict]:
         return float(m.iloc[0]["m_s_std"]) if not m.empty else None
 
     v35 = arch.loc["v35_calibrated"]
+    gb_std_pk, gb_std_ty = _direct_gb_std()   # N=3 seed s.d. for direct GB (Major 1)
     rows = [
         {"key": "v3", "controller": "v3 (hourly)", "rmse_24h_c": float(matched.loc["v3_hourly"]["rmse_24h_c"]),
          "m_s_peak": cl_ms("pure_v3_hourly", "peak_heat_window"), "m_s_typ": cl_ms("pure_v3_hourly", "typical_heat_window"),
@@ -62,7 +88,7 @@ def collect() -> list[dict]:
          "std_peak": std("matched v3 (15-min)", "peak"), "std_typ": std("matched v3 (15-min)", "typical"), "is_single": True},
         {"key": "v35", "controller": "v3.5 (calibrated)", "rmse_24h_c": float(v35["block1_rollout_24h_rmse_c"]),
          "m_s_peak": float(v35["peak_control_m_s"]), "m_s_typ": float(v35["typical_control_m_s"]),
-         "std_peak": None, "std_typ": None, "is_single": True},
+         "std_peak": gb_std_pk, "std_typ": gb_std_ty, "is_single": gb_std_pk is None},
         {"key": "hybrid", "controller": "hybrid (v3 rollout + v3.5 censor)", "rmse_24h_c": float(matched.loc["v3_hourly"]["rmse_24h_c"]),
          "m_s_peak": hyb_ms("peak_heat_window"), "m_s_typ": hyb_ms("typical_heat_window"),
          "std_peak": std("hybrid (lambda_T=0.10)", "peak"), "std_typ": std("hybrid (lambda_T=0.10)", "typical"), "is_single": False},
@@ -148,8 +174,8 @@ def make_figure(rows: list[dict]) -> None:
 
     fig.suptitle("Fidelity–utility paradox: lower RMSE$_T$ does not imply lower live $m_s$",
                  fontsize=12.5, weight="bold", y=0.99)
-    fig.text(0.5, 0.005, "Error bars = ±1 s.d. over N=3 seeds (BB, matched-resolution BB, hybrid); "
-             "direct GB is single-seed.",
+    fig.text(0.5, 0.005, "Error bars = ±1 s.d. over N=3 seeds (BB, matched-resolution BB, direct GB, hybrid). "
+             "Points are the canonical seed-42 m_s; the N=3 spread is the bar.",
              ha="center", fontsize=7.6, color="0.45")
     fig.tight_layout(rect=(0, 0.03, 1, 0.96))
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)
