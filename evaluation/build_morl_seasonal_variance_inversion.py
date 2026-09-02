@@ -11,6 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "reports"
 FIGURES = REPORTS / "figures" / "article_real"
 
+import sys as _sys
+_sys.path.insert(0, str(ROOT / "evaluation"))
+import _figstyle as fs
+fs.enable_latex(plt)   # LaTeX-typeset all figure text (matches manuscript fonts)
+
 PRACTICAL_CSV = REPORTS / "morl_practical_canonical_monthly_variance_diagnostic.csv"
 NEUTRAL_CSV = REPORTS / "morl_neutral_canonical_monthly_variance_diagnostic.csv"
 OUT_CSV = REPORTS / "morl_seasonal_variance_inversion_table.csv"

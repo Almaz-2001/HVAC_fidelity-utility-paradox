@@ -106,6 +106,10 @@ def thermostatic_benchmark_command(variant: str, *, seed: int = 42) -> list[str]
         "pure_v3_15min": "outputs/bestest_air_pure_v3_15min",
     }
     out = (fixed_out.get(variant) or f"outputs/block2_thermostatic_hybrid_v3_v35_{THERMOSTATIC_HYBRID[variant][1]}") + sfx
+    # Same train/eval encoding requirement as HDRL: the hybrid variants are trained with
+    # no_delta_t + clipped_log, the pure-v3 ones with the defaults. transfer_variant_config
+    # already forwards these; this path did not.
+    feature_args = list(HDRL_EVAL_FEATURE_ARGS) if variant in THERMOSTATIC_HYBRID else []
     return cmd(
         PY,
         "-B",
@@ -118,7 +122,7 @@ def thermostatic_benchmark_command(variant: str, *, seed: int = 42) -> list[str]
         model,
         "--output-dir",
         out,
-    )
+    ) + feature_args
 
 
 def transfer_variant_config(variant: str, seed: int = 42) -> tuple[str, list[str], str]:
@@ -234,6 +238,20 @@ def hdrl_train_command(variant: str) -> list[str]:
     )
 
 
+# The HDRL agents are trained with no_delta_t + clipped_log (see hdrl_train_command),
+# and the benchmark defaults to none + raw. The ablations zero slots instead of removing
+# them, so a mismatch changes no dimension and raises nothing -- it just feeds the policy
+# an encoding it never saw. Measured cost of getting this wrong on l000/peak:
+# m_s 0.21 -> 0.67, comfort violation 9 % -> 39 %
+# (outputs/block2_hdrl_obs_consistency_3d, evaluation/check_hdrl_obs_consistency.py).
+# The published sweep was run with the flags; this helper omitted them.
+HDRL_EVAL_FEATURE_ARGS = (
+    "--obs-ablation", "no_delta_t",
+    "--power-feature-mode", "clipped_log",
+    "--t-zone-feature-mode", "raw",
+)
+
+
 def hdrl_benchmark_command(variant: str) -> list[str]:
     return cmd(
         PY,
@@ -249,6 +267,7 @@ def hdrl_benchmark_command(variant: str) -> list[str]:
         f"models/hdrl_hybrid_v3_v35_{variant}_summer_final.zip",
         "--output-dir",
         f"outputs/block2_hdrl_hybrid_v3_v35_{variant}",
+        *HDRL_EVAL_FEATURE_ARGS,
     )
 
 

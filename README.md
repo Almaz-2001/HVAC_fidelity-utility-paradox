@@ -2,11 +2,11 @@
 
 **Surrogate-based reinforcement learning for HVAC control.**
 
-This repository accompanies the manuscript submitted to *Results in Engineering*
-(Elsevier). It is a **results-reproducibility package**: it contains the code,
-configurations, trained controllers, calibration data, the result tables, and the
-data-driven generators and figures behind every result. The typeset manuscript and
-supplementary PDFs are the journal's artifact and are not vendored here.
+This repository accompanies the manuscript under review at *IEEE Access*. It is a
+**results-reproducibility package**: it contains the code, configurations, trained
+controllers, calibration data, the result tables, and the data-driven generators
+and figure sources behind every result. The typeset manuscript and supplementary
+PDFs are the journal's artifact and are not vendored here.
 
 > **Headline result — the fidelity–utility paradox.** On the BOPTEST
 > `bestest_air` testcase, a physically-calibrated grey-box surrogate **GB** (v3.5,
@@ -25,6 +25,23 @@ supplementary PDFs are the journal's artifact and are not vendored here.
 > **controller-family specific**, and cross-testcase transfer resolves into a
 > component-level boundary: the inverse-calibration pipeline transfers, the frozen
 > policy does not.
+
+> **Predictive error misses a second defect entirely.** The finer-resolution
+> retraining also **inverts the model's response to the control command** in about
+> nine sampled states out of ten — a hotter supply-temperature command predicting a
+> colder zone — reproducibly across four independent training draws, while the 24 h
+> rollout error improves in every one. Constraining training to preserve the response
+> sign restores directional validity to 100 % at a *lower* rollout error still
+> (0.745 °C), and a controller trained on that corrected surrogate fails as well
+> (`m_s` 1.426 peak / 1.597 typical). Accuracy, model class and response sign can all
+> be held right while the surrogate stays unusable as a training environment.
+> Both defects are measurable on the surrogate alone, before any controller is
+> trained — see the checkpoint-only probes in [`REPRODUCE.md`](REPRODUCE.md).
+
+> **Not specific to reinforcement learning.** A pre-registered receding-horizon MPC
+> planning on the same surrogates reproduces the same inverted ordering, so the
+> effect belongs to optimising *through* the surrogate rather than to
+> policy-gradient search. That was our own prediction, and it is falsified.
 
 > **Naming.** The manuscript uses **BB** (black-box surrogate) and **GB** (grey-box
 > RC–Neural-ODE) throughout; the code and these docs retain the legacy artifact names
@@ -162,11 +179,11 @@ Please cite the manuscript (details to be completed on acceptance):
 
 ```bibtex
 @article{HVAC_FidelityUtility_2026,
-  title   = {The Fidelity--Utility Paradox in Surrogate-Based Reinforcement
-             Learning for HVAC Control},
+  title   = {Surrogate Selection for Reinforcement-Learning HVAC Control:
+             Step Size, Not Predictive Accuracy, Predicts Control Utility},
   author  = {Mukhanbet, Aksultan and Sapargali, Almaz and Aibagarov, Serik and
-             Imankulov, Timur and Shinassylov, Shona and Trigo, Paulo},
-  journal = {Results in Engineering},
+             Daribayev, Beimbet and Shinassylov, Shona and Trigo, Paulo},
+  journal = {IEEE Access},
   year    = {2026},
   note    = {Under review}
 }

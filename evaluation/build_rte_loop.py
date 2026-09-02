@@ -59,7 +59,7 @@ def main():
             weight="bold", color=ACT)
     ax.text(0.48, 0.855, "$T_{\\mathrm{sup}}=18+\\frac{a_t+1}{2}(35-18)\\,^\\circ$C", ha="center",
             fontsize=7.6, color=ACT)
-    ax.text(0.48, 0.745, "oveTSetSup_activate = 1,   oveTSetSup_u = $T_{\\mathrm{sup}}$"
+    ax.text(0.48, 0.745, "oveTSetSup\\_activate = 1,   oveTSetSup\\_u = $T_{\\mathrm{sup}}$"
             "\nvia  POST /advance", ha="center", va="center",
             family="monospace", fontsize=6.7, color=ACT)
 

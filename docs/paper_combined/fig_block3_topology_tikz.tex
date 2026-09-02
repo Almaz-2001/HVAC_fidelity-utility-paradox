@@ -1,0 +1,29 @@
+% Supp -- hydronic-family transfer topology (conceptual schematic, hand TikZ).
+% C_zon ratios fetched from reports/block3_transfer_matrix.csv (data-driven annotations).
+\documentclass[border=6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\pgfplotstableread[col sep=comma]{../../reports/block3_transfer_matrix.csv}\dtm
+\pgfplotstablegetelem{0}{c_zon_ratio_vs_bestest_air}\of\dtm \pgfmathsetmacro{\ra}{\pgfplotsretval}
+\pgfplotstablegetelem{1}{c_zon_ratio_vs_bestest_air}\of\dtm \pgfmathsetmacro{\rb}{\pgfplotsretval}
+\pgfplotstablegetelem{2}{c_zon_ratio_vs_bestest_air}\of\dtm \pgfmathsetmacro{\rc}{\pgfplotsretval}
+
+\begin{document}
+\begin{tikzpicture}[font=\small]
+  \node[eval, text width=30mm, minimum height=16mm] (src) at (0,0)
+    {\textbf{source}\\ \texttt{bestest\_air}\\ {\footnotesize air supply set-point}};
+  \node[physics, text width=42mm] (hp) at (6,2.1)
+    {\footnotesize \texttt{heat\_pump}: air-to-water HP $\cdot$ floor loop $\cdot$ $C_{\mathrm{zon}}\ \pgfmathprintnumber[fixed,precision=2]{\ra}\times$};
+  \node[physics, text width=42mm] (hy) at (6,0)
+    {\footnotesize \texttt{hydronic}: gas boiler $\cdot$ radiator $+$ valve $\cdot$ $C_{\mathrm{zon}}\ \pgfmathprintnumber[fixed,precision=2]{\rb}\times$};
+  \node[physics, text width=42mm] (com) at (6,-2.1)
+    {\footnotesize \texttt{commercial}: district heat $\cdot$ AHU $+$ radiator $\cdot$ $C_{\mathrm{zon}}\ \pgfmathprintnumber[fixed,precision=2]{\rc}\times$};
+  \draw[flow] (src.east) -- node[above, font=\scriptsize, text=cMut] {adapter} (hp.west);
+  \draw[flow] (src.east) -- (hy.west);
+  \draw[flow] (src.east) -- (com.west);
+  \node[font=\footnotesize\itshape, text=cMut, align=center, text width=0.92\linewidth] at (4,-3.3)
+    {the hydronic family shares a near-constant $C_{\mathrm{zon}}$ ratio ($\approx 1.9\times$), a family regularity exploited for transfer.};
+\end{tikzpicture}
+\end{document}

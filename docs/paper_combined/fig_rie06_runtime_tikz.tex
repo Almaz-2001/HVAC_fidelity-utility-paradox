@@ -1,0 +1,36 @@
+% Supp (rie06) -- runtime feasibility: environment throughput, native pgfplots.
+% Data-driven from tikz_data/runtime_speed.dat (order: BOPTEST, BB, GB, hybrid).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread{tikz_data/runtime_speed.dat}\dr
+\newcommand{\getc}[3]{\pgfplotstablegetelem{#2}{#3}\of\dr \pgfmathsetmacro{#1}{\pgfplotsretval}}
+\getc{\sa}{0}{steps}\getc{\sb}{1}{steps}\getc{\sc}{2}{steps}\getc{\sd}{3}{steps}
+\getc{\pb}{1}{speedup}\getc{\pc}{2}{speedup}\getc{\pd}{3}{speedup}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, width=9.6cm, height=6.4cm, ymode=log,
+    title={Surrogates make PPO training feasible},
+    ylabel={environment steps\,s$^{-1}$ (log)},
+    xmin=-0.6, xmax=3.6, ymin=10, ymax=12000,
+    xtick={0,1,2,3},
+    xticklabels={{BOPTEST\\RTE (truth)}, {BB\\surrogate}, {GB\\surrogate}, {hybrid}},
+    xticklabel style={align=center, font=\footnotesize}, xtick style={draw=none},
+    ymajorgrids=true,
+]
+  \fill[cPI, draw=cPI!60!black]           (axis cs:-0.32,10) rectangle (axis cs:0.32,\sa);
+  \fill[cV3, draw=cV3!60!black]           (axis cs:0.68,10)  rectangle (axis cs:1.32,\sb);
+  \fill[cAccurate, draw=cAccurate!60!black] (axis cs:1.68,10) rectangle (axis cs:2.32,\sc);
+  \fill[cHybrid, draw=cHybrid!60!black]   (axis cs:2.68,10)  rectangle (axis cs:3.32,\sd);
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:0,\sa) {$1\times$};
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:1,\sb) {\pgfmathprintnumber[fixed,precision=0]{\pb}$\times$};
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:2,\sc) {\pgfmathprintnumber[fixed,precision=0]{\pc}$\times$};
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:3,\sd) {\pgfmathprintnumber[fixed,precision=0]{\pd}$\times$};
+\end{axis}
+\end{tikzpicture}
+\end{document}

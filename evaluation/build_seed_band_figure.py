@@ -92,8 +92,8 @@ def main() -> None:
         (axA, "m_s_mean", "m_s_std", "Live maintenance score $m_s$ (lower is better)",
          [(fs.MS_COLLAPSE, "$m_s=1$ closed-loop collapse", "--"),
           (fs.MS_USABLE, f"usable band $m_s<{fs.MS_USABLE:g}$", ":")]),
-        (axB, "violation_pct_mean", "violation_pct_std", "Comfort violation (% of time outside 21-24 °C)",
-         [(fs.VIOLATION_BAR, f"{fs.VIOLATION_BAR:g}% violation reference", "--")]),
+        (axB, "violation_pct_mean", "violation_pct_std", r"Comfort violation (\% of time outside $21$--$24\,^{\circ}$C)",
+         [(fs.VIOLATION_BAR, rf"{fs.VIOLATION_BAR:g}\% violation reference", "--")]),
     ]
 
     for ax, mcol, scol, ylab, refs in panels:

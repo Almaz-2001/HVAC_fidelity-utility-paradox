@@ -1,0 +1,48 @@
+% Fig (main, rie04) -- predictive validity across horizons + tolerance CDF.
+% Data-driven from tikz_data/rie04_horizon.dat and rie04_cdf.dat.
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread{tikz_data/rie04_horizon.dat}\dh
+\pgfplotstableread{tikz_data/rie04_cdf.dat}\dc
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={group size=2 by 1, horizontal sep=1.8cm},
+    paperaxis, width=7.8cm, height=6.2cm, title style={font=\bfseries\footnotesize},
+]
+% ---- panel A: multi-horizon rollout RMSE with 95% CI ----
+\nextgroupplot[title={(a) Multi-horizon rollout RMSE}, xmode=log, log basis x=2,
+    xtick={1,4,8,24}, xticklabels={1,4,8,24}, xlabel={prediction horizon (h)},
+    ylabel={\RMSET~(\degC)}, ymin=0, ymax=1.6]
+  \addplot[name path=alo, draw=none] table[x=h, y=v3_lo]{\dh};
+  \addplot[name path=ahi, draw=none] table[x=h, y=v3_hi]{\dh};
+  \addplot[cV3, opacity=0.15, forget plot] fill between[of=alo and ahi];
+  \addplot[name path=blo, draw=none] table[x=h, y=raw_lo]{\dh};
+  \addplot[name path=bhi, draw=none] table[x=h, y=raw_hi]{\dh};
+  \addplot[cOrange, opacity=0.15, forget plot] fill between[of=blo and bhi];
+  \addplot[name path=clo, draw=none] table[x=h, y=cal_lo]{\dh};
+  \addplot[name path=chi, draw=none] table[x=h, y=cal_hi]{\dh};
+  \addplot[cAccurate, opacity=0.15, forget plot] fill between[of=clo and chi];
+  \addplot[cV3, thick, mark=*] table[x=h, y=v3_m]{\dh};
+  \addplot[cOrange, thick, mark=square*] table[x=h, y=raw_m]{\dh};
+  \addplot[cAccurate, thick, mark=triangle*] table[x=h, y=cal_m]{\dh};
+% ---- panel B: engineering tolerance CDF ----
+\nextgroupplot[title={(b) Engineering tolerance CDF}, xlabel={$|$prediction error$|$ (\degC)},
+    ylabel={fraction below tolerance}, xmin=0, xmax=5, ymin=0, ymax=1.02]
+  \draw[gray!55, dashed, line width=0.6pt] (axis cs:0.5,0)--(axis cs:0.5,1.02);
+  \draw[gray!55, dashed, line width=0.6pt] (axis cs:1.0,0)--(axis cs:1.0,1.02);
+  \draw[gray!55, dashed, line width=0.6pt] (axis cs:1.5,0)--(axis cs:1.5,1.02);
+  \addplot[cV3, thick] table[x=err, y=v3]{\dc};
+  \addplot[cOrange, thick] table[x=err, y=raw]{\dc};
+  \addplot[cAccurate, thick] table[x=err, y=cal]{\dc};
+\end{groupplot}
+\path (group c1r1.south west) -- (group c2r1.south east) coordinate[midway] (lm);
+\node[anchor=north, yshift=-0.9cm, font=\small] at (lm)
+  {\textcolor{cV3}{$\bullet$}~BB (hourly)\qquad\textcolor{cOrange}{$\bullet$}~raw GB\qquad\textcolor{cAccurate}{$\bullet$}~calibrated GB};
+\end{tikzpicture}
+\end{document}

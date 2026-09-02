@@ -22,6 +22,10 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "reports" / "figures" / "article_real"
 
+import sys as _sys
+_sys.path.insert(0, str(ROOT / "evaluation"))
+import _figstyle as fs   # for fs.LATEX_RC (usetex context around the manuscript figure)
+
 BLUE = "#2f5d8c"
 TEAL = "#21867a"
 ORANGE = "#b25f2c"
@@ -247,7 +251,7 @@ def fig10_transfer_gap() -> None:
     labels = ["v3", "direct v3.5", "hybrid"]
     colors = [BLUE, ORANGE, PURPLE]
     fig, axes = plt.subplots(1, 3, figsize=(12, 4.6))
-    metrics = [("boptest_violation_pct", "Violation %", "%"), ("action_gap_norm", "Action gap norm", ""), ("first_divergence_step", "First divergence step", "step")]
+    metrics = [("boptest_violation_pct", r"Violation \%", r"\%"), ("action_gap_norm", "Action gap norm", ""), ("first_divergence_step", "First divergence step", "step")]
     for ax, (col, title, ylabel) in zip(axes, metrics):
         vals = [df[df.variant == v][col].mean() for v in variants]
         ax.bar(labels, vals, color=colors, edgecolor="#222222", linewidth=0.4)
@@ -375,7 +379,11 @@ def main() -> None:
         fig14_hybrid_loss,
         fig15_positioning,
     ]:
-        fn()
+        if fn is fig10_transfer_gap:      # the only figure of this script used in the manuscript
+            with plt.rc_context(fs.LATEX_RC):
+                fn()
+        else:
+            fn()
     print(f"Wrote Block 1 Q1 figures to {OUT}")
 
 

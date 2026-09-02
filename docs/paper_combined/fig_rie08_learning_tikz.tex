@@ -1,0 +1,24 @@
+% Supp (rie08) -- v3 (BB) supervised learning curves, native pgfplots.
+% Data-driven: reads outputs/surrogate_v2/train_history_v2.csv directly.
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread[col sep=comma]{../../outputs/surrogate_v2/train_history_v2.csv}\dl
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, bottomlegend, width=9.5cm, height=6cm, ymode=log,
+    title={v3 (BB) supervised learning curves},
+    xlabel={epoch}, ylabel={loss (log)},
+    xmin=0, ymajorgrids=true,
+]
+  \addplot[cV3, thick, mark=none] table[x=epoch, y=train_loss]{\dl};
+  \addplot[cOrange, thick, mark=none] table[x=epoch, y=val_loss]{\dl};
+  \legend{train loss, validation loss}
+\end{axis}
+\end{tikzpicture}
+\end{document}

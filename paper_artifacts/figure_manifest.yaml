@@ -1,78 +1,82 @@
 # Figure provenance manifest
 #
-# Single source of truth for the figures of the consolidated manuscript
-# (docs/paper_combined): 12 main figures (Figure 1-12) and 31 supplementary figures
-# (S1-S31). Each entry gives the output file stem (`file`), the generator `script`, and
-# the versioned source artefacts it reads. No numerical values are entered by hand into
-# the plotting scripts except display labels, axis limits, and pre-specified thresholds
-# (comfort band 21-24 deg C, m_s = 1, the 1.25x-PI transfer threshold). Schematics carry
-# no data source; their annotated numbers are reproduced from the CSVs of the data figures.
+# Every main-paper and graphical-abstract figure, the generator script that produces
+# it, and the versioned source artefacts it reads. No numerical values are entered by
+# hand into the plotting scripts except display labels, axis limits, and pre-specified
+# threshold constants (e.g. the comfort band 21-24 deg C, m_s = 1, the 1.25x-PI transfer
+# threshold). Conceptual/schematic figures carry no data source; their annotated numbers
+# are the canonical results established elsewhere in the paper and reproduced from the
+# CSVs listed for the corresponding result figures.
 #
-# Display naming: the manuscript uses BB (black-box surrogate, formerly v3),
-# matched-resolution BB (formerly matched-v3), and GB (grey-box RC-NeuralODE, formerly
-# v3.5). evaluation/_figstyle.py is the single source of these labels. A few legacy
-# supplementary schematics still print v3/v3.5 internally; the Supplementary front matter
-# carries an explicit legacy-label note (v3 = BB, v3.5 = GB).
-#
-# Regenerate every figure AND refresh docs/paper_combined/figures/ (no BOPTEST, no GPU):
-#   python make_figures.py            # ~1-2 min  (or ./make_all_figures.sh)
-#   python make_figures.py --list     # show the ordered generator list
+# Regenerate every figure (no BOPTEST needed) with:
+#   python docs/results1_digital_twin_overleaf/build_results1_overleaf.py
+#   python docs/results2_control_overleaf/build_results2_overleaf.py
+#   python docs/results3_transferability_overleaf/build_results3_overleaf.py
+#   python evaluation/build_mechanism_surface_diagnostic.py   # Fig 7
+#   python evaluation/build_fidelity_utility_scatter.py       # Fig 5
+#   python evaluation/build_conceptual_overview.py            # Fig 1 (evidence matrix)
+#   python evaluation/build_runtime_fidelity_scatter.py       # Fig 4 (runtime-fidelity)
+#   python evaluation/build_lambda_specificity.py             # Fig 8 (controller-family lambda)
+#   python evaluation/build_graphical_abstract.py             # graphical abstract
+#   python evaluation/build_seed_band_figure.py               # supplementary seed-robustness figure
 
 main_figures:
   Figure_1:
+    title: Quantified fidelity-utility evidence chain (paradox matrix)
+    label: fig:concept
+    script: evaluation/build_conceptual_overview.py
+    source_files:
+      - reports/block1_corpus_matched_comparison.csv
+      - reports/hou_evins_architecture_justification_table.csv
+      - reports/block2_mechanism_surface_sharpness.csv
+      - reports/block2_fidelity_utility_scatter.csv
+    metrics: [rmse_24h_c, rel_roughness, action_saturation_pct, m_s]
+    audit_note: "Every cell is loaded from the committed CSVs above via _figstyle.paper_numbers(); no hand-typed values."
+
+  Figure_methodology_overview:
     title: System / method overview (backends -> controller families -> live BOPTEST)
     label: fig:system_overview
-    file: block2_system_overview
     script: evaluation/build_system_overview.py
     kind: schematic
 
-  Figure_2:
-    title: BOPTEST testcase schematics (source bestest_air + three hydronic targets)
-    label: fig:testcases
-    file: testcase_schematics
-    script: evaluation/build_testcase_schematics.py
+  Figure_paper_organization:
+    title: Organization of the paper (section-flow roadmap)
+    label: fig:paper_org
+    script: evaluation/build_paper_organization.py
     kind: schematic
-    audit_note: "Topology and component ratings from the official BOPTEST documentation (Blum et al., 2021)."
 
-  Figure_3:
-    title: Hybrid reward-shaping mechanism (BB rollout + frozen GB censor)
-    label: fig:hybrid_mechanism
-    file: final17_fig07_hybrid_reward_shaping_mechanism
-    script: evaluation/build_final_q1_main_figures_17.py
-    source_files:
-      - outputs/block2_thermostatic_hybrid_v3_v35_l010/summary.csv
-
-  Figure_4:
-    title: Stage A/B/C calibration diagnostics (C_zon convergence, rollout error, residuals)
+  Figure_2:
+    title: Stage B C_zon identification and calibration improvement
     label: fig:stage-abc
-    file: rie_fig03_stage_abc_diagnostics
-    script: evaluation/build_block1_main_bbgb.py
+    script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py
     source_files:
       - outputs/surrogate_v35_inverse_boptest_15min_episodeaware/stage_b_history_v35.csv
-      - outputs/surrogate_v3_rollout_prepared_15min/
       - reports/block1_corpus_matched_comparison.csv
+    metrics: [c_zon_j_per_k, rmse_24h_c, power_mae_w]
+    audit_note: "Panel (b) shows normalised % reduction per metric to avoid mixing deg C and kW."
+
+  Figure_3:
+    title: Matched-corpus predictive-fidelity attribution
+    label: fig:matched
+    script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py
+    source_files:
+      - reports/block1_corpus_matched_comparison.csv
+    metrics: [rmse_24h_c]
+
+  Figure_4:
+    title: Runtime-fidelity feasibility (throughput vs 24 h rollout RMSE)
+    label: fig:runtime_feasibility
+    script: evaluation/build_runtime_fidelity_scatter.py
+    source_files:
+      - reports/speed_benchmark_table.csv
+      - reports/block1_corpus_matched_comparison.csv
+      - reports/hou_evins_architecture_justification_table.csv
+    metrics: [env_steps_per_sec, speedup_vs_boptest_rte, rmse_24h_c]
+    audit_note: "Reward-shaping schematic (former Fig 4, fig:hybrid_reward) demoted to supplementary."
 
   Figure_5:
-    title: Multi-horizon predictive validity (rollout RMSE + tolerance CDF)
-    label: fig:predictive-validity
-    file: rie_fig04_predictive_validity
-    script: evaluation/build_block1_main_bbgb.py
-    source_files:
-      - outputs/surrogate_v3_rollout_prepared_15min/
-
-  Figure_6:
-    title: Matched-corpus predictive-fidelity attribution (waterfall)
-    label: fig:matched
-    file: rie_fig05_matched_corpus_attribution
-    script: evaluation/build_block1_main_bbgb.py
-    source_files:
-      - reports/block1_corpus_matched_comparison.csv
-    audit_note: "Additive split: corpus shift (74.6%) + Stage A/B/C calibration (25.4%) of the 0.913 deg C BB-hourly -> calibrated-GB gap."
-
-  Figure_7:
     title: Fidelity-utility scatter (24 h rollout RMSE vs live m_s)
     label: fig:paradox_scatter
-    file: block2_fidelity_utility_scatter
     script: evaluation/build_fidelity_utility_scatter.py
     source_files:
       - reports/block1_corpus_matched_comparison.csv
@@ -80,98 +84,102 @@ main_figures:
       - reports/block2_v3_15min_closed_loop_comparison.csv
       - outputs/block2_thermostatic_hybrid_v3_v35_l010/summary.csv
     generated_table: reports/block2_fidelity_utility_scatter.csv
+    metrics: [rmse_24h_c, m_s_peak, m_s_typ]
     thresholds: ["m_s = 1 (collapse)", "m_s < 0.1 (usable band)"]
 
-  Figure_8:
-    title: Live BOPTEST maintenance-score decomposition (r_time + r_sev per controller)
-    label: fig:ms_decomp
-    file: fig_block2_ms_decomposition
-    script: evaluation/build_block1_main_bbgb.py
+  Figure_6:
+    title: Action phase portrait (empirical state-action density)
+    label: fig:action_phase
+    script: evaluation/build_q1_polish_block2_block3_figures.py
     source_files:
-      - "outputs/block2_*/summary.csv"
+      - outputs/bestest_air_article7_style_15min/traces/peak_heat_window_thermostatic.csv
+      - outputs/block2_bestest_air_15min_thermostatic_v35/traces/peak_heat_window_thermostatic.csv
+      - outputs/block2_thermostatic_hybrid_v3_v35_l010/traces/peak_heat_window_thermostatic.csv
+    metrics: [a0, t_zone_c]
 
-  Figure_9:
-    title: Response-surface roughness mechanism (4 panels)
-    label: fig:roughness_mechanism
-    file: block2_surface_response_curves
+  Figure_7:
+    title: Response-surface roughness mechanism (4 panels; shape, roughness distribution, saturation, live m_s)
+    label: fig:surface_curves
     script: evaluation/build_mechanism_surface_diagnostic.py
     source_files:
       - outputs/surrogate_v2/rc_node_v3_tsupply.pt
       - outputs/surrogate_v3_15min_matched/rc_node_v3_15min_matched.pt
       - outputs/surrogate_v35_inverse_boptest_15min_power_head_only/calibration_summary_boptest_v35.json
       - outputs/bestest_air_article7_style_15min/traces/peak_heat_window_thermostatic.csv
+      - outputs/bestest_air_pure_v3_15min/traces/peak_heat_window_thermostatic.csv
       - outputs/block2_bestest_air_15min_thermostatic_v35/traces/peak_heat_window_thermostatic.csv
     generated_table: reports/block2_mechanism_surface_sharpness.csv
+    metrics: [rel_roughness, action_saturation_pct, m_s]
     audit_note: "Panel D live m_s read via reports/block2_fidelity_utility_scatter.csv; causal wording is association-only."
 
-  Figure_10:
-    title: Comfort-energy deployment plane (comfort/safety margin vs energy)
+  Figure_8:
+    title: Controller-family specificity of the censor weight lambda_T
+    label: fig:lambda_specificity
+    script: evaluation/build_lambda_specificity.py
+    source_files:
+      - reports/block2_hdrl_lambda_sweep_summary.csv
+      - reports/block2_fidelity_utility_scatter.csv
+      - reports/block2_morl_comparison_summary.csv
+    metrics: [lambda_T, m_s]
+    thresholds: ["usable m_s < 0.1"]
+    audit_note: "Hydronic topology schematic (former Fig 8, fig:topology) demoted to supplementary."
+
+  Figure_9:
+    title: Block 3 comfort-energy deployment plane (comfort/safety margin)
     label: fig:deployment_plane
-    file: block3_q1_polish_deployment_quadrants
     script: evaluation/build_q1_polish_block2_block3_figures.py
     source_files:
       - reports/block3_transfer_matrix.csv
+    metrics: [m_s_rl, pass_threshold_m_s, energy_delta_pct_vs_pi]
     thresholds: ["M_k = tau_k - m_s_RL = 0 (pass boundary, tau_k = 1.25 m_s_PI)", "energy delta = 0%"]
-
-  Figure_11:
-    title: Surrogate-side transfer RMSE improvement across the hydronic family
-    label: fig:surrogate_physics_transfer_a
-    file: final17_fig15_full_stage_transfer_rmse_improvement
-    script: evaluation/build_final_q1_main_figures_17.py
-    source_files:
-      - reports/block3_transfer_matrix.csv
-
-  Figure_12:
-    title: Re-identified C_zon hypothesis interval (uniform vs scale-dependent)
-    label: fig:surrogate_physics_transfer_b
-    file: final_eng_fig12_czon_hypothesis_interval
-    script: evaluation/build_final_q1_main_figures_17.py
-    source_files:
-      - reports/block3_transfer_matrix.csv
 
 graphical_abstract:
   title: Four-column causal chain (backend -> surface -> PPO -> live outcome)
-  file: graphical_abstract
   script: evaluation/build_graphical_abstract.py
   source_files:
     - reports/block2_mechanism_surface_sharpness.csv
     - reports/block2_fidelity_utility_scatter.csv
+    - outputs/bestest_air_article7_style_15min/traces/peak_heat_window_thermostatic.csv
+    - outputs/block2_bestest_air_15min_thermostatic_v35/traces/peak_heat_window_thermostatic.csv
+    - outputs/block2_thermostatic_hybrid_v3_v35_l010/traces/peak_heat_window_thermostatic.csv
+  metrics: [rel_roughness, m_s, action_saturation_pct]
   audit_note: "RMSE values and the ~85x throughput figure are canonical results cited in the paper; all other numbers are read from the source files above."
 
-# Supplementary figures S1-S31, in document order. The per-block *_overleaf builders emit
-# the schematics; the data scripts are the same as the main figures.
+# Supplementary figures (every figure in the supplementary PDF), with its generator
+# script and primary source artefact. Schematics carry no data source.
 supplementary_figures:
-  # --- Results I / Block 1 ---
-  S1:  {file: rie_fig01_block1_artifact_chain,   script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, kind: schematic}
-  S2:  {file: rie_fig02_surrogate_design,        script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, kind: schematic}
-  S3:  {file: rie_fig08_v3_learning_curve,       script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: outputs/surrogate_v2/train_history_v2.csv}
-  S4:  {file: rie_fig09_physics_consistency,     script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: reports/hou_evins_input_independence_table.csv}
-  S5:  {file: rie_fig07_episode_replicability,   script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: outputs/surrogate_v3_rollout_prepared_15min/}
-  S6:  {file: rie_fig06_runtime_feasibility,     script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: reports/speed_benchmark_table.csv}
-  # --- Results II / Block 2 ---
-  S7:  {file: block2_conceptual_overview,        script: evaluation/build_conceptual_overview.py, source: reports/block2_fidelity_utility_scatter.csv}
-  S8:  {file: fig_block2_pipeline,               script: docs/results2_control_overleaf/build_results2_overleaf.py, kind: schematic}
-  S9:  {file: block2_runtime_fidelity,           script: evaluation/build_runtime_fidelity_scatter.py, source: reports/speed_benchmark_table.csv}
-  S10: {file: fig_block2_reward_shaping,         script: docs/results2_control_overleaf/build_results2_overleaf.py, kind: schematic}
-  S11: {file: final17_fig06_live_boptest_controller_comparison, script: evaluation/build_final_q1_main_figures_17.py, source: outputs/block2_thermostatic_hybrid_v3_v35_l010/summary.csv}
-  S12: {file: block2_q1_polish_phase_density,    script: evaluation/build_q1_polish_block2_block3_figures.py, source: "outputs/*/traces/peak_heat_window_thermostatic.csv"}
-  S13: {file: block2_seed_band,                  script: evaluation/build_seed_band_figure.py, source: reports/block2_thermostatic_seed_band.csv}
-  S14: {file: block2_q1_polish_closed_loop_disturbance, script: evaluation/build_q1_polish_block2_block3_figures.py, source: "outputs/*/traces/typical_heat_window_thermostatic.csv"}
-  S15: {file: block2_warmstart_negative_eval_kpis, script: evaluation/build_article_real_figures.py, source: outputs/block2_thermostatic_warmstart_utility/comparison_summary.csv}
-  S16: {file: block1_q1_fig10_transfer_gap_diagnostics, script: evaluation/build_block1_q1_figures.py, source: reports/hybrid_transfer_comparison.csv}
-  S17: {file: fig_block2_hdrl_architecture,      script: docs/results2_control_overleaf/build_results2_overleaf.py, kind: schematic}
-  S18: {file: block2_lambda_specificity,         script: evaluation/build_lambda_specificity.py, source: reports/block2_hdrl_lambda_sweep_summary.csv}
-  S19: {file: block2_hdrl_lambda_sweep_sensitivity, script: evaluation/build_article_real_figures.py, source: reports/block2_hdrl_lambda_sweep_summary.csv}
-  S20: {file: fig_block2_morl_pipeline,          script: docs/results2_control_overleaf/build_results2_overleaf.py, kind: schematic}
-  S21: {file: final17_fig09_morl_5d_failure_17d_success, script: evaluation/build_final_q1_main_figures_17.py, source: reports/block2_morl_5d_reconstructed_comparison.csv}
-  S22: {file: block2_morl_17d_seasonal_heatmap,  script: evaluation/build_article_real_figures.py, source: reports/morl_neutral_canonical_monthly_variance_diagnostic.csv}
-  S23: {file: block2_morl_seasonal_variance_inversion, script: evaluation/build_morl_seasonal_variance_inversion.py, source: reports/morl_neutral_canonical_monthly_variance_diagnostic.csv}
-  # --- Results III / Block 3 ---
-  S24: {file: fig_block3_protocol,               script: docs/results3_transferability_overleaf/build_results3_overleaf.py, kind: schematic}
-  S25: {file: fig_block3_adapter,                script: docs/results3_transferability_overleaf/build_results3_overleaf.py, kind: schematic}
-  S26: {file: fig_block3_topology,               script: docs/results3_transferability_overleaf/build_results3_overleaf.py, kind: schematic}
-  S27: {file: final17_fig13_block3_controller_transfer_heatmap, script: evaluation/build_final_q1_main_figures_17.py, source: reports/block3_transfer_matrix.csv}
-  S28: {file: fig_block3_controller_bar,         script: docs/results3_transferability_overleaf/build_results3_overleaf.py, source: reports/block3_transfer_matrix.csv}
-  S29: {file: fig_block3_regime_progression,     script: docs/results3_transferability_overleaf/build_results3_overleaf.py, source: reports/block3_transfer_matrix.csv}
-  S30: {file: final17_fig17_hypothesis_closure_matrix, script: evaluation/build_final_q1_main_figures_17.py, source: reports/block3_transfer_matrix.csv}
-  S31: {file: rte_control_loop,                  script: evaluation/build_rte_loop.py, kind: schematic}
+  # --- Block 1 (docs/results1_digital_twin_overleaf/build_results1_overleaf.py) ---
+  rie_fig01_block1_artifact_chain:    {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, kind: schematic}
+  rie_fig02_surrogate_design:         {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, kind: schematic}
+  rie_fig04_predictive_validity:      {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: reports/hou_evins_predictive_validity_table.csv}
+  rie_fig06_runtime_feasibility:      {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: reports/speed_benchmark_table.csv}
+  rie_fig07_episode_replicability:    {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: outputs/surrogate_v3_rollout_prepared_15min/}
+  rie_fig08_v3_learning_curve:        {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: outputs/surrogate_v2/train_history_v2.csv}
+  rie_fig09_physics_consistency:      {script: docs/results1_digital_twin_overleaf/build_results1_overleaf.py, source: reports/hou_evins_input_independence_table.csv}
+  block1_q1_fig10_transfer_gap_diagnostics: {script: evaluation/build_block1_q1_figures.py, source: reports/hybrid_transfer_comparison.csv}
+  # --- Block 2 schematics (docs/results2_control_overleaf/build_results2_overleaf.py) ---
+  fig_block2_pipeline:                {script: docs/results2_control_overleaf/build_results2_overleaf.py, kind: schematic}
+  fig_block2_morl_pipeline:           {script: docs/results2_control_overleaf/build_results2_overleaf.py, kind: schematic}
+  fig_block2_hdrl_architecture:       {script: docs/results2_control_overleaf/build_results2_overleaf.py, kind: schematic}
+  fig_block2_reward_shaping:          {script: docs/results2_control_overleaf/build_results2_overleaf.py, kind: schematic}  # demoted from main Fig 4
+  fig_block2_ms_decomposition:        {script: docs/results2_control_overleaf/build_results2_overleaf.py, source: "outputs/block2_*/summary.csv"}  # per-controller r_time, r_sev
+  # --- Block 2 data figures ---
+  final17_fig06_live_boptest_controller_comparison: {script: evaluation/build_final_q1_main_figures_17.py, source: outputs/block2_thermostatic_hybrid_v3_v35_l010/summary.csv}
+  final17_fig09_morl_5d_failure_17d_success:        {script: evaluation/build_final_q1_main_figures_17.py, source: reports/block2_morl_5d_reconstructed_comparison.csv}
+  block2_seed_band:                       {script: evaluation/build_seed_band_figure.py, source: reports/block2_thermostatic_seed_band.csv}
+  block2_warmstart_negative_eval_kpis:    {script: evaluation/build_article_real_figures.py, source: outputs/block2_thermostatic_warmstart_utility/comparison_summary.csv}
+  block2_q1_polish_closed_loop_disturbance: {script: evaluation/build_q1_polish_block2_block3_figures.py, source: "outputs/*/traces/typical_heat_window_thermostatic.csv"}  # pure v3, direct v3.5, hybrid
+  block2_q1_polish_morl_pareto_ellipses:  {script: evaluation/build_q1_polish_block2_block3_figures.py, source: reports/morl_pareto_front_table.csv}
+  block2_hdrl_lambda_sweep_sensitivity:   {script: evaluation/build_article_real_figures.py, source: reports/block2_hdrl_lambda_sweep_summary.csv}
+  block2_morl_17d_seasonal_heatmap:       {script: evaluation/build_article_real_figures.py, source: reports/morl_neutral_canonical_monthly_variance_diagnostic.csv}
+  block2_morl_seasonal_variance_inversion: {script: evaluation/build_morl_seasonal_variance_inversion.py, source: reports/morl_neutral_canonical_monthly_variance_diagnostic.csv}
+  # --- Block 3 (docs/results3_transferability_overleaf/build_results3_overleaf.py + final_q1) ---
+  fig_block3_topology:                {script: docs/results3_transferability_overleaf/build_results3_overleaf.py, kind: schematic}  # demoted from main Fig 8
+  fig_block3_protocol:                {script: docs/results3_transferability_overleaf/build_results3_overleaf.py, kind: schematic}
+  fig_block3_adapter:                 {script: docs/results3_transferability_overleaf/build_results3_overleaf.py, kind: schematic}
+  fig_block3_regime_progression:      {script: docs/results3_transferability_overleaf/build_results3_overleaf.py, source: reports/block3_transfer_matrix.csv}
+  fig_block3_controller_bar:          {script: docs/results3_transferability_overleaf/build_results3_overleaf.py, source: reports/block3_transfer_matrix.csv}
+  final17_fig13_block3_controller_transfer_heatmap: {script: evaluation/build_final_q1_main_figures_17.py, source: reports/block3_transfer_matrix.csv}
+  final17_fig15_full_stage_transfer_rmse_improvement: {script: evaluation/build_final_q1_main_figures_17.py, source: reports/block3_transfer_matrix.csv}
+  final17_fig17_hypothesis_closure_matrix: {script: evaluation/build_final_q1_main_figures_17.py, source: reports/block3_transfer_matrix.csv}
+  final_eng_fig12_czon_hypothesis_interval: {script: evaluation/build_final_q1_main_figures_17.py, source: reports/block3_transfer_matrix.csv}

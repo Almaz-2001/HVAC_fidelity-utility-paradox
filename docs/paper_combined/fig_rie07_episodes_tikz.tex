@@ -1,0 +1,28 @@
+% Supp (rie07) -- replicative validity across held-out episodes, native pgfplots.
+% Data-driven from tikz_data/rie07.dat (per-episode temperature RMSE).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\pgfplotstableread{tikz_data/rie07.dat}\de
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, bottomlegend, ybar, width=11cm, height=6cm,
+    title={Replicative validity across held-out BOPTEST episodes},
+    ylabel={temperature \RMSET~(\degC)}, ymin=0, ymax=2.1,
+    xtick={0,1,2,3,4,5,6,7},
+    xticklabels={E1,E2,E3,E4,E5,E6,E7,E8},
+    xtick style={draw=none}, ymajorgrids, enlarge x limits=0.08, bar width=4.5pt,
+]
+  \addplot[cV3, fill=cV3, draw=cV3!60!black] table[x=i, y=v3]{\de};
+  \addplot[cOrange, fill=cOrange, draw=cOrange!60!black] table[x=i, y=raw]{\de};
+  \addplot[cAccurate, fill=cAccurate, draw=cAccurate!60!black] table[x=i, y=cal]{\de};
+  \draw[gray, dashed, line width=0.8pt] (axis cs:-0.6,1)--(axis cs:7.6,1);
+  \node[font=\scriptsize, text=gray, anchor=south east] at (axis cs:7.55,1) {1.0\,\degC\ reference};
+  \legend{BB (hourly), raw GB, calibrated GB}
+\end{axis}
+\end{tikzpicture}
+\end{document}

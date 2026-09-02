@@ -1,0 +1,41 @@
+% Supp -- primary-testcase surrogate fidelity across recalibration regimes, native pgfplots.
+% Data-driven from tikz_data/regime_prog.dat.
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\pgfplotstableread{tikz_data/regime_prog.dat}\dprog
+\newcommand{\gp}[3]{\pgfplotstablegetelem{#2}{#3}\of\dprog \pgfmathsetmacro{#1}{\pgfplotsretval}}
+\newcommand{\barp}[3]{% #1=col #2=colour #3=prec
+  \gp{\va}{0}{#1}\gp{\vb}{1}{#1}\gp{\vc}{2}{#1}\gp{\vd}{3}{#1}%
+  \fill[#2, draw=#2!60!black] (axis cs:-0.28,0) rectangle (axis cs:0.28,\va);
+  \fill[#2, draw=#2!60!black] (axis cs:0.72,0) rectangle (axis cs:1.28,\vb);
+  \fill[#2, draw=#2!60!black] (axis cs:1.72,0) rectangle (axis cs:2.28,\vc);
+  \fill[#2, draw=#2!60!black] (axis cs:2.72,0) rectangle (axis cs:3.28,\vd);
+  \node[font=\scriptsize\bfseries, anchor=south] at (axis cs:0,\va) {\pgfmathprintnumber[fixed,precision=#3]{\va}};
+  \node[font=\scriptsize\bfseries, anchor=south] at (axis cs:1,\vb) {\pgfmathprintnumber[fixed,precision=#3]{\vb}};
+  \node[font=\scriptsize\bfseries, anchor=south] at (axis cs:2,\vc) {\pgfmathprintnumber[fixed,precision=#3]{\vc}};
+  \node[font=\scriptsize\bfseries, anchor=south] at (axis cs:3,\vd) {\pgfmathprintnumber[fixed,precision=#3]{\vd}};
+}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={group size=2 by 1, horizontal sep=1.7cm},
+    paperaxis, width=7cm, height=5.8cm,
+    xtick={0,1,2,3},
+    xticklabels={{top-5\%}, {all-rows\\pwr}, {all-rows\\heads}, {full\\A/B/C}},
+    xticklabel style={align=center, font=\scriptsize}, xtick style={draw=none},
+    xmin=-0.6, xmax=3.6, ymajorgrids, title style={font=\bfseries\footnotesize},
+]
+\nextgroupplot[title={Temperature fidelity}, ylabel={\RMSET~(\degC)}, ymin=0, ymax=1.15]
+  \barp{rmse}{cAccurate}{3}
+\nextgroupplot[title={Power fidelity}, ylabel={power MAE (\si{\watt})}, ymin=0, ymax=2700]
+  \barp{pmae}{cCtrl}{0}
+\end{groupplot}
+\node[anchor=north, font=\bfseries\small, yshift=-1.35cm]
+  at ($(group c1r1.south west)!0.5!(group c2r1.south east)$)
+  {Surrogate fidelity improves with recalibration depth (controller frozen)};
+\end{tikzpicture}
+\end{document}

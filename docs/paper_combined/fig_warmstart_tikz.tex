@@ -1,0 +1,41 @@
+% Supp -- warm-start negative control (trace + peak KPIs), native pgfplots.
+% Data-driven from tikz_data/warmstart_{trace,kpi}.dat.
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\pgfplotstableread{tikz_data/warmstart_trace.dat}\dt
+\pgfplotstableread{tikz_data/warmstart_kpi.dat}\dk
+\newcommand{\gk}[3]{\pgfplotstablegetelem{#2}{#3}\of\dk \pgfmathsetmacro{#1}{\pgfplotsretval}}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.8cm},
+    paperaxis, height=6cm, title style={font=\bfseries\footnotesize}]
+\nextgroupplot[title={Peak-heat live trace after fine-tune}, width=8.6cm,
+    xlabel={time (h)}, ylabel={zone temperature (\degC)}, xmin=0, ymin=15, ymax=32]
+  \fill[cV3, fill opacity=0.12] (axis cs:0,21) rectangle (axis cs:24,24);
+  \addplot[cHybrid, thick, mark=none] table[x=hour, y=scratch]{\dt};
+  \addplot[cOrange, thick, mark=none] table[x=hour, y=warm]{\dt};
+  \legend{}
+\nextgroupplot[title={Peak KPIs: warm-start is worse}, width=6cm, ybar,
+    ylabel={value (violation as fraction)}, ymin=0, ymax=1.4,
+    xtick={0,1}, xticklabels={\ms, {violation}}, xmin=-0.6, xmax=1.6,
+    xtick style={draw=none}, ymajorgrids]
+  \gk{\msS}{0}{scratch}\gk{\msW}{0}{warm}\gk{\vS}{1}{scratch}\gk{\vW}{1}{warm}
+  \pgfmathsetmacro{\vSf}{\vS/100}\pgfmathsetmacro{\vWf}{\vW/100}
+  \fill[cHybrid, draw=cHybrid!60!black] (axis cs:-0.28,0) rectangle (axis cs:-0.02,\msS);
+  \fill[cOrange, draw=cOrange!60!black] (axis cs:0.02,0) rectangle (axis cs:0.28,\msW);
+  \fill[cHybrid, draw=cHybrid!60!black] (axis cs:0.72,0) rectangle (axis cs:0.98,\vSf);
+  \fill[cOrange, draw=cOrange!60!black] (axis cs:1.02,0) rectangle (axis cs:1.28,\vWf);
+  \node[font=\scriptsize, anchor=south] at (axis cs:-0.15,\msS) {\pgfmathprintnumber[fixed,precision=2]{\msS}};
+  \node[font=\scriptsize, anchor=south] at (axis cs:0.15,\msW) {\pgfmathprintnumber[fixed,precision=2]{\msW}};
+  \node[font=\scriptsize, anchor=south] at (axis cs:0.85,\vSf) {\pgfmathprintnumber[fixed,precision=2]{\vSf}};
+  \node[font=\scriptsize, anchor=south] at (axis cs:1.15,\vWf) {\pgfmathprintnumber[fixed,precision=2]{\vWf}};
+\end{groupplot}
+\path (group c1r1.south west) -- (group c2r1.south east) coordinate[midway] (lm);
+\node[anchor=north, yshift=-0.9cm, font=\small] at (lm)
+  {\textcolor{cHybrid}{\rule{6pt}{6pt}}~from scratch\qquad\textcolor{cOrange}{\rule{6pt}{6pt}}~v3.5 warm-start\qquad(energy: 431 vs 579\,\si{\kilo\watt\hour})};
+\end{tikzpicture}
+\end{document}

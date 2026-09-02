@@ -1,0 +1,36 @@
+% Fig 15 (main) -- full Stage A/B/C transfer RMSE improvement, native pgfplots.
+% Data-driven: reads the committed reports/block3_transfer_matrix.csv (no hand entry).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread[col sep=comma]{../../reports/block3_transfer_matrix.csv}\dtransfer
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, paperbars, bottomlegend,
+    width=10.5cm, height=7cm,
+    title={Full Stage A/B/C transfer RMSE improvement},
+    ylabel={24\,h rollout \RMSET~(\degC)},
+    ymin=0, ymax=3.1,
+    xtick={0,1,2},
+    xticklabels={heat pump, hydronic, commercial},
+    xtick style={draw=none},
+]
+  % raw target bar, annotated above with the % improvement (\downarrow xx.x\%)
+  \addplot[draw=cOrange!60!black, fill=cOrange,
+           nodes near coords, point meta=explicit,
+           nodes near coords style={anchor=south, yshift=2pt,
+             font=\footnotesize\bfseries, color=cInk},
+           nodes near coords={$\downarrow$\pgfmathprintnumber[precision=1]{\pgfplotspointmeta}\%}]
+    table[x expr=\coordindex, y=raw_rmse_t_c, meta=rmse_improvement_pct]{\dtransfer};
+  % full Stage A/B/C bar
+  \addplot[draw=cHybrid!60!black, fill=cHybrid]
+    table[x expr=\coordindex, y=full_rmse_t_c]{\dtransfer};
+  \legend{Raw target \RMSET, Full Stage A/B/C}
+\end{axis}
+\end{tikzpicture}
+\end{document}

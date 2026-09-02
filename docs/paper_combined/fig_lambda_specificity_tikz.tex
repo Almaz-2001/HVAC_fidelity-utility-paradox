@@ -1,0 +1,28 @@
+% Supp (Fig 8) -- controller-family specificity of lambda_T, native pgfplots.
+% Data-driven from tikz_data/lam_{ppo,hdrl,morl}.dat.
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, bottomlegend, width=9.6cm, height=6.2cm,
+    title={Controller-family specificity: the optimal $\lambda_T$ is not universal},
+    xlabel={disagreement-penalty weight $\lambda_T$},
+    ylabel={live \ms\ (cross-window mean)},
+    xmin=-0.012, xmax=0.118, ymin=0, ymax=0.55, scaled x ticks=false,
+    xtick={0,0.03,0.05,0.10},
+]
+  \fill[cV3, fill opacity=0.10] (axis cs:-0.012,0) rectangle (axis cs:0.118,0.10);
+  \draw[cV3, dotted, line width=1pt] (axis cs:-0.012,0.10)--(axis cs:0.118,0.10);
+  \node[font=\scriptsize, text=cV3!55!black, anchor=east] at (axis cs:0.116,0.13) {usable $\ms<0.1$};
+  \addplot[cHybrid, mark=*, thick] table[x=lambda, y=ms]{tikz_data/lam_ppo.dat};
+  \addplot[cCtrl, mark=square*, thick] table[x=lambda, y=ms]{tikz_data/lam_hdrl.dat};
+  \addplot[cOrange, mark=diamond*, mark size=3.5pt, only marks] table[x=lambda, y=ms]{tikz_data/lam_morl.dat};
+  \legend{thermostatic PPO ($\lambda_T^\star{=}0.10$), HDRL ($\lambda_T^\star{=}0$), MORL adopted ($\lambda_T{=}0$)}
+\end{axis}
+\end{tikzpicture}
+\end{document}

@@ -23,6 +23,10 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT_DEFAULT = ROOT / "reports" / "figures" / "article_real"
 MANIFEST_DEFAULT = ROOT / "reports" / "article_real_figures_manifest.csv"
 
+import sys as _sys
+_sys.path.insert(0, str(ROOT / "evaluation"))
+import _figstyle as fs   # for fs.LATEX_RC (usetex context around manuscript figures)
+
 COLORS = {
     "v3": "#2f5d8c",
     "raw_v35": "#b25f2c",
@@ -359,18 +363,18 @@ def fig5_warmstart(out_dir: Path, rows: list[dict]) -> None:
     axes[0].plot(h, scratch_trace["t_zone_c"].head(len(h)), color="#2f5d8c", linewidth=2, label="scratch")
     axes[0].plot(h, warm_trace["t_zone_c"].head(len(h)), color="#b25f2c", linewidth=2, label="v3.5 warm-start")
     style_ax(axes[0], "Peak-heat live trace after fine-tune", "hours", "zone temperature (C)")
-    axes[0].legend(frameon=False)
     summary = pd.concat([scratch_summary.assign(mode="scratch"), warm_summary.assign(mode="warm-start")], ignore_index=True)
     peak = summary[summary["scenario"] == "peak_heat_window"]
     x = np.arange(3)
     width = 0.35
-    metrics = [("m_s", "m_s"), ("violation_pct", "viol %"), ("energy_kwh", "kWh")]
+    metrics = [("m_s", r"$m_s$"), ("violation_pct", r"viol \%"), ("energy_kwh", "kWh")]
     for i, mode in enumerate(["scratch", "warm-start"]):
         vals = [float(peak[peak["mode"] == mode][col].iloc[0]) for col, _ in metrics]
         axes[1].bar(x + (i - 0.5) * width, vals, width=width, label=mode, color=["#2f5d8c", "#b25f2c"][i])
     axes[1].set_xticks(x, [label for _, label in metrics])
     style_ax(axes[1], "Peak-heat KPIs", ylabel="raw metric")
-    axes[1].legend(frameon=False)
+    h0, l0 = axes[0].get_legend_handles_labels()
+    fig.legend(h0, l0, frameon=False, loc="lower center", ncol=2, bbox_to_anchor=(0.5, -0.02))
     png, pdf = save(fig, out_dir, "block2_warmstart_negative_eval_kpis")
     manifest(rows, "block2_warmstart_negative_eval_kpis", "complete", [scratch_summary_path, warm_summary_path, scratch_trace_path, warm_trace_path], "Uses real scratch/warm-start BOPTEST eval traces and summaries; no training reward logs were available.", png, pdf)
 
@@ -407,9 +411,10 @@ def fig7_hdrl_lambda(out_dir: Path, rows: list[dict]) -> None:
         label = scenario.replace("_", " ")
         axes[0].plot(sub["lambda_temp"], sub["m_s"], marker="o", linewidth=2.4, label=label)
         axes[1].plot(sub["lambda_temp"], sub["violation_pct"], marker="o", linewidth=2.4, label=label)
-    style_ax(axes[0], "Safety metric worsens with lambda_temp", "lambda_temp", "m_s")
-    style_ax(axes[1], "Comfort violations worsen with lambda_temp", "lambda_temp", "violation (%)")
-    axes[0].legend(frameon=False)
+    style_ax(axes[0], r"Safety metric worsens with $\lambda_{\mathrm{temp}}$", r"$\lambda_{\mathrm{temp}}$", r"$m_s$")
+    style_ax(axes[1], r"Comfort violations worsen with $\lambda_{\mathrm{temp}}$", r"$\lambda_{\mathrm{temp}}$", r"violation (\%)")
+    h0, l0 = axes[0].get_legend_handles_labels()
+    fig.legend(h0, l0, frameon=False, loc="lower center", ncol=len(l0), bbox_to_anchor=(0.5, -0.03))
     fig.suptitle("Block 2. HDRL sensitivity to temperature-physics regularization", fontsize=14, weight="bold")
     png, pdf = save(fig, out_dir, "block2_hdrl_lambda_sweep_sensitivity")
     manifest(rows, "block2_hdrl_lambda_sweep_sensitivity", "complete", [ROOT / "reports" / "block2_hdrl_lambda_sweep_summary.csv"], "Real HDRL lambda sweep.", png, pdf)
@@ -633,7 +638,7 @@ def fig11_morl_heatmap(out_dir: Path, rows: list[dict]) -> None:
     mat = np.vstack([months["viol_pct"].to_numpy(float), months["energy_kwh"].to_numpy(float), months["ms"].to_numpy(float)])
     fig, axes = plt.subplots(3, 1, figsize=(11.6, 4.6), sharex=True)
     cmaps = ["Reds", "YlOrBr", "Purples"]
-    row_names = ["violation (%)", "energy (kWh)", "m_s"]
+    row_names = [r"violation (\%)", "energy (kWh)", r"$m_s$"]
     for i, ax in enumerate(axes):
         im = ax.imshow(mat[i : i + 1], aspect="auto", cmap=cmaps[i])
         ax.set_yticks([0], [row_names[i]])
@@ -659,13 +664,16 @@ def main() -> None:
     fig3_trace(args.output_dir, rows)
     fig4_residuals(args.output_dir, rows)
     fig4b_stage_abc(args.output_dir, rows)
-    fig5_warmstart(args.output_dir, rows)
+    with plt.rc_context(fs.LATEX_RC):          # manuscript figure
+        fig5_warmstart(args.output_dir, rows)
     fig6_thermostatic(args.output_dir, rows)
-    fig7_hdrl_lambda(args.output_dir, rows)
+    with plt.rc_context(fs.LATEX_RC):          # manuscript figure
+        fig7_hdrl_lambda(args.output_dir, rows)
     fig8_hdrl_trace(args.output_dir, rows)
     fig9_morl_pareto(args.output_dir, rows)
     fig10_morl_radar(args.output_dir, rows)
-    fig11_morl_heatmap(args.output_dir, rows)
+    with plt.rc_context(fs.LATEX_RC):          # manuscript figure
+        fig11_morl_heatmap(args.output_dir, rows)
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(args.manifest, index=False)
     print(f"Saved figures to: {args.output_dir}")

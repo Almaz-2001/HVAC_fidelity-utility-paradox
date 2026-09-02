@@ -66,7 +66,10 @@ def main() -> None:
         fs.EDGE, fc="#f5f5f5", sfs=6.6)
 
     box(0.85, 0.625, 0.28, 0.215, "bestest_air (source case)",
-        "peak (cold January) & typical (February)\n14-day live closed-loop windows", fs.NEUTRAL, sfs=6.8)
+        # Escaped: usetex is on for this figure and a raw & is read as an
+        # alignment tab, which halts latex rather than rendering an ampersand.
+        "peak (cold January) \\& typical (February)\n14-day live closed-loop windows",
+        fs.NEUTRAL, sfs=6.8)
     box(0.85, 0.345, 0.28, 0.215, "Hydronic family (3 cases)",
         "calibration transfer vs frozen-policy transfer", fs.NEUTRAL)
 

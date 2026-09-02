@@ -1,0 +1,41 @@
+% Supp -- transfer-gap diagnostics (3 panels), native pgfplots.
+% Data-driven from tikz_data/block1_fig10.dat (rows: BB, direct GB, hybrid).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread{tikz_data/block1_fig10.dat}\df
+\newcommand{\gv}[3]{\pgfplotstablegetelem{#2}{#3}\of\df \pgfmathsetmacro{#1}{\pgfplotsretval}}
+\newcommand{\fpanel}[2]{% #1=column  #2=label precision
+  \gv{\va}{0}{#1}\gv{\vb}{1}{#1}\gv{\vc}{2}{#1}%
+  \fill[cV3, draw=cV3!60!black]         (axis cs:-0.32,0) rectangle (axis cs:0.32,\va);
+  \fill[cAccurate, draw=cAccurate!60!black] (axis cs:0.68,0) rectangle (axis cs:1.32,\vb);
+  \fill[cHybrid, draw=cHybrid!60!black]  (axis cs:1.68,0) rectangle (axis cs:2.32,\vc);
+  \node[font=\scriptsize\bfseries, anchor=south] at (axis cs:0,\va) {\pgfmathprintnumber[fixed,precision=#2]{\va}};
+  \node[font=\scriptsize\bfseries, anchor=south] at (axis cs:1,\vb) {\pgfmathprintnumber[fixed,precision=#2]{\vb}};
+  \node[font=\scriptsize\bfseries, anchor=south] at (axis cs:2,\vc) {\pgfmathprintnumber[fixed,precision=#2]{\vc}};
+}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={group size=3 by 1, horizontal sep=1.3cm},
+    paperaxis, width=5.4cm, height=5.6cm, title style={font=\bfseries\footnotesize},
+    xmin=-0.6, xmax=2.6, ymin=0, xtick={0,1,2},
+    xticklabels={{BB}, {direct\\GB}, {hybrid}},
+    xticklabel style={align=center, font=\footnotesize}, xtick style={draw=none}, ymajorgrids,
+]
+\nextgroupplot[title={Comfort violation (\%)}, ymax=90]
+  \fpanel{viol}{1}
+\nextgroupplot[title={Action-gap norm}, ymax=2.35]
+  \fpanel{gap}{2}
+\nextgroupplot[title={First divergence step}, ymax=10]
+  \fpanel{div}{1}
+\end{groupplot}
+\node[anchor=north, font=\bfseries\small, yshift=-1.25cm]
+  at ($(group c1r1.south west)!0.5!(group c3r1.south east)$)
+  {Transfer-gap diagnostics: standalone direct-GB training saturates (bang-bang)};
+\end{tikzpicture}
+\end{document}

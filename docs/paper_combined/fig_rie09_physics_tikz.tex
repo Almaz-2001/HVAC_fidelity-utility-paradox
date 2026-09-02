@@ -1,0 +1,28 @@
+% Supp (rie09) -- monotone temperature response (physics consistency), native pgfplots.
+% Data-driven from tikz_data/rie09.dat (predicted next-T vs supply command, 6 initial T0).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\pgfplotstableread{tikz_data/rie09.dat}\dr
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, bottomlegend, width=9.6cm, height=6.2cm,
+    title={Monotone temperature response to the supply-temperature command},
+    xlabel={supply-temperature command (\degC)},
+    ylabel={predicted next-step temp.\ (\degC)},
+    legend style={legend columns=3, /tikz/every even column/.append style={column sep=0.8em}},
+]
+  \addplot[cHybrid, thick, mark=*, mark size=1.3pt] table[x=tsup, y=c0]{\dr};
+  \addplot[cV3, thick, mark=*, mark size=1.3pt] table[x=tsup, y=c1]{\dr};
+  \addplot[cCtrl, thick, mark=*, mark size=1.3pt] table[x=tsup, y=c2]{\dr};
+  \addplot[cOrange, thick, mark=*, mark size=1.3pt] table[x=tsup, y=c3]{\dr};
+  \addplot[cMatched, thick, mark=*, mark size=1.3pt] table[x=tsup, y=c4]{\dr};
+  \addplot[cAccurate, thick, mark=*, mark size=1.3pt] table[x=tsup, y=c5]{\dr};
+  \legend{$T_0{=}20.3$, $T_0{=}21.7$, $T_0{=}22.0$, $T_0{=}22.4$, $T_0{=}23.0$, $T_0{=}24.9$}
+\end{axis}
+\end{tikzpicture}
+\end{document}

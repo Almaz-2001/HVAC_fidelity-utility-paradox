@@ -1,0 +1,118 @@
+{
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "bands": {
+    "pure": {
+      "peak": {
+        "seeds": [
+          42,
+          43,
+          44
+        ],
+        "m_s": {
+          "n": 3,
+          "mean": 0.0718,
+          "std": 0.0192
+        },
+        "violation_pct": {
+          "n": 3,
+          "mean": 2.5546,
+          "std": 1.2097
+        }
+      },
+      "typical": {
+        "seeds": [
+          42,
+          43,
+          44
+        ],
+        "m_s": {
+          "n": 3,
+          "mean": 0.0455,
+          "std": 0.0474
+        },
+        "violation_pct": {
+          "n": 3,
+          "mean": 2.4306,
+          "std": 2.2326
+        }
+      }
+    },
+    "matched_v3": {
+      "peak": {
+        "seeds": [
+          42,
+          43,
+          44
+        ],
+        "m_s": {
+          "n": 3,
+          "mean": 1.1417,
+          "std": 0.0002
+        },
+        "violation_pct": {
+          "n": 3,
+          "mean": 85.5655,
+          "std": 0.0
+        }
+      },
+      "typical": {
+        "seeds": [
+          42,
+          43,
+          44
+        ],
+        "m_s": {
+          "n": 3,
+          "mean": 1.211,
+          "std": 0.0
+        },
+        "violation_pct": {
+          "n": 3,
+          "mean": 91.4435,
+          "std": 0.0
+        }
+      }
+    },
+    "hybrid_l010": {
+      "peak": {
+        "seeds": [
+          42,
+          43,
+          44
+        ],
+        "m_s": {
+          "n": 3,
+          "mean": 0.0595,
+          "std": 0.0261
+        },
+        "violation_pct": {
+          "n": 3,
+          "mean": 3.0258,
+          "std": 1.6033
+        }
+      },
+      "typical": {
+        "seeds": [
+          42,
+          43,
+          44
+        ],
+        "m_s": {
+          "n": 3,
+          "mean": 0.0137,
+          "std": 0.0237
+        },
+        "violation_pct": {
+          "n": 3,
+          "mean": 0.7937,
+          "std": 1.3746
+        }
+      }
+    }
+  },
+  "sentence": "Over the reported seeds, the pure-v3 and hybrid controllers are stated as mean +/- standard deviation per window; see reports/block2_thermostatic_seed_band.csv."
+}

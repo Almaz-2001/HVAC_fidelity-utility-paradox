@@ -1,0 +1,46 @@
+% Supp (evidence matrix) -- quantified fidelity-utility chain, native pgfplots.
+% Data-driven from tikz_data/conceptual.dat (rows: BB, matched-BB, GB, hybrid).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\pgfplotstableread{tikz_data/conceptual.dat}\dc
+\newcommand{\gc}[3]{\pgfplotstablegetelem{#2}{#3}\of\dc \pgfmathsetmacro{#1}{\pgfplotsretval}}
+\newcommand{\hpanel}[2]{% #1=column #2=label precision
+  \gc{\va}{0}{#1}\gc{\vb}{1}{#1}\gc{\vc}{2}{#1}\gc{\vd}{3}{#1}%
+  \fill[cV3, draw=cV3!60!black]           (axis cs:0,2.68) rectangle (axis cs:\va,3.32);
+  \fill[cMatched, draw=cMatched!60!black] (axis cs:0,1.68) rectangle (axis cs:\vb,2.32);
+  \fill[cAccurate, draw=cAccurate!60!black] (axis cs:0,0.68) rectangle (axis cs:\vc,1.32);
+  \fill[cHybrid, draw=cHybrid!60!black]   (axis cs:0,-0.32) rectangle (axis cs:\vd,0.32);
+  \node[anchor=west, font=\scriptsize] at (axis cs:\va,3) {\pgfmathprintnumber[fixed,precision=#2]{\va}};
+  \node[anchor=west, font=\scriptsize] at (axis cs:\vb,2) {\pgfmathprintnumber[fixed,precision=#2]{\vb}};
+  \node[anchor=west, font=\scriptsize] at (axis cs:\vc,1) {\pgfmathprintnumber[fixed,precision=#2]{\vc}};
+  \node[anchor=west, font=\scriptsize] at (axis cs:\vd,0) {\pgfmathprintnumber[fixed,precision=#2]{\vd}};
+}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={group size=4 by 1, horizontal sep=0.9cm},
+    paperaxis, width=4.7cm, height=5.4cm, ymin=-0.6, ymax=3.6,
+    ytick={0,1,2,3}, yticklabels={,,,}, xmin=0,
+    title style={font=\bfseries\footnotesize}, xtick align=inside,
+]
+\nextgroupplot[title={(a) 24\,h \RMSET~(\degC)}, xmax=1.85,
+    ytick={0,1,2,3}, yticklabels={hybrid, GB, matched-BB, BB}, ytick style={draw=none}]
+  \hpanel{rmse}{3}
+\nextgroupplot[title={(b) roughness ($\times$ BB)}, xmax=11]
+  \hpanel{rough}{1}
+\nextgroupplot[title={(c) saturation (\%)}, xmax=124]
+  \hpanel{sat}{0}
+\nextgroupplot[title={(d) live \ms}, xmax=1.4]
+  \fill[cV3!25] (axis cs:0,-0.6) rectangle (axis cs:0.1,3.6);
+  \draw[cAccurate, dashed, line width=0.9pt] (axis cs:1,-0.6)--(axis cs:1,3.6);
+  \hpanel{ms}{3}
+\end{groupplot}
+\node[anchor=north, font=\bfseries\small, yshift=-0.7cm]
+  at ($(group c1r1.south west)!0.5!(group c4r1.south east)$)
+  {Quantified evidence chain: lower predictive \RMSET\ does not imply lower live \ms};
+\end{tikzpicture}
+\end{document}

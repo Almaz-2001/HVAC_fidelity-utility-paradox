@@ -1,0 +1,25 @@
+% Supp -- adapter-mediated actuator interface (conceptual schematic, hand TikZ).
+\documentclass[border=6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\begin{document}
+\begin{tikzpicture}[font=\small, node distance=6mm]
+  \node[controller, text width=30mm, minimum height=16mm] (ctrl) at (0,0)
+    {\textbf{frozen controller}\\[1pt]{\footnotesize scalar command}\\{\footnotesize $a_t\to T_{\mathrm{sup}}$}};
+  \node[model, text width=30mm, minimum height=16mm] (adapt) at (4.6,0)
+    {\textbf{adapter} (per testcase)\\[1pt]{\footnotesize rescale $\cdot$ clip $\cdot$ map}};
+  \node[eval, text width=40mm] (t1) at (9.6,1.7)  {\footnotesize \texttt{heat\_pump}: modulation signal};
+  \node[eval, text width=40mm] (t2) at (9.6,0)    {\footnotesize \texttt{hydronic}: radiator $+$ thermostatic valve};
+  \node[eval, text width=40mm] (t3) at (9.6,-1.7) {\footnotesize \texttt{commercial}: AHU coil / radiator valve};
+  \draw[flow] (ctrl) -- (adapt);
+  \draw[flow] (adapt.east) -- (t1.west);
+  \draw[flow] (adapt.east) -- (t2.west);
+  \draw[flow] (adapt.east) -- (t3.west);
+  \node[font=\footnotesize\itshape, text=cMut, align=center, text width=0.9\linewidth] at (5.2,-2.9)
+    {Transfer is adapter-mediated: the frozen policy's scalar set-point is re-mapped to each
+     test case's actuator interface, not a literal copy of the source actions.};
+\end{tikzpicture}
+\end{document}

@@ -218,9 +218,27 @@ def train_backbone(
     rollout_val_horizons: Optional[Sequence[int]] = None,
     rollout_val_max_windows: int = 256,
     rollout_selection_weights: Optional[Sequence[float]] = None,
+    seed: Optional[int] = None,
+    lambda_mono: float = 0.0,
+    mono_margin: float = 0.0,
+    mono_jitter: float = 0.0,
+    lambda_mono_fan: float = 0.0,
 ) -> str:
     if multi_horizons is None:
         multi_horizons = [2, 4]
+
+    # Weight initialisation and the training DataLoader's shuffle are the only
+    # stochastic parts (the train/val split is positional, not random). Without
+    # this the trainer is unreproducible, which makes it impossible to say
+    # whether a property of a checkpoint is a property of the recipe.
+    if seed is not None:
+        import random as _random
+        _random.seed(int(seed))
+        np.random.seed(int(seed))
+        torch.manual_seed(int(seed))
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(int(seed))
+        print(f"[TRAIN_BACKBONE] Seed: {int(seed)}")
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     max_horizon = max(multi_horizons)
@@ -307,6 +325,51 @@ def train_backbone(
                 t_pred, batch['t_next'], p_pred, batch['p_total'],
                 multi_loss=multi_loss,
             )
+            # Monotonicity in the supply-temperature command. Trained on the
+            # 15-minute corpus this backbone reliably learns an INVERTED
+            # response (a hotter command predicting a colder zone) while its
+            # rollout RMSE improves -- see reports/block1_matched_bb_seed_audit.json.
+            # The penalty asks, at the batch's own states, that a higher command
+            # not predict a lower next temperature. Off by default (0.0), so the
+            # canonical checkpoints are bit-for-bit unaffected.
+            if lambda_mono > 0.0:
+                lo = torch.rand_like(batch['a0']) - 1.0          # U(-1, 0)
+                hi = torch.rand_like(batch['a0'])                # U( 0, 1)
+                # Enforced at jittered states, not only at the corpus states: a
+                # policy in training visits regions the corpus never covers, and
+                # a penalty applied only on-distribution leaves the sign wrong
+                # exactly where exploration goes (measured: 78% correct with
+                # jitter 0, against 9.8% unpenalised).
+                if mono_jitter > 0.0:
+                    z = batch['t_zone'] + mono_jitter * torch.randn_like(batch['t_zone'])
+                    a = batch['t_amb'] + 2.0 * mono_jitter * torch.randn_like(batch['t_amb'])
+                else:
+                    z, a = batch['t_zone'], batch['t_amb']
+                t_lo, _ = model(z, a, batch['hour'], batch['day'], lo, batch['a1'])
+                t_hi, _ = model(z, a, batch['hour'], batch['day'], hi, batch['a1'])
+                mono_violation = torch.relu(t_lo - t_hi + mono_margin).mean()
+                loss = loss + lambda_mono * mono_violation
+                loss_dict['loss_mono'] = float(mono_violation.detach())
+
+                # Fan channel. Constraining the supply channel alone does not fix
+                # the model, it relocates the defect: measured 100% valid in a0
+                # and 20.8% in a1, and both the RL policy and the MPC planner
+                # trained on such a model drove the fan to zero and delivered no
+                # heat. The fan relation is signed -- more airflow moves the zone
+                # TOWARDS the supply temperature -- so the constraint follows
+                # sign(T_supply - T_zone) rather than being monotone increasing.
+                if lambda_mono_fan > 0.0:
+                    a0_s = batch['a0']
+                    t_sup = 18.0 + (a0_s + 1.0) * 0.5 * (35.0 - 18.0)
+                    want = torch.sign(t_sup - z)
+                    f_lo, _ = model(z, a, batch['hour'], batch['day'], a0_s,
+                                    torch.full_like(a0_s, -0.9))
+                    f_hi, _ = model(z, a, batch['hour'], batch['day'], a0_s,
+                                    torch.full_like(a0_s, +0.9))
+                    fan_violation = torch.relu(
+                        -want * (f_hi - f_lo) + mono_margin).mean()
+                    loss = loss + lambda_mono_fan * fan_violation
+                    loss_dict['loss_mono_fan'] = float(fan_violation.detach())
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
@@ -607,6 +670,23 @@ def main():
     parser.add_argument("--rollout_val_max_windows", type=int, default=256)
     parser.add_argument("--validate_safety", action="store_true")
     parser.add_argument("--benchmark", action="store_true")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Seed for weight init and batch shuffling. Omit to keep the "
+                             "historical unseeded behaviour of the canonical checkpoints.")
+    parser.add_argument("--lambda-mono", type=float, default=0.0,
+                        help="Weight on the supply-command monotonicity penalty. 0 disables it "
+                             "(canonical behaviour).")
+    parser.add_argument("--mono-margin", type=float, default=0.0,
+                        help="Required margin in C between the low- and high-command "
+                             "predictions. 0 enforces non-decreasing only.")
+    parser.add_argument("--lambda-mono-fan", type=float, default=0.0,
+                        help="Weight on the FAN-channel directional penalty. The fan relation "
+                             "is signed: more airflow moves the zone towards the supply "
+                             "temperature. 0 disables it.")
+    parser.add_argument("--mono-jitter", type=float, default=0.0,
+                        help="Std dev in C of the state perturbation used for the "
+                             "monotonicity term, so the constraint also holds off the "
+                             "training distribution where a policy explores.")
     args = parser.parse_args()
 
     model_path = train_backbone(
@@ -617,6 +697,11 @@ def main():
         checkpoint_metric=args.checkpoint_metric,
         rollout_val_horizons=args.rollout_val_horizons,
         rollout_val_max_windows=args.rollout_val_max_windows,
+        seed=args.seed,
+        lambda_mono=args.lambda_mono,
+        mono_margin=args.mono_margin,
+        mono_jitter=args.mono_jitter,
+        lambda_mono_fan=args.lambda_mono_fan,
     )
 
     if args.validate_safety:

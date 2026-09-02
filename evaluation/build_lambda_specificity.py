@@ -90,10 +90,10 @@ def main() -> None:
     ax.set_xlim(-0.012, 0.118)
     ax.set_ylim(0, max(max(y for _, y in pts) for pts in data.values()) * 1.15)
     ax.set_xlabel(r"disagreement-penalty weight $\lambda_T$")
-    ax.set_ylabel(r"live $m_s$ (cross-window mean of peak & typical)")
-    ax.set_title("Controller-family specificity: the optimal $\\lambda_T$ is not universal\n"
-                 "(★ = per-family optimum: PPO 0.10, HDRL 0.00, MORL 0.00)", fontsize=11, weight="bold")
-    ax.legend(frameon=False, fontsize=9, loc="center right")
+    ax.set_ylabel(r"live $m_s$ (cross-window mean of peak \& typical)")
+    ax.set_title(r"Controller-family specificity: the optimal $\lambda_T$ is not universal" "\n"
+                 r"($\bigstar$ = per-family optimum: PPO 0.10, HDRL 0.00, MORL 0.00)", fontsize=11, weight="bold")
+    ax.legend(frameon=False, fontsize=9, loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=3)
     ax.grid(alpha=0.18)
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)

@@ -1,0 +1,72 @@
+% Fig (main, central) -- measured roughness mechanism (4 panels), native pgfplots.
+% Data-driven from tikz_data/surface_{curves,box,bars}.dat (exported by export_surface_data.py).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread{tikz_data/surface_curves.dat}\dcurve
+\pgfplotstableread{tikz_data/surface_box.dat}\dbox
+\pgfplotstableread{tikz_data/surface_bars.dat}\dbar
+\newcommand{\gb}[3]{\pgfplotstablegetelem{#2}{#3}\of\dbox \pgfmathsetmacro{#1}{\pgfplotsretval}}
+\newcommand{\gr}[3]{\pgfplotstablegetelem{#2}{#3}\of\dbar \pgfmathsetmacro{#1}{\pgfplotsretval}}
+% distinct macros per box (pgfplots reads them at draw time, so shared names would
+% all collapse to the last row -- each box needs its own macro name).
+\gb{\lwA}{0}{lw}\gb{\qaA}{0}{q1}\gb{\mdA}{0}{med}\gb{\qcA}{0}{q3}\gb{\uwA}{0}{uw}\gb{\fdA}{0}{fold}
+\gb{\lwB}{1}{lw}\gb{\qaB}{1}{q1}\gb{\mdB}{1}{med}\gb{\qcB}{1}{q3}\gb{\uwB}{1}{uw}\gb{\fdB}{1}{fold}
+\gb{\lwC}{2}{lw}\gb{\qaC}{2}{q1}\gb{\mdC}{2}{med}\gb{\qcC}{2}{q3}\gb{\uwC}{2}{uw}\gb{\fdC}{2}{fold}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={group size=4 by 1, horizontal sep=1.35cm},
+    paperaxis, width=5.1cm, height=5.6cm, title style={font=\bfseries\footnotesize},
+    xtick={0,1,2}, xticklabels={{BB\\hourly}, {m-BB\\15\,min}, {GB}},
+    xticklabel style={align=center, font=\footnotesize}, xtick style={draw=none},
+]
+% ---- (a) response shape ----
+\nextgroupplot[title={(a) Action$\to$next-$T$ shape}, xlabel={action $a_0$}, ylabel={normalised response},
+    xtick={-1,0,1}, xticklabels={-1,0,1}, xmin=-1, xmax=1, enlarge x limits=false]
+  \addplot[cV3, thick] table[x=A0, y=v3]{\dcurve};
+  \addplot[cMatched, thick, dashed] table[x=A0, y=matched]{\dcurve};
+  \addplot[cAccurate, thick, dash dot] table[x=A0, y=v35]{\dcurve};
+% ---- (b) roughness distribution ----
+\nextgroupplot[title={(b) Rel.\ roughness over states}, ylabel={rel.\ roughness $\overline{|\partial^2\hat T|}/\overline{|\partial\hat T|}$},
+    boxplot/draw direction=y, xmin=-0.6, xmax=2.6, ymin=0, ymax=3.4, enlarge x limits=false]
+  \addplot+[boxplot prepared={draw position=0, lower whisker=\lwA, lower quartile=\qaA, median=\mdA, upper quartile=\qcA, upper whisker=\uwA}, cV3, solid, mark=none, fill=cV3!22, draw=cV3!70!black, boxplot/box extend=0.5] coordinates {};
+  \addplot+[boxplot prepared={draw position=1, lower whisker=\lwB, lower quartile=\qaB, median=\mdB, upper quartile=\qcB, upper whisker=\uwB}, cMatched, solid, mark=none, fill=cMatched!22, draw=cMatched!70!black, boxplot/box extend=0.5] coordinates {};
+  \addplot+[boxplot prepared={draw position=2, lower whisker=\lwC, lower quartile=\qaC, median=\mdC, upper quartile=\qcC, upper whisker=\uwC}, cAccurate, solid, mark=none, fill=cAccurate!22, draw=cAccurate!70!black, boxplot/box extend=0.5] coordinates {};
+  \node[font=\footnotesize\bfseries, text=cV3!60!black, anchor=south] at (axis cs:0,\uwA) {$\times$\pgfmathprintnumber[fixed,precision=1]{\fdA}};
+  \node[font=\footnotesize\bfseries, text=cMatched!70!black, anchor=south] at (axis cs:1,\uwB) {$\times$\pgfmathprintnumber[fixed,precision=1]{\fdB}};
+  \node[font=\footnotesize\bfseries, text=cAccurate!70!black, anchor=south] at (axis cs:2,\uwC) {$\times$\pgfmathprintnumber[fixed,precision=1]{\fdC}};
+% ---- (c) policy saturation ----
+\nextgroupplot[title={(c) Policy saturation (live)}, ylabel={$|a_0|>0.9$ (\% steps)},
+    ymin=0, ymax=113, xmin=-0.6, xmax=2.6, ymajorgrids]
+  \gr{\sa}{0}{sat}\gr{\sb}{1}{sat}\gr{\sco}{2}{sat}
+  \fill[cV3, draw=cV3!60!black]       (axis cs:-0.32,0) rectangle (axis cs:0.32,\sa);
+  \fill[cMatched, draw=cMatched!60!black] (axis cs:0.68,0) rectangle (axis cs:1.32,\sb);
+  \fill[cAccurate, draw=cAccurate!60!black] (axis cs:1.68,0) rectangle (axis cs:2.32,\sco);
+  \draw[gray, dashed] (axis cs:-0.6,90)--(axis cs:2.6,90);
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:0,\sa) {\pgfmathprintnumber[fixed,precision=0]{\sa}\%};
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:1,\sb) {\pgfmathprintnumber[fixed,precision=0]{\sb}\%};
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:2,\sco) {\pgfmathprintnumber[fixed,precision=0]{\sco}\%};
+% ---- (d) live outcome ----
+\nextgroupplot[title={(d) Live BOPTEST \ms}, ylabel={live \ms},
+    ymin=0, ymax=1.4, xmin=-0.6, xmax=2.6, ymajorgrids]
+  \gr{\ma}{0}{ms}\gr{\mb}{1}{ms}\gr{\mc}{2}{ms}
+  \fill[cV3!25] (axis cs:-0.6,0) rectangle (axis cs:2.6,0.10);
+  \fill[cV3, draw=cV3!60!black]       (axis cs:-0.32,0) rectangle (axis cs:0.32,\ma);
+  \fill[cMatched, draw=cMatched!60!black] (axis cs:0.68,0) rectangle (axis cs:1.32,\mb);
+  \fill[cAccurate, draw=cAccurate!60!black] (axis cs:1.68,0) rectangle (axis cs:2.32,\mc);
+  \draw[cAccurate, dashed, line width=0.9pt] (axis cs:-0.6,1)--(axis cs:2.6,1);
+  \node[font=\scriptsize, text=cAccurate, anchor=north east] at (axis cs:2.55,1) {$\ms=1$};
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:0,\ma) {\pgfmathprintnumber[fixed,precision=2]{\ma}};
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:1,\mb) {\pgfmathprintnumber[fixed,precision=2]{\mb}};
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:2,\mc) {\pgfmathprintnumber[fixed,precision=2]{\mc}};
+\end{groupplot}
+\node[anchor=north, font=\bfseries\small, yshift=-1.3cm]
+  at ($(group c1r1.south west)!0.5!(group c4r1.south east)$)
+  {Measured mechanism: rougher action surface $\rightarrow$ policy saturation $\rightarrow$ live collapse (association, not a proven causal law)};
+\end{tikzpicture}
+\end{document}

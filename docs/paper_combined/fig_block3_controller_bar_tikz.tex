@@ -1,0 +1,41 @@
+% fig_block3_controller_bar (supp) -- controller-side m_s_RL vs m_s_PI vs threshold.
+% Data-driven from reports/block3_transfer_matrix.csv.
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread[col sep=comma]{../../reports/block3_transfer_matrix.csv}\dtransfer
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, paperbars, bottomlegend,
+    width=10.5cm, height=6.8cm,
+    title={Controller-side transfer vs the pre-specified threshold},
+    ylabel={$m_s$ (lower better)},
+    ymin=0, ymax=1.15,
+    xtick={0,1,2},
+    xticklabels={heat pump, hydronic, commercial},
+    xtick style={draw=none},
+    bar width=13pt,
+]
+  \addplot[draw=cHybrid!60!black, fill=cHybrid] table[x expr=\coordindex, y=m_s_rl]{\dtransfer};
+  \addplot[draw=cPI!55!black, fill=cPI]          table[x expr=\coordindex, y=m_s_pi]{\dtransfer};
+  % pass thresholds tau_k = 1.25 m_s_PI as red dashes over each group
+  \addplot[only marks, mark=-, mark size=9pt, line width=1.2pt, color=cAccurate, forget plot]
+    table[x expr=\coordindex, y=pass_threshold_m_s]{\dtransfer};
+  \legend{$m_s^{\mathrm{RL}}$ (frozen hybrid), $m_s^{\mathrm{PI}}$ (baseline)}
+
+  % PASS/FAIL verdict printed straight from the CSV column (data-driven)
+  \addplot[draw=none, forget plot, mark=none, nodes near coords,
+           point meta=explicit symbolic,
+           nodes near coords style={anchor=south, yshift=3pt, xshift=-13pt,
+             font=\footnotesize\bfseries, text=cInk}]
+    table[x expr=\coordindex, y=m_s_rl, meta=none_controller_verdict]{\dtransfer};
+  \node[font=\scriptsize, text=cAccurate, anchor=east] at (axis cs:2.45,0.80)
+    {$\tau_k=1.25\,m_s^{\mathrm{PI}}$};
+\end{axis}
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,44 @@
+{
+  "created_utc": "2026-08-20T09:37:06.851583+00:00",
+  "corpus": "data/block_1_2_surrogate_rmse/boptest_block12_15min_prepared.csv",
+  "recipe": {
+    "epochs": 500,
+    "batch_size": 256,
+    "lr": 0.001,
+    "hidden_dim": 64,
+    "patience": 30,
+    "multi_horizons": [
+      2,
+      4
+    ]
+  },
+  "lambda_mono": 200.0,
+  "mono_margin": 0.1,
+  "mono_jitter": 3.0,
+  "sign_pass_pct": 95.0,
+  "reference": {
+    "hourly BB (usable controller)": {
+      "rmse": 1.557,
+      "sign": 100.0,
+      "m_s_typical": 0.095
+    },
+    "matched BB canonical (fails)": {
+      "rmse": 0.8761,
+      "sign": 9.8,
+      "m_s_typical": 1.211
+    },
+    "calibrated GB (fails)": {
+      "rmse": 0.644,
+      "sign": 100.0,
+      "m_s_typical": 1.102
+    }
+  },
+  "rows": [
+    {
+      "seed": 42,
+      "rollout_rmse_c": 1.4649332914817963,
+      "correct_sign_pct": 100.0,
+      "median_delta_c": 3.5482
+    }
+  ]
+}

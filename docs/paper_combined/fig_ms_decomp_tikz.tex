@@ -1,0 +1,36 @@
+% Fig (main) -- maintenance-score decomposition m_s = r_time + r_sev, native pgfplots.
+% Data-driven from tikz_data/ms_decomp.dat (6 rows: peak {BB,GB,hybrid}, typical {...}).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\definecolor{cTeal}{HTML}{1B7F7A}
+\definecolor{cBurg}{HTML}{9B3D3D}
+
+\pgfplotstableread{tikz_data/ms_decomp.dat}\dd
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, ybar stacked, bottomlegend, width=11.5cm, height=6.4cm, bar width=15pt,
+    title={Maintenance-score decomposition on the live BOPTEST windows},
+    ylabel={$\ms = r_{\mathrm{time}} + r_{\mathrm{sev}}$},
+    ymin=0, ymax=1.28, enlarge x limits=0.07,
+    xtick={0,1,2,3,4,5},
+    xticklabels={{BB\\peak}, {GB\\peak}, {hybrid\\peak}, {BB\\typ.}, {GB\\typ.}, {hybrid\\typ.}},
+    xticklabel style={align=center, font=\footnotesize}, xtick style={draw=none},
+    ymajorgrids=true,
+]
+  \draw[gray, dashed, line width=0.8pt] (axis cs:-0.6,0.10) -- (axis cs:5.6,0.10);
+  \node[font=\scriptsize, text=gray, anchor=south east] at (axis cs:5.55,0.10) {$\ms=0.10$};
+  \addplot[fill=cTeal, draw=cTeal!60!black] table[x expr=\coordindex, y=rtime]{\dd};
+  \addplot[fill=cBurg, draw=cBurg!60!black,
+           nodes near coords, point meta=explicit,
+           nodes near coords style={anchor=south, font=\scriptsize\bfseries, yshift=1pt},
+           nodes near coords={\pgfmathprintnumber[fixed,precision=3]{\pgfplotspointmeta}}]
+    table[x expr=\coordindex, y=rsev, meta expr=\thisrow{rtime}+\thisrow{rsev}]{\dd};
+  \legend{$r_{\mathrm{time}}$ (violation fraction), $r_{\mathrm{sev}}$ (worst rel.\ severity)}
+\end{axis}
+\end{tikzpicture}
+\end{document}

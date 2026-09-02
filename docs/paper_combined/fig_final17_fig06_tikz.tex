@@ -1,0 +1,42 @@
+% Supp -- live BOPTEST controller comparison (2x2 grouped bars), native pgfplots.
+% Data-driven from tikz_data/final17_fig06.dat (rows: win 0=peak, 1=typical).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread{tikz_data/final17_fig06.dat}\dg
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={group size=2 by 2, horizontal sep=1.7cm, vertical sep=1.5cm},
+    paperaxis, ybar, width=6.6cm, height=4.9cm,
+    xtick={0,1}, xticklabels={peak, typical}, xmin=-0.5, xmax=1.5,
+    xtick style={draw=none}, ymajorgrids, enlarge x limits=0.4,
+    title style={font=\bfseries\footnotesize},
+    every axis plot/.append style={draw=black!45},
+]
+\nextgroupplot[title={live \ms}, ymin=0]
+  \addplot[fill=cV3] table[x=win, y=ms_bb]{\dg};
+  \addplot[fill=cAccurate] table[x=win, y=ms_gb]{\dg};
+  \addplot[fill=cHybrid] table[x=win, y=ms_hy]{\dg};
+\nextgroupplot[title={comfort violation (\%)}, ymin=0]
+  \addplot[fill=cV3] table[x=win, y=viol_bb]{\dg};
+  \addplot[fill=cAccurate] table[x=win, y=viol_gb]{\dg};
+  \addplot[fill=cHybrid] table[x=win, y=viol_hy]{\dg};
+\nextgroupplot[title={transfer \RMSET~(\degC)}, ymin=0]
+  \addplot[fill=cV3] table[x=win, y=rmse_bb]{\dg};
+  \addplot[fill=cAccurate] table[x=win, y=rmse_gb]{\dg};
+  \addplot[fill=cHybrid] table[x=win, y=rmse_hy]{\dg};
+\nextgroupplot[title={energy (\si{\kilo\watt\hour})}, ymin=0]
+  \addplot[fill=cV3] table[x=win, y=en_bb]{\dg};
+  \addplot[fill=cAccurate] table[x=win, y=en_gb]{\dg};
+  \addplot[fill=cHybrid] table[x=win, y=en_hy]{\dg};
+\end{groupplot}
+\node[anchor=north, font=\small, yshift=-0.8cm]
+  at ($(group c1r2.south east)!0.5!(group c2r2.south west)$)
+  {\textcolor{cV3}{\rule{6pt}{6pt}}~pure BB\quad\textcolor{cAccurate}{\rule{6pt}{6pt}}~direct GB\quad\textcolor{cHybrid}{\rule{6pt}{6pt}}~hybrid};
+\end{tikzpicture}
+\end{document}

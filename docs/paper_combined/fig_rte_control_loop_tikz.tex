@@ -1,0 +1,27 @@
+% Supp -- BOPTEST RTE closed-loop control interface (conceptual schematic, hand TikZ).
+\documentclass[border=6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\begin{document}
+\begin{tikzpicture}[font=\small]
+  \node[controller, text width=33mm, minimum height=22mm] (rl) at (0,0)
+    {\textbf{RL controller (host)}\\[2pt]{\footnotesize policy $\pi_\theta(a_t\mid o_t)$}\\{\footnotesize $a_t\in[-1,1]$}};
+  \node[eval, text width=42mm, minimum height=26mm] (rte) at (8.4,0)
+    {\textbf{BOPTEST RTE (Docker)}\\[2pt]{\footnotesize Modelica emulator FMU}\\{\footnotesize $+$ embedded baseline loops}\\{\footnotesize forecaster $\cdot$ KPI calculator}};
+  % action path (top)
+  \draw[-{Latex[length=2.4mm]}, cAccurate, line width=1.1pt]
+    ([yshift=7mm]rl.east) -- node[above, font=\scriptsize, text=cAccurate, align=center]
+      {control input $u_c$ (overwrite)\\ $T_{\mathrm{sup}}=18+\tfrac{a_t+1}{2}(35-18)\,\degC$}
+    ([yshift=7mm]rte.west);
+  % measurement path (bottom). The label is placed clear of the boxes rather than on
+  % the arrow: at \scriptsize it is wider than the 45mm gap and used to run under both.
+  \draw[-{Latex[length=2.4mm]}, cMut, line width=1.0pt]
+    ([yshift=-7mm]rte.west) -- ([yshift=-7mm]rl.east);
+  \node[font=\scriptsize, text=cMut, align=center] at (4.2,-1.95)
+    {measurements $y_t$ ($T_{\mathrm{zon}}$, CO$_2$, power) $+$ forecast $\omega_t$\\ $\rightarrow$ 17D observation $o_t\ \cdot$ live KPI $/\ m_s$};
+  \node[font=\scriptsize, text=cMut] at (4.2,-2.95) {one control step $\Delta t=\SI{900}{\second}$ (Option-1 synchronisation via POST \texttt{/advance})};
+\end{tikzpicture}
+\end{document}

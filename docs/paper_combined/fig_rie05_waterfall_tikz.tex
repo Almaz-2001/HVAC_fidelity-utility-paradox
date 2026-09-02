@@ -1,0 +1,52 @@
+% Fig 5 (main) -- matched-corpus predictive-fidelity decomposition (waterfall).
+% Data-driven from reports/block1_corpus_matched_comparison.csv.
+% rows: 0 v3_hourly (BB), 1 v3_15min_matched (matched-BB), 2 v35_raw, 3 v35_calibrated (GB).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread{tikz_data/rie05_waterfall.dat}\dcm
+\newcommand{\getc}[3]{\pgfplotstablegetelem{#2}{#3}\of\dcm \pgfmathsetmacro{#1}{\pgfplotsretval}}
+\getc{\vBB}{0}{rmse}\getc{\vMB}{1}{rmse}\getc{\vraw}{2}{rmse}\getc{\vGB}{3}{rmse}
+\pgfmathsetmacro{\dres}{\vBB-\vMB}\pgfmathsetmacro{\dcal}{\vMB-\vGB}
+\pgfmathsetmacro{\sres}{100*\dres/(\dres+\dcal)}\pgfmathsetmacro{\scal}{100*\dcal/(\dres+\dcal)}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, width=11cm, height=7cm,
+    title={Matched-corpus decomposition: $\Delta\RMSET=\Delta_{\mathrm{resolution}}+\Delta_{\mathrm{physics\text{-}calib}}$},
+    ylabel={24\,h rollout \RMSET~(\degC)},
+    xmin=-0.6, xmax=4.6, ymin=0, ymax=1.72,
+    xtick={0,1,2,3,4},
+    xticklabels={BB hourly, $-$ resolution, {matched-BB\\(15\,min)}, $-$ calibration, {GB\\calibrated}},
+    xticklabel style={align=center, font=\footnotesize}, xtick style={draw=none},
+    ymajorgrids=true,
+]
+  % level + drop bars (waterfall) as filled rectangles from fetched values
+  \fill[cV3, draw=cV3!60!black]        (axis cs:-0.3,0)     rectangle (axis cs:0.3,\vBB);
+  \fill[cMatched, draw=cMatched!60!black] (axis cs:0.7,\vMB) rectangle (axis cs:1.3,\vBB);
+  \fill[cMatched!45, draw=cMatched!60!black] (axis cs:1.7,0) rectangle (axis cs:2.3,\vMB);
+  \fill[cAccurate, draw=cAccurate!60!black] (axis cs:2.7,\vGB) rectangle (axis cs:3.3,\vMB);
+  \fill[cAccurate, draw=cAccurate!60!black] (axis cs:3.7,0)   rectangle (axis cs:4.3,\vGB);
+  % dashed running-total connectors
+  \draw[dotted, gray, line width=1pt] (axis cs:0.3,\vBB)--(axis cs:0.7,\vBB);
+  \draw[dotted, gray, line width=1pt] (axis cs:1.3,\vMB)--(axis cs:2.3,\vMB) (axis cs:2.3,\vMB)--(axis cs:2.7,\vMB);
+  \draw[dotted, gray, line width=1pt] (axis cs:3.3,\vGB)--(axis cs:4.3,\vGB);
+  % raw GB reference
+  \draw[cOrange, dashed, line width=1pt] (axis cs:-0.6,\vraw)--(axis cs:4.6,\vraw);
+  \node[font=\scriptsize, text=cOrange, anchor=north east] at (axis cs:4.55,\vraw) {raw GB (uncalibrated) \pgfmathprintnumber[fixed,precision=3]{\vraw}};
+  % level value labels
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:0,\vBB) {\pgfmathprintnumber[fixed,precision=3]{\vBB}};
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:2,\vMB) {\pgfmathprintnumber[fixed,precision=3]{\vMB}};
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:4,\vGB) {\pgfmathprintnumber[fixed,precision=3]{\vGB}};
+  % drop annotations (white, centred in the drop bar; the word is on the x-axis tick)
+  \node[font=\scriptsize\bfseries, text=white, align=center] at (axis cs:1,{(\vMB+\vBB)/2})
+    {$-$\pgfmathprintnumber[fixed,precision=3]{\dres}\\\pgfmathprintnumber[fixed,precision=1]{\sres}\%};
+  \node[font=\scriptsize\bfseries, text=white, align=center] at (axis cs:3,{(\vGB+\vMB)/2})
+    {$-$\pgfmathprintnumber[fixed,precision=3]{\dcal}\\\pgfmathprintnumber[fixed,precision=1]{\scal}\%};
+\end{axis}
+\end{tikzpicture}
+\end{document}

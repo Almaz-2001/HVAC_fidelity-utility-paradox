@@ -1,0 +1,30 @@
+% Supp -- frozen-controller transfer verdict heatmap, native TikZ.
+% Data-driven from tikz_data/fig13_verdict.dat (verdict identical across regimes).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\pgfplotstableread{tikz_data/fig13_verdict.dat}\dv
+\definecolor{cCond}{HTML}{E4B23A}
+
+\begin{document}
+\begin{tikzpicture}[x=25mm, y=14mm, font=\footnotesize]
+  \foreach \ri/\name in {0/{hydronic heat pump}, 1/{hydronic}, 2/{commercial}}{
+    \pgfplotstablegetelem{\ri}{code}\of\dv \pgfmathtruncatemacro{\code}{\pgfplotsretval}
+    \pgfplotstablegetelem{\ri}{ratio}\of\dv \pgfmathsetmacro{\ratio}{\pgfplotsretval}
+    \ifnum\code=1  \def\vc{cV3}\def\vt{PASS}\fi
+    \ifnum\code=0  \def\vc{cCond}\def\vt{COND PASS}\fi
+    \ifnum\code=-1 \def\vc{cAccurate}\def\vt{FAIL}\fi
+    \foreach \c in {0,1,2}{
+      \fill[\vc!35, draw=white, line width=1pt] (\c,-\ri) rectangle ++(1,1);
+      \node[align=center, text=\vc!55!black] at (\c+0.5,-\ri+0.5)
+        {\textbf{\vt}\\[1pt]$m_s/\tau=\pgfmathprintnumber[fixed,precision=2]{\ratio}$};
+    }
+    \node[anchor=east] at (0,-\ri+0.5) {\name};
+  }
+  \foreach \c/\m in {0/none, 1/partial, 2/full}{\node[anchor=south] at (\c+0.5,1.02) {\m};}
+  \node[anchor=south, font=\bfseries] at (1.5,1.7) {Frozen-controller transfer verdict and $m_s^{\mathrm{RL}}/\tau$};
+  \node[anchor=north, font=\scriptsize, text=cMut] at (1.5,-3.1) {identical across surrogate-recalibration regimes: the controller is frozen};
+\end{tikzpicture}
+\end{document}

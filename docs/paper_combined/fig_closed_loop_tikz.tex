@@ -1,0 +1,38 @@
+% Supp -- closed-loop typical-window traces with disturbance (4 panels), native pgfplots.
+% Data-driven from tikz_data/closed_loop.dat.
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\pgfplotstableread{tikz_data/closed_loop.dat}\dcl
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={group size=1 by 4, vertical sep=0.55cm, x descriptions at=edge bottom},
+    paperaxis, width=13cm, height=3.7cm, xmin=0, xmax=72,
+    label style={font=\footnotesize}, title style={font=\bfseries\footnotesize},
+]
+\nextgroupplot[ylabel={$T_{\mathrm{amb}}$ (\degC)}]
+  \addplot[cPI, thick, mark=none] table[x=hour, y=amb]{\dcl};
+\nextgroupplot[ylabel={$T_{\mathrm{zone}}$ (\degC)}]
+  \fill[cV3, fill opacity=0.10] (axis cs:0,21) rectangle (axis cs:72,24);
+  \addplot[cV3, mark=none] table[x=hour, y=tz_v3]{\dcl};
+  \addplot[cAccurate, mark=none] table[x=hour, y=tz_v35]{\dcl};
+  \addplot[cHybrid, mark=none] table[x=hour, y=tz_hy]{\dcl};
+\nextgroupplot[ylabel={$T_{\mathrm{sup}}$ (\degC)}]
+  \draw[gray!55, dashed] (axis cs:0,18)--(axis cs:72,18);
+  \draw[gray!55, dashed] (axis cs:0,35)--(axis cs:72,35);
+  \addplot[cV3, mark=none] table[x=hour, y=ts_v3]{\dcl};
+  \addplot[cAccurate, mark=none] table[x=hour, y=ts_v35]{\dcl};
+  \addplot[cHybrid, mark=none] table[x=hour, y=ts_hy]{\dcl};
+\nextgroupplot[ylabel={power (\si{\kilo\watt})}, xlabel={time since start of typical window (h)}]
+  \addplot[cV3, mark=none] table[x=hour, y=p_v3]{\dcl};
+  \addplot[cAccurate, mark=none] table[x=hour, y=p_v35]{\dcl};
+  \addplot[cHybrid, mark=none] table[x=hour, y=p_hy]{\dcl};
+\end{groupplot}
+\node[anchor=north, yshift=-0.85cm, font=\small] at (group c1r4.south)
+  {\textcolor{cV3}{\rule{7pt}{2.2pt}}~pure BB\qquad\textcolor{cAccurate}{\rule{7pt}{2.2pt}}~direct GB\qquad\textcolor{cHybrid}{\rule{7pt}{2.2pt}}~hybrid\qquad comfort band 21--24\,\degC};
+\end{tikzpicture}
+\end{document}

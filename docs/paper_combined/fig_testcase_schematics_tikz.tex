@@ -1,0 +1,58 @@
+% Fig. testcase schematics -- four BOPTEST test cases (TikZ, LaTeX-typeset).
+\documentclass[border=6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+
+\definecolor{cSrc}{HTML}{2166AC}   % source / hydronic flow (blue)
+\definecolor{cAct}{HTML}{9B2226}   % controller action (crimson)
+\definecolor{cInk}{HTML}{2B2B2B}
+\definecolor{cMut}{HTML}{555555}
+
+\tikzset{
+  zone/.style={rectangle, rounded corners=3pt, draw=cInk, line width=1pt, fill=cInk!4,
+     text width=34mm, align=center, inner sep=1.6mm, minimum height=18mm, text=cInk},
+  src/.style={rectangle, rounded corners=3pt, draw=cSrc, line width=1pt, fill=cSrc!6,
+     text width=28mm, align=center, inner sep=1.4mm, minimum height=9mm, text=cSrc},
+  dist/.style={rectangle, rounded corners=3pt, draw=cInk!70, line width=1pt, fill=white,
+     text width=28mm, align=center, inner sep=1.4mm, minimum height=9mm, text=cInk},
+  farr/.style={->, line width=1.1pt, draw=cSrc, >={Stealth[length=2.2mm,width=1.8mm]}},
+  garr/.style={->, line width=0.9pt, draw=cMut, >={Stealth[length=2mm,width=1.6mm]}},
+  aarr/.style={->, line width=1.1pt, draw=cAct, >={Stealth[length=2.2mm,width=1.8mm]}},
+}
+
+% #1 xshift #2 yshift #3 title #4 subtitle #5 source #6 distribution #7 action
+\newcommand{\tcase}[7]{%
+\begin{scope}[shift={(#1,#2)}]
+  \node[font=\sffamily\bfseries] at (40mm,3mm) {#3};
+  \node[font=\sffamily\footnotesize, text=cMut] at (40mm,-1.5mm) {#4};
+  \node[zone, anchor=north west] at (24mm,-8mm) (Z) {\textbf{Zone}\\[0.4mm]%
+     {\footnotesize $C_{\mathrm{zon}}\dot T=\dot Q_{\mathrm{hyd}}+(T_{\mathrm{amb}}{-}T)/R$}\\[0.4mm]%
+     {\scriptsize\itshape sensors: $T_{\mathrm{zon}}$, CO$_2$, power}};
+  \node[src,  anchor=north west] at (0mm,-36mm)  (S) {\footnotesize #5};
+  \node[dist, anchor=north west] at (36mm,-36mm) (D) {\footnotesize #6};
+  \draw[farr] (S.east) -- (D.west);
+  \draw[farr] (D.north) -- node[right=0.3mm,font=\scriptsize,text=cSrc]{$\dot Q_{\mathrm{hyd}}$} (D.north|-Z.south);
+  \node[font=\scriptsize, text=cMut, anchor=east] at (3mm,-15mm) (dT) {$T_{\mathrm{amb}}$, solar};
+  \node[font=\scriptsize, text=cMut, anchor=east] at (3mm,-21mm) (dR) {$R_{\mathrm{env}}$};
+  \draw[garr] (dT.east) -- (dT.east-|Z.west);
+  \draw[garr] (dR.east) -- ([yshift=-6mm]dR.east-|Z.west);
+  \node[font=\sffamily\bfseries\footnotesize, text=cAct, align=center] at (74mm,-11mm) (CA) {controller\\action};
+  \node[font=\scriptsize, text=cAct, align=center, text width=26mm] at (74mm,-19mm) (AL) {#7};
+  \draw[aarr] (AL.south) to[bend left=18] (D.east);
+\end{scope}}
+
+\begin{document}
+\begin{tikzpicture}
+  \tcase{0mm}{0mm}{\texttt{bestest\_air}}{48\,m$^2$ office $\cdot$ source case $\cdot$ Denver}%
+    {Gas boiler ($\eta{=}0.9$) $+$ chiller (COP\,3)}{4-pipe fan-coil}{supply-air temperature set-point}
+  \tcase{92mm}{0mm}{\texttt{bestest\_hydronic}}{48\,m$^2$ residential $\cdot$ transfer $\cdot$ Brussels}%
+    {Gas water heater (5\,kW)}{radiator $+$ thermostatic valve}{supply-water temperature set-point}
+  \tcase{0mm}{-62mm}{\texttt{bestest\_hydronic\_heat\_pump}}{192\,m$^2$ residential $\cdot$ transfer $\cdot$ Brussels}%
+    {Air-to-water heat pump (15\,kW)}{floor-heating loop}{heat-pump modulation signal}
+  \tcase{92mm}{-62mm}{\texttt{singlezone\_commercial\_hydronic}}{8500\,m$^2$ commercial $\cdot$ transfer $\cdot$ Copenhagen}%
+    {District heating (65\,$^{\circ}$C)}{AHU $+$ radiator circuit}{coil / radiator valve set-points}
+\end{tikzpicture}
+\end{document}

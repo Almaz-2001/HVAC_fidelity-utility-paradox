@@ -60,7 +60,7 @@ def main() -> None:
                     fontsize=8.3, va="center", ha=ha, color=fs.COLOR[key])
 
     ax.set_xlim(-0.12, 1.95)
-    ax.set_xlabel(r"24-h rollout RMSE$_T$ (°C)   (← lower = more predictive fidelity)")
+    ax.set_xlabel(r"24-h rollout RMSE$_T$ ($^{\circ}$C)   ($\leftarrow$ lower = more predictive fidelity)")
     ax.set_ylabel("environment throughput (env steps/s, log scale)")
     ax.set_title("Surrogates make PPO training feasible: 85–220× the BOPTEST throughput")
     ax.grid(alpha=0.18, which="both")

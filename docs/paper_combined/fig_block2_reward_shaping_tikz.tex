@@ -1,0 +1,25 @@
+% Supp -- hybrid reward-shaping composition (conceptual schematic, hand TikZ).
+\documentclass[border=6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\begin{document}
+\begin{tikzpicture}[font=\small]
+  \node[block, text width=32mm] (rc) at (0,1.7)  {comfort $r_c$ (band 21--24\,\degC)};
+  \node[block, text width=32mm] (rs) at (0,0)     {smoothness $r_s$};
+  \node[block, text width=32mm] (re) at (0,-1.7)  {energy $r_e$};
+  \node[block, fill=cPI!10, text width=20mm, minimum height=12mm] (rbase) at (4.8,0) {base reward $r_t$};
+  \draw[flow] (rc) -- (rbase);
+  \draw[flow] (rs) -- (rbase);
+  \draw[flow] (re) -- (rbase);
+  \node[physics, text width=36mm] (dis) at (4.8,-3.4) {frozen GB disagreement\\ $\delta_T{=}|\Delta T|,\ \delta_P{=}|\Delta P|$};
+  \node[block, fill=cHybrid!14, draw=cHybrid, text width=42mm, minimum height=14mm] (shaped) at (10,0)
+    {\textbf{shaped reward}\\ $\tilde r_t = r_t - \lambda_T\delta_T - \lambda_P\delta_P$};
+  \draw[flow] (rbase) -- (shaped);
+  \draw[flow] (dis.east) -| (shaped.south);
+  \node[font=\footnotesize\itshape, text=cMut, align=center, text width=0.9\linewidth] at (5,-4.6)
+    {$\lambda_T=0.10$, $\lambda_P=5\times10^{-5}$; the GB penalty is forward-only and never enters the policy loss.};
+\end{tikzpicture}
+\end{document}

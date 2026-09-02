@@ -63,6 +63,24 @@ every main figure and the graphical abstract is catalogued in
 > [`roadmap.md`](roadmap.md) (§3.2, §11.1, §15.7). The manuscript figures are also
 > committed under `docs/paper_combined/figures/`.
 
+### The manuscript figures themselves
+
+Every figure in the paper is native TikZ/pgfplots, not a raster. The sources are
+in `docs/paper_combined/`: one standalone `fig_*_tikz.tex` per figure, a shared
+`_pgfstyle.tex` holding the palette and unit macros, and the numbers they plot in
+`tikz_data/*.dat`. Any one of them compiles on its own:
+
+```bash
+cd docs/paper_combined
+pdflatex fig_seed_band_tikz.tex        # -> fig_seed_band_tikz.pdf
+python propagate_tikz.py               # compile all, copy into figures/
+```
+
+The `.dat` files are exported from the committed CSVs rather than typed by hand
+(`export_tikz_data.py`, plus `export_surface_data.py` and `export_rie09_data.py`,
+which load the `.pt` surrogates directly). So a figure can be traced back to the
+artifact it came from without leaving the repository.
+
 ---
 
 ## Level C — re-run the experiments end-to-end (needs BOPTEST + compute)
@@ -159,10 +177,69 @@ across `N = 5` seeds and several controller families; hours to days).
    python evaluation/run_block2.py surface-diagnostic   # -> reports/block2_mechanism_surface_sharpness.csv
    ```
 
+   **Directional validity of the control response.** Also checkpoint-only, also no
+   BOPTEST. Predictive error cannot see a surrogate whose response to the control
+   command has the wrong sign; this samples 400 states and scores each actuated
+   input separately, because a controller finds whichever input is wrong:
+   ```bash
+   python evaluation/check_surrogate_response_sign.py
+   python evaluation/audit_matched_bb_sign.py
+   ```
+   The matched-resolution black box comes out inverted in about nine states out of
+   ten while its rollout error improves. Committed evidence:
+   [`reports/block1_matched_bb_seed_audit.json`](reports/block1_matched_bb_seed_audit.json)
+   (four training draws) and
+   [`reports/block1_matched_bb_monotonic_audit.json`](reports/block1_matched_bb_monotonic_audit.json)
+   (the constrained retraining). The checkpoints for every draw are under
+   `outputs/surrogate_v3_15min_{matched,mono}_seed*/`, so both audits re-run from
+   this repository alone.
+
 4. **Block 3 — pre-registered transferability:**
    ```bash
    python evaluation/run_block3_surrogate_recalibration.py   # Stage A/B/C on the hydronic family
    ```
+
+5. **Monotonicity-constrained retraining.** `train_surrogate_backbone.py` takes
+   `--lambda-mono`, `--mono-margin`, `--mono-jitter` and `--lambda-mono-fan`. The
+   fan penalty is signed — it follows `sign(T_sup − T_zone)`, since with supply
+   colder than the zone more fan must *lower* the temperature:
+   ```bash
+   python evaluation/run_matched_bb_seed_audit.py --seeds 42 43 44
+   python evaluation/run_matched_bb_monotonic.py  --seeds 42 43 44
+   python evaluation/run_matched_bb_monotonic.py  --fan-sweep 500 1000 2000
+   ```
+   Constraining one channel relocates the defect to the other. Constraining both
+   yields a surrogate that is accurate, directionally valid, and still trains a
+   failing controller.
+
+6. **Receding-horizon MPC baseline (H5b).** Pre-registered in
+   [`configs/mpc_baseline_preregistration.yaml`](configs/mpc_baseline_preregistration.yaml),
+   whose commit is the audit anchor. It carries an admission gate — a surrogate
+   enters the comparison only at ≥95 % directional validity on *every* actuated
+   input — and keeps the superseded H5 verbatim rather than rewriting it:
+   ```bash
+   python evaluation/run_mpc_baseline.py --backends mpc_bb_mono mpc_bb_hourly mpc_gb
+   ```
+   H5b is **falsified**: a gradient-based planner reproduces the same inverted
+   ordering, so the effect belongs to optimising through the surrogate rather than
+   to policy-gradient search specifically
+   ([`reports/block2_mpc_baseline_report.md`](reports/block2_mpc_baseline_report.md)).
+
+   The first execution of H5 was invalidated by a defect in our own planner, and
+   that run is kept rather than deleted
+   ([`reports/block2_mpc_h5_invalidated.md`](reports/block2_mpc_h5_invalidated.md)).
+   Re-running quietly would have left the pre-registration looking untouched when
+   a completed run had already been seen.
+
+7. **Seed-replicated HDRL censor-weight sweep.** `train_hdrl.py` takes `--seed`;
+   before that only the environments were seeded and PPO drew its own entropy, so
+   a "seed sweep" was not reproducible. 12 cells, resumable:
+   ```bash
+   python evaluation/run_hdrl_seed_sweep.py --stage train     --skip-existing
+   python evaluation/run_hdrl_seed_sweep.py --stage benchmark --skip-existing
+   python evaluation/build_hdrl_seed_band.py
+   ```
+   Protocol and cost breakdown: [`reports/hdrl_seed_sweep_runbook.md`](reports/hdrl_seed_sweep_runbook.md).
 
 **Determinism note.** Exact bit-for-bit reproduction is not expected: results
 depend on the BOPTEST version, RNG seeds, hardware, and library versions (the
@@ -180,6 +257,16 @@ Level C verifies.
 | **A** (inspect) | no | minutes | every number traces to a committed artifact via [`roadmap.md`](roadmap.md) |
 | **B** (regenerate) | no | minutes | the figures/tables faithfully represent the committed data |
 | **C** (re-run) | yes | hours–days | the committed data itself can be re-derived from the experiments |
+
+Two of the paper's central claims sit between B and C: they re-derive a result
+rather than re-plot it, but need only the committed `.pt` checkpoints — no
+BOPTEST, no GPU, seconds to run. Worth doing before Level C, since they are the
+cheapest independent check on the main finding:
+
+```bash
+python evaluation/run_block2.py surface-diagnostic     # per-step increment / roughness
+python evaluation/check_surrogate_response_sign.py     # directional validity per input
+```
 
 Provenance for every figure, table, and number is mapped in
 [`roadmap.md`](roadmap.md) (§3.2 Block 1, §11.1 Block 2, §15.7 Block 3) and

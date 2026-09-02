@@ -1,0 +1,48 @@
+{
+  "created_utc": "2026-08-19T12:56:00.965703+00:00",
+  "corpus": "data/block_1_2_surrogate_rmse/boptest_block12_15min_prepared.csv",
+  "recipe": {
+    "epochs": 500,
+    "batch_size": 256,
+    "lr": 0.001,
+    "hidden_dim": 64,
+    "patience": 30,
+    "multi_horizons": [
+      2,
+      4
+    ]
+  },
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "reference_rmse_c": 0.8761,
+  "rows": [
+    {
+      "seed": "canonical",
+      "rollout_rmse_c": 0.8761,
+      "correct_sign_pct": 9.8,
+      "median_delta_c": -0.8523
+    },
+    {
+      "seed": 42,
+      "rollout_rmse_c": 0.7230203662942551,
+      "correct_sign_pct": 3.2,
+      "median_delta_c": -1.1442
+    },
+    {
+      "seed": 43,
+      "rollout_rmse_c": 0.6962842181264842,
+      "correct_sign_pct": 14.0,
+      "median_delta_c": -0.838
+    },
+    {
+      "seed": 44,
+      "rollout_rmse_c": 0.7500864678507557,
+      "correct_sign_pct": 8.2,
+      "median_delta_c": -1.0853
+    }
+  ],
+  "verdict": "REPRODUCIBLE (reading B): every retrained seed is sign-inverted. Training this backbone on the 15-minute corpus reliably produces models that lower rollout RMSE while losing the control sign."
+}

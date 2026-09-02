@@ -1,0 +1,35 @@
+% Supp -- action phase portrait (state-action density), native pgfplots.
+% Data-driven from tikz_data/phase_{v3,v35,hy}.dat.
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={group size=3 by 1, horizontal sep=1.1cm},
+    paperaxis, width=5.6cm, height=5.6cm,
+    xmin=-4.5, xmax=4.5, ymin=-1.08, ymax=1.08,
+    xlabel={$T_{\mathrm{zone}}-T_{\mathrm{set}}$ (\degC)},
+    title style={font=\bfseries\footnotesize},
+]
+\nextgroupplot[title={pure BB}, ylabel={normalised action $a_0$}]
+  \fill[cAccurate, fill opacity=0.08] (axis cs:-4.5,0.9) rectangle (axis cs:4.5,1.08);
+  \fill[cAccurate, fill opacity=0.08] (axis cs:-4.5,-1.08) rectangle (axis cs:4.5,-0.9);
+  \addplot[only marks, mark=*, mark size=0.5pt, cV3, opacity=0.45] table[x=err, y=a0]{tikz_data/phase_v3.dat};
+\nextgroupplot[title={direct GB}]
+  \fill[cAccurate, fill opacity=0.08] (axis cs:-4.5,0.9) rectangle (axis cs:4.5,1.08);
+  \fill[cAccurate, fill opacity=0.08] (axis cs:-4.5,-1.08) rectangle (axis cs:4.5,-0.9);
+  \addplot[only marks, mark=*, mark size=0.5pt, cAccurate, opacity=0.45] table[x=err, y=a0]{tikz_data/phase_v35.dat};
+\nextgroupplot[title={hybrid}]
+  \fill[cAccurate, fill opacity=0.08] (axis cs:-4.5,0.9) rectangle (axis cs:4.5,1.08);
+  \fill[cAccurate, fill opacity=0.08] (axis cs:-4.5,-1.08) rectangle (axis cs:4.5,-0.9);
+  \addplot[only marks, mark=*, mark size=0.5pt, cHybrid, opacity=0.45] table[x=err, y=a0]{tikz_data/phase_hy.dat};
+\end{groupplot}
+\node[anchor=north, yshift=-0.85cm, font=\footnotesize, text=cMut]
+  at ($(group c1r1.south east)!0.5!(group c3r1.south west)$)
+  {red bands $=$ near bang-bang saturation ($|a_0|>0.9$); the accurate GB collapses onto the rails};
+\end{tikzpicture}
+\end{document}

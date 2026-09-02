@@ -1,0 +1,55 @@
+% Fig 12 (main) -- C_zon hypothesis interval test, native pgfplots.
+% Data-driven: c_zon ratios read from reports/block3_transfer_matrix.csv; the
+% bestest_air self-ratio is 1.0 by definition; the mean line is computed from the table.
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread[col sep=comma]{../../reports/block3_transfer_matrix.csv}\dtransfer
+% compute the hydronic-family mean of the C_zon ratio from the three rows
+\pgfplotstablegetelem{0}{c_zon_ratio_vs_bestest_air}\of\dtransfer \pgfmathsetmacro{\cA}{\pgfplotsretval}
+\pgfplotstablegetelem{1}{c_zon_ratio_vs_bestest_air}\of\dtransfer \pgfmathsetmacro{\cB}{\pgfplotsretval}
+\pgfplotstablegetelem{2}{c_zon_ratio_vs_bestest_air}\of\dtransfer \pgfmathsetmacro{\cC}{\pgfplotsretval}
+\pgfmathsetmacro{\cmean}{(\cA+\cB+\cC)/3}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, bottomlegend,
+    width=10.5cm, height=6.8cm,
+    title={\Czon\ hypothesis interval test across hydronic testcases},
+    ylabel={\Czon\ ratio vs \texttt{bestest\_air}},
+    xmin=-0.5, xmax=3.5, ymin=0.7, ymax=4.0,
+    xtick={0,1,2,3},
+    xticklabels={\texttt{bestest\_air}, heat pump, hydronic, commercial},
+    x tick label style={rotate=15, anchor=east, font=\footnotesize},
+    xtick style={draw=none},
+]
+  % hypothesis-interval bands (behind the data)
+  \fill[cV3, fill opacity=0.12] (axis cs:-0.5,1.7) rectangle (axis cs:3.5,2.2);
+  \fill[cAccurate, fill opacity=0.08] (axis cs:-0.5,3.0) rectangle (axis cs:3.5,4.0);
+  \addlegendimage{area legend, fill=cV3, fill opacity=0.4}\addlegendentry{Hyp.\ A: uniform hydronic (1.7--2.2$\times$)}
+  \addlegendimage{area legend, fill=cAccurate, fill opacity=0.3}\addlegendentry{Hyp.\ B: scale-dependent (3--10$\times$)}
+  % observed hydronic mean line (computed from the table)
+  \addplot[cHybrid, dashed, thick, domain=-0.5:3.5, samples=2, forget plot] {\cmean};
+  % connecting line across the three hydronic testcases
+  \addplot[cHybrid, thin, opacity=0.6, forget plot]
+    table[x expr=\coordindex+1, y=c_zon_ratio_vs_bestest_air]{\dtransfer};
+  % bestest_air reference point (self-ratio = 1.0 by definition)
+  \addplot[only marks, mark=*, mark size=3pt, color=cPI, forget plot,
+           nodes near coords, point meta=explicit,
+           nodes near coords style={anchor=south, yshift=3pt, font=\footnotesize},
+           nodes near coords={\pgfmathprintnumber[precision=3]{\pgfplotspointmeta}$\times$}]
+    coordinates {(0,1.0) [1.0]};
+  % three hydronic testcases from the CSV
+  \addplot[only marks, mark=*, mark size=3pt, color=cHybrid,
+           nodes near coords, point meta=explicit,
+           nodes near coords style={anchor=south, yshift=3pt, font=\footnotesize},
+           nodes near coords={\pgfmathprintnumber[precision=3]{\pgfplotspointmeta}$\times$}]
+    table[x expr=\coordindex+1, y=c_zon_ratio_vs_bestest_air, meta=c_zon_ratio_vs_bestest_air]{\dtransfer};
+  \addlegendimage{only marks, mark=*, color=cHybrid}\addlegendentry{observed ratio}
+\end{axis}
+\end{tikzpicture}
+\end{document}

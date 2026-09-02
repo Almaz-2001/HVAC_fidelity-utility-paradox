@@ -1,0 +1,37 @@
+{
+  "created_utc": "2026-08-15T06:28:11.758329+00:00",
+  "git_sha": "223f6590a8b1a699c230e02a0cd18fc293e42b58",
+  "artifact_root": "outputs/block2_hdrl_seed_sweep",
+  "stage": "benchmark",
+  "lambdas": {
+    "l003": "0.03",
+    "l005": "0.05"
+  },
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "smoke": false,
+  "model_prefix": "hdrl_seedsweep",
+  "legacy_eval_obs": false,
+  "protocol": {
+    "surrogate_kind": "hybrid_v3_v35",
+    "surrogate_path": "outputs/surrogate_v2/rc_node_v3_tsupply.pt",
+    "surrogate_summary_json": "outputs/surrogate_v35_inverse_boptest_15min_power_head_only/calibration_summary_boptest_v35.json",
+    "step_sec": 900,
+    "episode_days": 14.0,
+    "temp_band_c": [
+      21.0,
+      24.0
+    ],
+    "obs_ablation": "no_delta_t",
+    "power_feature_mode": "clipped_log",
+    "t_zone_feature_mode": "raw",
+    "lambda_power_disagree": "5e-5",
+    "winter_steps": 5000000,
+    "summer_steps": 7000000,
+    "num_envs": 16,
+    "eval_duration_days": 14
+  }
+}

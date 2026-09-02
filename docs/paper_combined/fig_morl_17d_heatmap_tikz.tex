@@ -1,0 +1,27 @@
+% Supp -- MORL 17D yearly seasonal validation heatmap, native TikZ.
+% Data-driven from tikz_data/morl_17d.dat (per-row normalised colour, raw text).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\pgfplotstableread{tikz_data/morl_17d.dat}\dm
+
+\begin{document}
+\begin{tikzpicture}[x=9.5mm, y=8.5mm, font=\footnotesize]
+  \foreach \ri/\col/\vc/\nc/\pr in {0/cAccurate/viol/vn/1, 1/cOrange/energy/en/0, 2/cCtrl/ms/mn/2}{
+    \foreach \c in {0,...,11}{
+      \pgfplotstablegetelem{\c}{\vc}\of\dm \pgfmathsetmacro{\val}{\pgfplotsretval}
+      \pgfplotstablegetelem{\c}{\nc}\of\dm \pgfmathtruncatemacro{\fp}{\pgfplotsretval*72+8}
+      \fill[\col!\fp, draw=white, line width=0.4pt] (\c,-\ri) rectangle ++(1,1);
+      \node at (\c+0.5,-\ri+0.5) {\pgfmathprintnumber[fixed,precision=\pr]{\val}};
+    }
+  }
+  \node[anchor=east] at (0,0.5)  {violation (\%)};
+  \node[anchor=east] at (0,-0.5) {energy (\si{\kilo\watt\hour})};
+  \node[anchor=east] at (0,-1.5) {live \ms};
+  \foreach \c/\m in {0/Jan,1/Feb,2/Mar,3/Apr,4/May,5/Jun,6/Jul,7/Aug,8/Sep,9/Oct,10/Nov,11/Dec}{
+    \node[anchor=north] at (\c+0.5,-2.05) {\m};}
+  \node[font=\bfseries] at (6,1.65) {MORL 17D yearly seasonal validation};
+\end{tikzpicture}
+\end{document}

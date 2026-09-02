@@ -77,6 +77,35 @@ TRACE_DIRS = {                           # peak-window closed-loop traces
 }
 
 
+# --- LaTeX (usetex) typesetting, single source of truth for every generator ---
+# Hardened preamble: lmodern (PostScript-mapped EC fonts so MiKTeX finds ecrm*),
+# T1 fontenc, amsmath/amssymb for math, gensymb + textcomp so degree/plus-minus/
+# times/minus render in TEXT mode from raw unicode (default utf8 inputenc since
+# 2018), meaning generators only need to escape LaTeX-actives (% _ & # $) -- the
+# one silent failure being a raw % (a LaTeX comment that truncates the label).
+LATEX_PREAMBLE = (
+    r"\usepackage{lmodern}\usepackage[T1]{fontenc}"
+    r"\usepackage{amsmath}\usepackage{amssymb}"
+    r"\usepackage{gensymb}\usepackage{textcomp}"
+)
+LATEX_RC = {
+    "text.usetex": True,
+    "font.family": "serif",
+    "text.latex.preamble": LATEX_PREAMBLE,
+}
+
+
+def enable_latex(plt=None):
+    """Turn on LaTeX typesetting with the hardened preamble.
+
+    Generators that keep their own rcParams call this *after* their update so the
+    usetex settings win; generators using apply() get it automatically.
+    """
+    if plt is None:
+        import matplotlib.pyplot as plt
+    plt.rcParams.update(LATEX_RC)
+
+
 def apply():
     """Apply consistent rcParams (call once per figure script)."""
     import matplotlib.pyplot as plt
@@ -84,6 +113,8 @@ def apply():
         "font.size": 10, "axes.titlesize": 11, "axes.labelsize": 10,
         "axes.grid": False, "savefig.dpi": 300, "figure.dpi": 120,
         "axes.edgecolor": "0.5", "axes.linewidth": 0.8,
+        # LaTeX typesetting of all figure text (matches the manuscript fonts).
+        **LATEX_RC,
     })
 
 

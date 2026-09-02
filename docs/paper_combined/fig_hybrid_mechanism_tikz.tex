@@ -1,0 +1,29 @@
+% Fig (main) -- hybrid reward-shaping mechanism (conceptual schematic, hand TikZ).
+% Uses the shared block styles from _pgfstyle.tex; numbers live in the caption.
+\documentclass[border=6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\begin{document}
+\begin{tikzpicture}[every node/.style={font=\small}]
+  \node[controller, text width=24mm] (pol) at (0,0) {Policy $\pi_\theta$\\ action $a_t$};
+  \node[model, text width=27mm]   (bb)  at (3.5,1.05)  {BB rollout\\ $T,P$ prediction};
+  \node[physics, text width=27mm] (gb)  at (3.5,-1.05) {frozen GB twin\\ same state--action};
+  \node[eval, text width=30mm]    (dis) at (7.2,0) {disagreement\\ $\delta_T{=}|\Delta T|,\ \delta_P{=}|\Delta P|$};
+  \node[block, fill=cPI!8, text width=30mm] (base) at (7.2,2.1) {base reward\\ comfort $+$ smooth $+$ energy};
+  \node[block, fill=cHybrid!14, draw=cHybrid, text width=34mm] (hyb) at (11.4,1.05)
+        {hybrid reward\\ $\tilde r_t = r_t - \lambda_T\delta_T - \lambda_P\delta_P$};
+  % flow
+  \draw[flow] (pol.north east) -- (bb.west);
+  \draw[flow] (pol.south east) -- (gb.west);
+  \draw[flow] (bb.east) -- (dis.north west);
+  \draw[flow] (gb.east) -- (dis.south west);
+  \draw[flow] (base.east) -| (hyb.north);
+  \draw[flow] (dis.east) -- (hyb.south west);
+  % clarifying note (the common misread this figure prevents)
+  \node[font=\footnotesize\itshape, text=cMut, align=center, text width=0.92\linewidth]
+        at (5.7,-2.5) {The frozen GB is a forward-only reward-shaping censor: it is \emph{not} a policy-loss term and \emph{not} the rollout model.};
+\end{tikzpicture}
+\end{document}

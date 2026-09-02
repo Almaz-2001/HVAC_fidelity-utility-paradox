@@ -1,6 +1,6 @@
 # HVAC DRL/MORL Reproduction Roadmap
 
-Date: 2026-05-18
+Date: 2026-05-18 (last updated 2026-08-15)
 
 This roadmap is the command-level path to reproduce the current article state:
 
@@ -736,6 +736,58 @@ Current conclusion:
 - This is a negative result about controller-family specificity, not a failed
   surrogate result.
 
+### 6.1. Seed-replicated sweep (N=3 at every lambda)
+
+The single-seed sweep above was the weakest evidence in the manuscript. It has
+been repeated over seeds `{42,43,44}` at all four settings into a separate
+artifact namespace, so nothing under `outputs/block2_hdrl_hybrid_v3_v35_*` or
+`models/hdrl_hybrid_*` is touched.
+
+```bash
+python3 -B evaluation/run_hdrl_seed_sweep.py --stage train     --skip-existing
+python3 -B evaluation/run_hdrl_seed_sweep.py --stage benchmark --skip-existing
+python3 -B evaluation/build_hdrl_seed_band.py
+python3 -B evaluation/build_hdrl_seed_band_figure.py
+```
+
+Cost: 12 cells at 12M steps each, about 130 min per cell, ~30 h of training plus
+~30 min of live benchmarking. `--skip-existing` makes every stage resumable.
+Full protocol in `reports/hdrl_seed_sweep_runbook.md`.
+
+Result (`reports/block2_hdrl_lambda_sweep_seed_band.csv`):
+
+- m_s rises 0.182+/-0.017 -> 0.442+/-0.033 (peak) and 0.245+/-0.017 ->
+  0.570+/-0.077 (typical) across lambda 0 -> 0.10.
+- Endpoint gap is 10.0 and 5.8 pooled seed standard deviations; +/-1 s.d. bands
+  are disjoint on both windows.
+- Monotone in the seed means at every step, but the response saturates: the
+  0.05 -> 0.10 increment is 1.4 pooled s.d. and is not resolved above seed
+  noise, so the two strongest weights cannot be ranked against each other.
+- All four frozen single-seed peak values, and three of four typical values,
+  fall inside the new +/-1 s.d. bands: the published numbers were representative.
+
+H3 moves from *not supported* to *falsified* on this evidence.
+
+### 6.2. Train/eval observation encoding (fixed)
+
+`hdrl_train_command` trains with `--obs-ablation no_delta_t
+--power-feature-mode clipped_log`; `hdrl_benchmark_command` used to forward
+neither. The ablations zero slots rather than removing them, so the observation
+dimension still matches and nothing raises -- the policy is simply fed an
+encoding it never saw. Measured cost on l000/peak: m_s 0.21 -> 0.67, comfort
+violation 9% -> 39%.
+
+The published sweep was *not* affected: benchmarking `models/hdrl_hybrid_l000_*`
+under the matched encoding reproduces the frozen trace exactly (max abs
+dT_zone = 0.0000 C over 288 steps), so the flags were passed when those results
+were produced and only the helper omitted them. Both `hdrl_benchmark_command`
+and `thermostatic_benchmark_command` now forward them. To re-check:
+
+```bash
+python3 -B evaluation/check_hdrl_obs_consistency.py --duration-days 3
+python3 -B evaluation/check_hdrl_obs_consistency.py --controller thermostatic --duration-days 3
+```
+
 ## 6.5. MORL 5D Observation Failure  it is observation-interface negative control
 
 This is an observation-interface negative control. The canonical Block 2 MORL
@@ -1414,3 +1466,85 @@ git status --short
 Do not use `git add -A` for the paper-artifact cleanup because the repository
 may also contain unrelated model-output deletions, Word lock files, or legacy
 Sinergym archive changes.
+
+## 18. Block 1/2 Extension: Response Sign, Monotonicity, MPC Baseline
+
+Added after the *Energies* pre-check return, while porting to IEEE Access. Three
+results, all pre-registered before execution, and one execution invalidated and
+recorded rather than discarded.
+
+### 18.1 Directional validity of the matched-resolution surrogate
+
+Predictive error does not see a surrogate that has the sign of its
+control response backwards. `check_surrogate_response_sign.py` samples 400
+states and, per actuated input, asks whether raising the command moves the zone
+the right way.
+
+```bash
+python3 -B evaluation/check_surrogate_response_sign.py
+python3 -B evaluation/audit_matched_bb_sign.py
+python3 -B evaluation/run_matched_bb_seed_audit.py --seeds 42 43 44
+```
+
+The matched-resolution black box is inverted in about nine sampled states out of
+ten, reproducibly over four independent training draws, while its 24 h rollout
+error improves in every one. Evidence:
+`reports/block1_matched_bb_seed_audit.json`.
+
+### 18.2 Monotonicity-constrained retraining
+
+`train_surrogate_backbone.py` gained `--lambda-mono`, `--mono-margin`,
+`--mono-jitter` and `--lambda-mono-fan`. The fan penalty is signed: it follows
+`sign(T_sup - T_zone)`, because with supply colder than the zone more fan must
+*lower* the temperature.
+
+```bash
+python3 -B evaluation/run_matched_bb_monotonic.py --seeds 42 43 44
+python3 -B evaluation/run_matched_bb_monotonic.py --fan-sweep 500 1000 2000
+```
+
+Constraining the supply-temperature channel restores it to 100 % and relocates
+the defect to the fan channel (20.8 % valid constrained, 2.2 % unconstrained).
+Constraining both gives a surrogate that is accurate, directionally valid, and
+still trains a failing controller (`m_s` 1.426 peak / 1.597 typical). Evidence:
+`reports/block1_matched_bb_monotonic_audit.json`.
+
+**Audit anchor:** the one-channel audit was believed complete for a day, and
+four manuscript claims were written on it before the fan channel was checked.
+Auditing a model "as a whole" on one input is not an audit — a controller finds
+whichever input is wrong.
+
+### 18.3 Receding-horizon MPC baseline (H5b)
+
+Pre-registration: `configs/mpc_baseline_preregistration.yaml`. Its commit SHA is
+the audit anchor for H5b, in the same way the Block 3 manifest anchors H1–H4.
+**Do not edit it after the first run**; the outcome goes in `reports/`.
+
+```bash
+python3 -B evaluation/run_mpc_baseline.py --backends mpc_bb_mono mpc_bb_hourly mpc_gb
+```
+
+H5b is **falsified**: a gradient-based planner reproduces the same inverted
+ordering, so the effect belongs to optimising through the surrogate rather than
+to reinforcement learning specifically. Result:
+`reports/block2_mpc_baseline_report.md`.
+
+The first execution of H5 was invalidated by a defect in our own planner, not by
+the surrogates: the planner optimises an unconstrained variable through `tanh`,
+the optimiser pushed it onto the saturation shelf, the gradient died and the
+warm start carried the dead sequence forward. The giveaway was three different
+surrogates producing bit-identical results. Fixed by clamping the variable to
++/- 2.5. The invalidated run is kept, not deleted:
+`reports/block2_mpc_h5_invalidated.md`.
+
+### 18.4 Seed-replicated HDRL censor-weight sweep
+
+```bash
+python3 -B evaluation/run_hdrl_seed_sweep.py --stage train     --skip-existing
+python3 -B evaluation/run_hdrl_seed_sweep.py --stage benchmark --skip-existing
+```
+
+`train_hdrl.py` gained `--seed`; before that PPO drew its own entropy and only
+the envs were seeded, so a "seed" sweep was not reproducible. The censor-weight
+trend survives replication at 10.0 sigma / 5.8 sigma and saturates above
+lambda = 0.05.

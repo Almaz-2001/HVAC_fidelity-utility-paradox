@@ -1,0 +1,58 @@
+% Fig (main, rie03) -- Stage A/B/C calibration diagnostics (3 panels), native pgfplots.
+% Data-driven: rie03_stageb.dat (C_zon traj), rie03_meta.dat (prior/final),
+% rie05_waterfall.dat (24h RMSE raw/cal), rie03_hist.dat (residual density).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread{tikz_data/rie03_stageb.dat}\da
+\pgfplotstableread{tikz_data/rie03_meta.dat}\dmeta
+\pgfplotstableread{tikz_data/rie05_waterfall.dat}\dcm
+\pgfplotstableread{tikz_data/rie03_hist.dat}\dhist
+\pgfplotstablegetelem{0}{prior}\of\dmeta \pgfmathsetmacro{\prior}{\pgfplotsretval}
+\pgfplotstablegetelem{0}{final}\of\dmeta \pgfmathsetmacro{\final}{\pgfplotsretval}
+\pgfplotstablegetelem{2}{rmse}\of\dcm \pgfmathsetmacro{\rmseraw}{\pgfplotsretval}
+\pgfplotstablegetelem{3}{rmse}\of\dcm \pgfmathsetmacro{\rmsecal}{\pgfplotsretval}
+\pgfmathsetmacro{\redpct}{100*(\rmseraw-\rmsecal)/\rmseraw}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={group size=3 by 1, horizontal sep=1.7cm},
+    paperaxis, width=6.1cm, height=6cm, title style={font=\bfseries\footnotesize},
+]
+% ---- (a) Stage B C_zon identification ----
+\nextgroupplot[title={(a) Stage B: \Czon\ identification}, xlabel={epoch},
+    ylabel={\Czon\ ($10^5$\,\si{\joule\per\kelvin})}, xmin=0, ymin=3.6, ymax=4.75]
+  \fill[cV3, fill opacity=0.10] (axis cs:0,{\prior*0.9}) rectangle (axis cs:120,{\prior*1.1});
+  \draw[gray, dashed, line width=0.8pt] (axis cs:0,\prior)--(axis cs:120,\prior);
+  \node[font=\scriptsize, text=gray, anchor=south west] at (axis cs:2,\prior) {prior $\pm10\%$};
+  \addplot[cV3, thick, mark=none] table[x=epoch, y=czon]{\da};
+  \addplot[only marks, mark=*, mark size=2.5pt, cAccurate] coordinates {(120,\final)};
+  \node[font=\scriptsize, text=cAccurate, anchor=north east] at (axis cs:118,\final) {final \pgfmathprintnumber[fixed,precision=2]{\final}};
+% ---- (b) 24 h rollout RMSE reduction ----
+\nextgroupplot[title={(b) Temperature RMSE reduction}, ybar,
+    ylabel={24\,h rollout \RMSET~(\degC)}, ymin=0, ymax=1.7,
+    xtick={0,1}, xticklabels={{raw\\GB}, {calibrated\\GB}},
+    xticklabel style={align=center, font=\footnotesize}, xtick style={draw=none},
+    xmin=-0.6, xmax=1.6, ymajorgrids]
+  \fill[cOrange, draw=cOrange!60!black]   (axis cs:-0.3,0) rectangle (axis cs:0.3,\rmseraw);
+  \fill[cAccurate, draw=cAccurate!60!black] (axis cs:0.7,0) rectangle (axis cs:1.3,\rmsecal);
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:0,\rmseraw) {\pgfmathprintnumber[fixed,precision=3]{\rmseraw}};
+  \node[font=\footnotesize\bfseries, anchor=south] at (axis cs:1,\rmsecal) {\pgfmathprintnumber[fixed,precision=3]{\rmsecal}};
+  \draw[-{Latex[length=1.6mm]}, cV3!50!black, line width=1pt] (axis cs:0.32,\rmseraw) to[bend left=12] (axis cs:0.68,{\rmsecal+0.08});
+  \node[font=\scriptsize\bfseries, text=cV3!50!black] at (axis cs:0.5,1.35) {$-$\pgfmathprintnumber[fixed,precision=0]{\redpct}\%};
+% ---- (c) one-step residual distribution ----
+\nextgroupplot[title={(c) One-step residual density}, xlabel={prediction error (\degC)},
+    ylabel={density}, xmin=-3, xmax=3, ymin=0, legend style={at={(0.03,0.97)}, anchor=north west, draw=none, fill=none, font=\scriptsize}]
+  \addplot[cOrange, fill=cOrange, fill opacity=0.45, draw=cOrange] table[x=x, y=raw]{\dhist} \closedcycle;
+  \addplot[cAccurate, fill=cAccurate, fill opacity=0.40, draw=cAccurate] table[x=x, y=cal]{\dhist} \closedcycle;
+  \legend{raw GB, calibrated GB}
+\end{groupplot}
+\node[anchor=north, font=\bfseries\small, yshift=-1.45cm]
+  at ($(group c1r1.south west)!0.5!(group c3r1.south east)$)
+  {Stage A/B/C calibration: bounded \Czon, lower absolute error, tighter residuals};
+\end{tikzpicture}
+\end{document}

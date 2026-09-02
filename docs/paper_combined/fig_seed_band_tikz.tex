@@ -1,0 +1,49 @@
+% Supp -- seed robustness (N=3) of the fidelity-utility paradox, native pgfplots.
+% Data-driven from tikz_data/seed_band.dat (rows: BB, matched-BB, GB, hybrid).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread{tikz_data/seed_band.dat}\ds
+\newcommand{\getc}[3]{\pgfplotstablegetelem{#2}{#3}\of\ds \pgfmathsetmacro{#1}{\pgfplotsretval}}
+% peak (filled) + typical (open) with y error bars, at controller index #1, colour #2
+\newcommand{\sbms}[2]{%
+  \pgfmathsetmacro{\xl}{#1-0.15}\pgfmathsetmacro{\xr}{#1+0.15}%
+  \getc{\yp}{#1}{ms_peak}\getc{\sp}{#1}{std_peak}\getc{\yt}{#1}{ms_typ}\getc{\st}{#1}{std_typ}%
+  \addplot[#2,only marks,mark=*,mark size=3pt,thick,error bars/.cd,y dir=both,y explicit,error bar style={line width=0.5pt}] coordinates {(\xl,\yp) +- (0,\sp)};
+  \addplot[#2,only marks,mark=o,mark size=3pt,thick,error bars/.cd,y dir=both,y explicit,error bar style={line width=0.5pt}] coordinates {(\xr,\yt) +- (0,\st)};
+}
+\newcommand{\sbviol}[2]{%
+  \pgfmathsetmacro{\xl}{#1-0.15}\pgfmathsetmacro{\xr}{#1+0.15}%
+  \getc{\vp}{#1}{viol_peak}\getc{\vt}{#1}{viol_typ}%
+  \addplot[#2,only marks,mark=*,mark size=3pt] coordinates {(\xl,\vp)};
+  \addplot[#2,only marks,mark=o,mark size=3pt] coordinates {(\xr,\vt)};
+}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={group size=2 by 1, horizontal sep=1.7cm},
+    paperaxis, width=7.8cm, height=6.4cm,
+    xmin=-0.6, xmax=3.6, xtick={0,1,2,3},
+    xticklabels={{BB\\(hourly)}, {matched-BB\\(15\,min)}, {GB\\(direct)}, {hybrid}},
+    xticklabel style={align=center, font=\footnotesize}, xtick style={draw=none},
+    title style={font=\bfseries\footnotesize},
+]
+\nextgroupplot[title={Live maintenance score (lower better)}, ylabel={\ms}, ymin=0, ymax=1.32]
+  \fill[cV3, fill opacity=0.10] (axis cs:-0.6,0) rectangle (axis cs:3.6,0.10);
+  \draw[cAccurate, dashed, line width=0.9pt] (axis cs:-0.6,1) -- (axis cs:3.6,1);
+  \node[font=\scriptsize, text=cAccurate, anchor=east] at (axis cs:3.55,1.08) {$\ms=1$ collapse};
+  \sbms{0}{cV3}\sbms{1}{cMatched}\sbms{2}{cGB}\sbms{3}{cHybrid}
+\nextgroupplot[title={Comfort violation}, ylabel={comfort violation (\%)}, ymin=0, ymax=100]
+  \draw[gray, dashed, line width=0.8pt] (axis cs:-0.6,5) -- (axis cs:3.6,5);
+  \node[font=\scriptsize, text=gray, anchor=east] at (axis cs:3.55,9) {$5\%$ reference};
+  \sbviol{0}{cV3}\sbviol{1}{cMatched}\sbviol{2}{cGB}\sbviol{3}{cHybrid}
+\end{groupplot}
+\path (group c1r1.south west) -- (group c2r1.south east) coordinate[midway] (lm);
+\node[anchor=north, yshift=-0.95cm, font=\small] at (lm)
+  {$\bullet$~peak-heat window\qquad $\circ$~typical-heat window\qquad(mean $\pm$ s.d.\ over N=3 seeds 42/43/44)};
+\end{tikzpicture}
+\end{document}

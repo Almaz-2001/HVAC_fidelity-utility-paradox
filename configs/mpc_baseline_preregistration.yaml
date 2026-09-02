@@ -1,0 +1,233 @@
+# =============================================================================
+# Pre-registration: MPC baseline and the controller-class specificity of the
+# fidelity-utility inversion.
+#
+# The commit SHA of this file is the audit anchor for H5, in the same way
+# configs/block3_testcase_manifest.yaml anchors the Block 3 hypotheses.
+# Do not edit after the first run; record the outcome in reports/ instead.
+# =============================================================================
+
+meta:
+  registered_utc: "2026-08-19"
+  amended_utc: "2026-08-19"
+  amendment_note: >
+    Amended BEFORE any MPC run was executed, so nothing here was chosen after
+    seeing an MPC result. The amendment adds a fourth backend and sharpens H5,
+    both because of a finding that landed between drafting and execution: the
+    matched-resolution black box is sign-INVERTED (about 90% of sampled states,
+    reproducible over four training draws, reports/block1_matched_bb_seed_audit.json),
+    and a monotonicity-constrained retraining produces a surrogate that is
+    directionally valid, MORE accurate than the unconstrained one, and still
+    trains a failing RL controller (m_s 1.426 peak / 1.597 typical,
+    reports/block1_matched_bb_monotonic_audit.json). That surrogate is a much
+    cleaner probe for H5 than anything available when this file was first
+    written, and planning on a sign-inverted model is meaningless except as a
+    negative control.
+  motivation: >
+    Every controller comparison in the study is against BOPTEST's built-in PI,
+    which is a weak reference and the most likely reviewer objection at IEEE
+    Access, where only one revision round is allowed. Adding a planner also
+    tests the scope of the central claim: if predictive accuracy hurts a
+    LEARNED controller because policy-gradient search needs a smooth response
+    surface, then a planner that solves an optimisation at every step -- and
+    therefore never performs gradient ascent on a policy -- should not show the
+    same inversion.
+  anchors:
+    block3_manifest: configs/block3_testcase_manifest.yaml
+    morl_selection_log: configs/morl_canonical_selection_log.yaml
+    sign_audit: reports/block1_matched_bb_seed_audit.json
+    monotonic_audit: reports/block1_matched_bb_monotonic_audit.json
+
+# -----------------------------------------------------------------------------
+# H5 was EXECUTED on 19 Aug 2026 and the result discarded: the planning surrogate
+# turned out to be inverted on the fan channel, which the admission criteria of
+# the day did not check, and the planner exploited it (fan held at minimum for
+# all 1344 steps, zero power). Full record: reports/block2_mpc_h5_invalidated.md.
+#
+# The original H5 block is preserved below under `superseded_h5` exactly as it
+# was registered. H5b replaces it and adds the gate that was missing.
+# -----------------------------------------------------------------------------
+
+hypothesis:
+  id: H5b
+  registered_utc: "2026-08-19"
+  supersedes: H5
+  name: controller-class specificity of the fidelity-utility inversion
+  statement: >
+    The inversion between predictive fidelity and control utility is specific to
+    controllers obtained by policy-gradient learning. A receding-horizon MPC
+    planning on a surrogate that is accurate, directionally valid ON EVERY
+    ACTUATED INPUT, and known to train a FAILING RL controller will itself
+    achieve a usable maintenance score.
+  formal: "m_s(MPC on the admitted matched-resolution surrogate) < 1.0 on BOTH windows"
+  admission_gate:
+    # Checked and recorded BEFORE the planner is run. A surrogate that fails the
+    # gate does not enter the comparison at all; it is reported as a defective
+    # model, not as a data point about controller class.
+    rule: "every actuated input must be directionally valid in >= 95% of 400 sampled states"
+    inputs_checked: [a0_supply_temperature, a1_fan]
+    a1_probe: >
+      With supply air hotter than the zone, raising the fan must not lower the
+      predicted zone temperature; with supply colder, it must not raise it. The
+      relation is signed, so the two regimes are scored separately and the
+      reported figure is the hot-supply regime, where the sampled zone range
+      (16-30 C) is entirely below the 35 C supply and the expectation is
+      unambiguous.
+    script: evaluation/check_surrogate_response_sign.py
+    rationale: >
+      The first execution of H5 failed this gate and nobody checked, because the
+      gate did not exist. A controller finds whichever input is wrong; auditing
+      the model "as a whole" on one input is not an audit.
+  verdict_rule:
+    supported: "m_s < 1.0 on both windows"
+    not_supported: "m_s < 1.0 on exactly one window"
+    falsified: "m_s >= 1.0 on both windows"
+    void: "no surrogate passes the admission gate, so H5b is untestable as posed"
+  secondary_ordering: >
+    Additionally recorded, not a pass/fail gate: whether m_s(MPC on GB) is no
+    worse than m_s(MPC on BB hourly). If the planner's ordering follows
+    predictive accuracy while the learner's is inverted, that is the strongest
+    form of the claim.
+  interpretation_if_supported: >
+    The operative variable is the interaction between per-step increment
+    magnitude and policy-gradient search, not model quality as such.
+  interpretation_if_falsified: >
+    A surrogate that defeats a planner as well as a learner is defective in a way
+    that is not specific to how the controller is synthesised. That would weaken
+    the mechanism argument and must be reported as such.
+
+superseded_h5:
+  note: "Registered before the invalidated run. Kept verbatim; do not act on it."
+  id: H5
+  name: controller-class specificity of the fidelity-utility inversion
+  statement: >
+    The inversion between predictive fidelity and control utility is specific to
+    controllers obtained by policy-gradient learning. A receding-horizon MPC
+    planning on a surrogate that is accurate, directionally valid, and known to
+    train a FAILING RL controller will itself achieve a usable maintenance
+    score.
+  primary_test: >
+    The monotonicity-constrained matched-resolution surrogate (mpc_bb_mono) is
+    the decisive case: same architecture, same corpus, directionally valid,
+    24 h rollout error 0.745 C, and RL on it reaches m_s 1.426 / 1.597. Only the
+    controller-synthesis method differs between that result and this one.
+  formal: "m_s(MPC on bb_mono) < 1.0 on BOTH windows"
+  verdict_rule:
+    supported: "m_s < 1.0 on both windows"
+    not_supported: "m_s < 1.0 on exactly one window"
+    falsified: "m_s >= 1.0 on both windows"
+  secondary_ordering: >
+    Additionally recorded, not a pass/fail gate: whether m_s(MPC on GB) is no
+    worse than m_s(MPC on BB hourly). If the planner's ordering follows
+    predictive accuracy while the learner's is inverted, that is the strongest
+    form of the claim.
+  interpretation_if_supported: >
+    The operative variable is the interaction between per-step increment
+    magnitude and policy-gradient search, not model quality as such. Predictive
+    accuracy is then useful for planning and harmful for policy learning, which
+    is a sharper claim than the paper currently makes.
+  interpretation_if_falsified: >
+    A surrogate that defeats a planner as well as a learner is defective in a
+    way that is not specific to how the controller is synthesised. That would
+    weaken the mechanism argument in the Mechanism section and must be reported
+    as such.
+
+secondary_questions:
+  # Reported whether favourable or not. Not pass/fail gates.
+  - id: Q1
+    question: "Does the MPC baseline beat BOPTEST's built-in PI (m_s = 0.910)?"
+    purpose: "Establishes whether the new baseline is in fact stronger than the old one."
+  - id: Q2
+    question: "Does the MPC baseline beat the role-separated hybrid RL controller
+               (m_s = 0.087 peak / 0.041 typical)?"
+    purpose: >
+      The honest version of the reviewer's question. If MPC wins, the paper must
+      say so and reposition the RL result as being about training-environment
+      selection rather than about beating classical control.
+  - id: Q3
+    question: "What is the wall-clock cost per control decision for MPC against the
+               trained policies (0.19 ms)?"
+    purpose: "Deployment relevance: MPC pays its cost at run time, RL at training time."
+
+protocol:
+  planner:
+    type: receding_horizon
+    implementation: evaluation/mpc_baseline.py
+    decision_variable: "sequence of H action pairs (supply-temperature setpoint, fan)"
+    applied: "first action only, re-solved every control step"
+    warm_start: true
+    forecast_source: >
+      envs.tsup_features.WeatherLookup, the same ambient forecast that feeds the
+      agent's 17-D observation. Neither controller gets privileged information.
+    horizon_hours: 6.0
+    n_iters: 60
+    lr: 0.08
+    lambda_comfort: 60.0
+    lambda_energy: 1.0
+    objective: >
+      Quadratic comfort-band violation plus normalised energy, mirroring the
+      structure of the RL training reward. NOT the evaluation metric m_s:
+      optimising the metric being reported would flatter the baseline.
+  backends:
+    - id: mpc_bb_hourly
+      role: "reference: RL succeeds on this surrogate"
+      surrogate_kind: legacy_v3
+      path: outputs/surrogate_v2/rc_node_v3_tsupply.pt
+      model_step_sec: 3600
+      rollout_rmse_c: 1.557
+      sign_valid_pct: 100.0
+      rl_m_s_typical: 0.095
+    - id: mpc_bb_mono
+      role: "PRIMARY TEST: accurate, sign-valid, RL fails on it"
+      surrogate_kind: legacy_v3
+      path: outputs/surrogate_v3_15min_mono_seed42/rc_node_v2_best.pt
+      model_step_sec: 900
+      rollout_rmse_c: 0.745
+      sign_valid_pct: 100.0
+      rl_m_s_typical: 1.597
+    - id: mpc_gb_calibrated
+      role: "most accurate surrogate; RL fails on it"
+      surrogate_kind: v35_calibrated
+      summary_json: outputs/surrogate_v35_inverse_boptest_15min_power_head_only/calibration_summary_boptest_v35.json
+      model_step_sec: 900
+      rollout_rmse_c: 0.644
+      sign_valid_pct: 100.0
+      rl_m_s_typical: 1.102
+    - id: mpc_bb_matched
+      role: >
+        NEGATIVE CONTROL: sign-inverted surrogate. A planner on an inverted model
+        must fail; if it does not, the harness is wrong, not the hypothesis.
+      surrogate_kind: legacy_v3
+      path: outputs/surrogate_v3_15min_matched/rc_node_v3_15min_matched.pt
+      model_step_sec: 900
+      rollout_rmse_c: 0.876
+      sign_valid_pct: 9.8
+      rl_m_s_typical: 1.211
+  evaluation:
+    testcase: bestest_air
+    runtime: live BOPTEST RTE
+    control_step_sec: 900
+    duration_days: 14
+    windows: [peak_heat_window, typical_heat_window]
+    metric: "m_s = r_time + r_sev, plus comfort violation %, RMSE_T and energy"
+    identical_to: "the protocol used for every RL controller in the study"
+  measured_cost:
+    # Steady state, 15 decisions after 3 warm-up calls, one CPU thread.
+    note: >
+      Measured before execution so the run could be scoped honestly. The first
+      call carries model load and allocation and is roughly 8x the steady state;
+      an estimate taken from it would have overstated the run by a factor of two.
+    ms_per_decision: {mpc_bb_hourly: 347, mpc_bb_mono: 1318, mpc_gb_calibrated: 3022}
+    total_wall_clock_hours_all_four: 4.5
+
+tuning_policy: >
+  The planner's hyperparameters above are fixed. If the horizon or the weights
+  are changed after seeing a result, the changed configuration is reported as a
+  separate, clearly labelled sensitivity run and the pre-registered
+  configuration remains the headline number. A baseline tuned against the metric
+  it is being scored on is not a baseline.
+
+outputs:
+  artifact_root: outputs/block2_mpc_baseline
+  summary_csv: reports/block2_mpc_baseline_summary.csv
+  report_md: reports/block2_mpc_baseline_report.md

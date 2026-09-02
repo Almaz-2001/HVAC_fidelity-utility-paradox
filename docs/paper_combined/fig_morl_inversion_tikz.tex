@@ -1,0 +1,26 @@
+% Supp -- MORL seasonal variance inversion heatmap (Practical vs Neutral), native TikZ.
+% Data-driven from tikz_data/morl_inv.dat (shared colour scale on across-seed m_s std).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\pgfplotstableread{tikz_data/morl_inv.dat}\di
+
+\begin{document}
+\begin{tikzpicture}[x=9.5mm, y=8.5mm, font=\footnotesize]
+  \foreach \ri/\vc/\nc in {0/prac/pn, 1/neu/nn}{
+    \foreach \c in {0,...,11}{
+      \pgfplotstablegetelem{\c}{\vc}\of\di \pgfmathsetmacro{\val}{\pgfplotsretval}
+      \pgfplotstablegetelem{\c}{\nc}\of\di \pgfmathtruncatemacro{\fp}{\pgfplotsretval*78+8}
+      \fill[cAccurate!\fp, draw=white, line width=0.4pt] (\c,-\ri) rectangle ++(1,1);
+      \node at (\c+0.5,-\ri+0.5) {\pgfmathprintnumber[fixed,precision=3]{\val}};
+    }
+  }
+  \node[anchor=east, align=right] at (0,0.5)  {Practical\\ $w{=}(0.75,0.25)$};
+  \node[anchor=east, align=right] at (0,-0.5) {Neutral\\ $w{=}(0.50,0.50)$};
+  \foreach \c/\m in {0/Jan,1/Feb,2/Mar,3/Apr,4/May,5/Jun,6/Jul,7/Aug,8/Sep,9/Oct,10/Nov,11/Dec}{
+    \node[anchor=north] at (\c+0.5,-1.05) {\m};}
+  \node[font=\bfseries] at (6,1.5) {MORL seasonal variance after N=5 falsification (across-seed \ms\ std)};
+\end{tikzpicture}
+\end{document}

@@ -21,6 +21,12 @@ venv/
 *.fdb_latexmk
 *.tex
 
+# ...except the figure sources. Every manuscript figure is native TikZ/pgfplots
+# reading from tikz_data/*.dat, so these ARE the figures, not the manuscript.
+# Without them the package regenerates the superseded matplotlib versions.
+!docs/paper_combined/*_tikz.tex
+!docs/paper_combined/_pgfstyle.tex
+
 # OS / editor
 .DS_Store
 .idea/

@@ -57,9 +57,9 @@ def main() -> None:
     fig.subplots_adjust(left=0.13, right=0.985, top=0.80, bottom=0.16, wspace=0.28)
 
     cols = [
-        ("rmse",  rmse,  r"24 h rollout RMSE$_T$ (°C)", "(A) predictive fidelity", "{:.3f}", 1.72, None),
-        ("rough", rough, r"relative roughness ($\times$ v3)", "(B) action-surface geometry", "{:.1f}×", 10.6, None),
-        ("sat",   sat,   r"policy saturation $|a_0|\geq0.9$ (%)", "(C) policy pathology", "{:.0f}%", 112, 90.0),
+        ("rmse",  rmse,  r"24 h rollout RMSE$_T$ ($^{\circ}$C)", "(A) predictive fidelity", "{:.3f}", 1.72, None),
+        ("rough", rough, r"relative roughness ($\times$ v3)", "(B) action-surface geometry", r"{:.1f}$\times$", 10.6, None),
+        ("sat",   sat,   r"policy saturation $|a_0|\geq0.9$ (\%)", "(C) policy pathology", r"{:.0f}\%", 112, 90.0),
         ("ms",    ms,    r"live maintenance score $m_s$", "(D) live BOPTEST utility", "{:.3f}", 1.34, fs.MS_COLLAPSE),
     ]
 
@@ -99,9 +99,9 @@ def main() -> None:
                  r"(RMSE$_T\!\downarrow\;\Rightarrow\!\!\!\!\!/\;\;m_s\!\downarrow$)",
                  fontsize=12.5, weight="bold", y=0.965)
     fig.text(0.5, 0.025,
-             "Reading left→right is the paradox: the RMSE$_T$ order (v3.5 < matched-v3 < v3) reverses in live $m_s$ "
-             "(v3, hybrid usable; matched-v3, v3.5 collapse).  "
-             "*hybrid inherits v3's rollout fidelity and surface; the frozen v3.5 enters only as a reward censor.",
+             r"Reading left$\rightarrow$right is the paradox: the RMSE$_T$ order (v3.5 $<$ matched-v3 $<$ v3) reverses in live $m_s$ "
+             r"(v3, hybrid usable; matched-v3, v3.5 collapse).  "
+             r"*hybrid inherits v3's rollout fidelity and surface; the frozen v3.5 enters only as a reward censor.",
              ha="center", fontsize=7.8, color="0.4")
 
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)

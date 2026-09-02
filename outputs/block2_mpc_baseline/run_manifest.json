@@ -1,0 +1,23 @@
+{
+  "created_utc": "2026-08-20T16:53:51.435520+00:00",
+  "preregistration": "configs/mpc_baseline_preregistration.yaml",
+  "hypothesis": "H5b",
+  "planner": {
+    "type": "receding_horizon",
+    "implementation": "evaluation/mpc_baseline.py",
+    "decision_variable": "sequence of H action pairs (supply-temperature setpoint, fan)",
+    "applied": "first action only, re-solved every control step",
+    "warm_start": true,
+    "forecast_source": "envs.tsup_features.WeatherLookup, the same ambient forecast that feeds the agent's 17-D observation. Neither controller gets privileged information.\n",
+    "horizon_hours": 6.0,
+    "n_iters": 60,
+    "lr": 0.08,
+    "lambda_comfort": 60.0,
+    "lambda_energy": 1.0,
+    "objective": "Quadratic comfort-band violation plus normalised energy, mirroring the structure of the RL training reward. NOT the evaluation metric m_s: optimising the metric being reported would flatter the baseline.\n"
+  },
+  "backends": [
+    "mpc_bb_matched"
+  ],
+  "duration_days": 14
+}

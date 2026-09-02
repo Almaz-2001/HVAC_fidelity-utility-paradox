@@ -37,6 +37,7 @@ DEFAULT_POWER_FEATURE_MODE = "raw"
 DEFAULT_T_ZONE_FEATURE_MODE = "raw"
 DEFAULT_LAMBDA_TEMP_DISAGREE = 0.10
 DEFAULT_LAMBDA_POWER_DISAGREE = 5.0e-5
+DEFAULT_SEED = 42
 
 
 def _resolve_torch_device(env_var_name: str, default: str) -> str:
@@ -216,6 +217,7 @@ def train_agent(
     temp_low_c: float = DEFAULT_TEMP_LOW_C,
     temp_high_c: float = DEFAULT_TEMP_HIGH_C,
     save_prefix: str = "ppo",
+    seed: int = DEFAULT_SEED,
 ):
     policy_device = _resolve_torch_device("HDRL_POLICY_DEVICE", "auto")
     print(f"\n{'=' * 60}")
@@ -226,13 +228,14 @@ def train_agent(
     print(f"  Step: {int(step_sec)} s | Episode: {float(episode_days):.1f} days")
     print(f"  Comfort band: [{float(temp_low_c):.1f}, {float(temp_high_c):.1f}] C")
     print(f"  Surrogate kind: {os.environ.get('HDRL_SURROGATE_KIND', DEFAULT_SURROGATE_KIND)}")
+    print(f"  Seed: {int(seed)}")
 
     vec_env = SubprocVecEnv(
         [
             make_seasonal_env(
                 "HVAC",
                 i,
-                seed=42,
+                seed=int(seed),
                 season=season,
                 step_sec=step_sec,
                 episode_days=episode_days,
@@ -255,7 +258,10 @@ def train_agent(
         policy_kwargs={"net_arch": [256, 256]},
         device=policy_device,
         verbose=1,
-        tensorboard_log=f"./logs/hdrl_{season}_tsup/",
+        # Without this PPO draws its own entropy: the env seeds alone do not make a
+        # run reproducible, which is what the multi-seed lambda sweep needs.
+        seed=int(seed),
+        tensorboard_log=f"./logs/hdrl_{season}_tsup_seed{int(seed)}/",
     )
 
     save_path = f"./models/{save_prefix}_{season}_final"
@@ -298,6 +304,12 @@ def main():
     parser.add_argument("--lambda-temp-disagree", type=float, default=float(os.environ.get("HDRL_LAMBDA_TEMP_DISAGREE", str(DEFAULT_LAMBDA_TEMP_DISAGREE))))
     parser.add_argument("--lambda-power-disagree", type=float, default=float(os.environ.get("HDRL_LAMBDA_POWER_DISAGREE", str(DEFAULT_LAMBDA_POWER_DISAGREE))))
     parser.add_argument("--save-prefix", default="ppo", help="Prefix for saved winter/summer PPO zip files.")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=int(os.environ.get("HDRL_SEED", str(DEFAULT_SEED))),
+        help="Random seed for the vectorised envs and the PPO policy (default 42).",
+    )
     args = parser.parse_args()
 
     os.environ["HDRL_SURROGATE_KIND"] = args.surrogate_kind
@@ -338,6 +350,7 @@ def main():
         temp_low_c=float(args.temp_low),
         temp_high_c=float(args.temp_high),
         save_prefix=str(args.save_prefix),
+        seed=int(args.seed),
     )
     summer_path = train_agent(
         "summer",
@@ -348,6 +361,7 @@ def main():
         temp_low_c=float(args.temp_low),
         temp_high_c=float(args.temp_high),
         save_prefix=str(args.save_prefix),
+        seed=int(args.seed),
     )
 
     elapsed = (time.time() - t_total) / 60

@@ -1,0 +1,35 @@
+% Supp (fig17) -- hypothesis-closure matrix (qualitative table), native TikZ.
+% Verdicts from configs/block3_testcase_manifest.yaml; stretch numbers fetched from CSV.
+\documentclass[border=6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\definecolor{cCond}{HTML}{E4B23A}
+\pgfplotstableread[col sep=comma]{../../reports/block3_transfer_matrix.csv}\dtm
+\pgfplotstablegetelem{2}{c_zon_ratio_vs_bestest_air}\of\dtm \pgfmathsetmacro{\czr}{\pgfplotsretval}
+\pgfplotstablegetelem{2}{rmse_improvement_pct}\of\dtm \pgfmathsetmacro{\rmi}{\pgfplotsretval}
+
+\newcommand{\crow}[5]{% #1=y #2=dot colour #3=hypothesis #4=observed closure #5=evidence
+  \fill[#2] (-0.3,#1) circle (2.4pt);
+  \node[anchor=west, font=\footnotesize] at (0,#1) {#3};
+  \node[anchor=west, font=\footnotesize] at (4.2,#1) {#4};
+  \node[anchor=west, font=\footnotesize, text=cMut] at (10.4,#1) {#5};
+}
+
+\begin{document}
+\begin{tikzpicture}[y=7.5mm]
+  \node[anchor=west, font=\bfseries\footnotesize] at (0,1) {Hypothesis / prediction};
+  \node[anchor=west, font=\bfseries\footnotesize] at (4.2,1) {Observed closure};
+  \node[anchor=west, font=\bfseries\footnotesize] at (10.4,1) {Evidence};
+  \draw[cGrid, line width=0.6pt] (-0.5,0.5) -- (13.6,0.5);
+  \crow{0}{cAccurate}{H1 strong}{FALSIFIED}{frozen recipe, direct transfer}
+  \crow{-1}{cAccurate}{H2 medium}{FALSIFIED (by structural definition)}{partial recalibration}
+  \crow{-2}{cV3}{H3 surrogate}{SUPPORTED (on N=3)}{full Stage A/B/C RMSE}
+  \crow{-3}{cAccurate}{H3 controller}{FALSIFIED (regime-dependent failure)}{controller full regime}
+  \crow{-4}{cCond}{Stretch none}{expected FAIL $\rightarrow$ observed PASS}{commercial, mode=none}
+  \crow{-5}{cCond}{Stretch $C_{\mathrm{zon}}$}{expected scale-dep.\ $\rightarrow$ observed $\pgfmathprintnumber[fixed,precision=3]{\czr}\times$}{commercial $C_{\mathrm{zon}}$}
+  \crow{-6}{cV3}{Stretch RMSE}{expected 50--90\% $\rightarrow$ observed $\pgfmathprintnumber[fixed,precision=2]{\rmi}\%$}{commercial recalibration}
+  \node[anchor=north west, font=\bfseries\small] at (-0.5,2.2) {Hypothesis closure vs version-locked predictions};
+\end{tikzpicture}
+\end{document}

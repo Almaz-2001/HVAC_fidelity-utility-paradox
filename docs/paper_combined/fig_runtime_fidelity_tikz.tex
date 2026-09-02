@@ -1,0 +1,33 @@
+% Supp -- runtime vs predictive-fidelity feasibility, native pgfplots.
+% Data-driven from tikz_data/runtime_fid.dat (0 BOPTEST, 1 BB, 2 GB, 3 hybrid).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+\pgfplotstableread{tikz_data/runtime_fid.dat}\df
+\newcommand{\gf}[3]{\pgfplotstablegetelem{#2}{#3}\of\df \pgfmathsetmacro{#1}{\pgfplotsretval}}
+\gf{\ra}{0}{rmse}\gf{\sa}{0}{steps}\gf{\rb}{1}{rmse}\gf{\sb}{1}{steps}
+\gf{\rc}{2}{rmse}\gf{\sco}{2}{steps}\gf{\rd}{3}{rmse}\gf{\sd}{3}{steps}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, width=10cm, height=6.4cm, ymode=log,
+    title={Surrogates make PPO training feasible},
+    xlabel={24\,h rollout \RMSET~(\degC)}, ylabel={environment steps\,s$^{-1}$ (log)},
+    xmin=-0.15, xmax=1.95, ymin=10, ymax=12000, ymajorgrids,
+]
+  \fill[cV3, fill opacity=0.06] (axis cs:-0.15,\sa) rectangle (axis cs:1.95,12000);
+  \node[font=\scriptsize, text=cV3!55!black, anchor=north west] at (axis cs:0.02,9000) {RL-feasible region};
+  \addplot[only marks, mark=x, mark size=4pt, cPI, line width=1.2pt] coordinates {(\ra,\sa)};
+  \addplot[only marks, mark=*, mark size=3pt, cV3] coordinates {(\rb,\sb)};
+  \addplot[only marks, mark=triangle*, mark size=3.5pt, cAccurate] coordinates {(\rc,\sco)};
+  \addplot[only marks, mark=diamond*, mark size=3.5pt, cHybrid] coordinates {(\rd,\sd)};
+  \node[font=\scriptsize, anchor=south west, text=cPI] at (axis cs:\ra,\sa) {BOPTEST (truth)};
+  \node[font=\scriptsize, anchor=south east, text=cV3!55!black] at (axis cs:\rb,\sb) {BB ($220\times$)};
+  \node[font=\scriptsize, anchor=south east, text=cAccurate] at (axis cs:\rc,\sco) {GB ($114\times$)};
+  \node[font=\scriptsize, anchor=north east, text=cHybrid] at (axis cs:\rd,\sd) {hybrid ($85\times$)};
+\end{axis}
+\end{tikzpicture}
+\end{document}

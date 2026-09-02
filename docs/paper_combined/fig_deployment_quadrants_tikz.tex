@@ -1,0 +1,46 @@
+% Fig 9 (main) -- Block 3 deployment plane: comfort/safety margin vs energy.
+% Data-driven from reports/block3_transfer_matrix.csv (margin = tau_k - m_s_RL).
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread[col sep=comma]{../../reports/block3_transfer_matrix.csv}\dtransfer
+\newcommand{\getc}[3]{\pgfplotstablegetelem{#2}{#3}\of\dtransfer \pgfmathsetmacro{#1}{\pgfplotsretval}}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+    paperaxis, width=10.5cm, height=8cm,
+    title={Deployment plane: comfort/safety margin vs energy},
+    xlabel={comfort/safety margin $M_k=\tau_k-m_s^{\mathrm{RL}}$\quad($M_k>0=$ pass)},
+    ylabel={energy $\Delta$ vs PI (\%)},
+    xmin=-0.2, xmax=0.5, ymin=-15, ymax=45,
+    grid=both,
+]
+  % quadrant tints
+  \fill[cV3, fill opacity=0.10]       (axis cs:0,-15)   rectangle (axis cs:0.5,0);
+  \fill[yellow!45!orange, fill opacity=0.14] (axis cs:0,0) rectangle (axis cs:0.5,45);
+  \fill[cOrange, fill opacity=0.12]   (axis cs:-0.2,-15) rectangle (axis cs:0,0);
+  \fill[cAccurate, fill opacity=0.10] (axis cs:-0.2,0)  rectangle (axis cs:0,45);
+  \draw[gray, dashed, line width=0.8pt] (axis cs:0,-15) -- (axis cs:0,45);
+  \draw[gray, dashed, line width=0.8pt] (axis cs:-0.2,0) -- (axis cs:0.5,0);
+  % quadrant captions pinned to the four corners, away from the data points
+  \node[font=\footnotesize\bfseries, text=cV3!50!black, align=right, anchor=south east] at (axis cs:0.48,-14) {DEPLOYABLE\\ \footnotesize pass + saving};
+  \node[font=\footnotesize, text=orange!55!black, align=left, anchor=north west] at (axis cs:0.02,44) {safe but inefficient\\ \footnotesize pass + penalty};
+  \node[font=\footnotesize, text=cOrange!70!black, align=left, anchor=south west] at (axis cs:-0.19,-14) {unsafe saving\\ \footnotesize fail + saving};
+  \node[font=\footnotesize\bfseries, text=cAccurate, align=left, anchor=north west] at (axis cs:-0.19,44) {REJECT\\ \footnotesize fail + penalty};
+  % the three testcases
+  \addplot[only marks, mark=*, mark size=3.5pt, color=cHybrid, forget plot]
+    table[x expr=\thisrow{pass_threshold_m_s}-\thisrow{m_s_rl}, y=energy_delta_pct_vs_pi]{\dtransfer};
+  % labels at each point, separated so they don't collide
+  \getc{\ma}{0}{pass_threshold_m_s}\getc{\ra}{0}{m_s_rl}\getc{\ea}{0}{energy_delta_pct_vs_pi}
+  \getc{\mb}{1}{pass_threshold_m_s}\getc{\rb}{1}{m_s_rl}\getc{\eb}{1}{energy_delta_pct_vs_pi}
+  \getc{\mc}{2}{pass_threshold_m_s}\getc{\rc}{2}{m_s_rl}\getc{\ec}{2}{energy_delta_pct_vs_pi}
+  \node[font=\footnotesize, anchor=west, xshift=5pt] at (axis cs:{\ma-\ra},\ea) {heat pump};
+  \node[font=\footnotesize, anchor=west, xshift=5pt] at (axis cs:{\mb-\rb},\eb) {hydronic};
+  \node[font=\footnotesize, anchor=east, xshift=-5pt] at (axis cs:{\mc-\rc},\ec) {commercial};
+\end{axis}
+\end{tikzpicture}
+\end{document}

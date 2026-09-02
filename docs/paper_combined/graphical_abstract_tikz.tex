@@ -1,0 +1,121 @@
+% Graphical abstract (MDPI AI, separate upload).
+% Journal-style, not infographic: (a) control block diagram, (b) one real data plot
+% read from the same CSV as main Fig. 5, (c) remedy block, then a one-line takeaway.
+% Shares the manuscript palette/styles via _pgfstyle (muted colours, thin rules).
+\documentclass[border=6pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+% same committed artefact as main Fig. 5 -- no hand-typed headline numbers
+\pgfplotstableread[col sep=comma]{../../reports/block2_fidelity_utility_scatter.csv}\dsc
+\newcommand{\getc}[3]{\pgfplotstablegetelem{#2}{#3}\of\dsc \pgfmathsetmacro{#1}{\pgfplotsretval}}
+
+\begin{document}
+\begin{tikzpicture}[font=\sffamily]
+
+% ======================= title =======================
+\node[anchor=north, align=center, text=cInk] at (9.0,0.35) {%
+  {\bfseries\large The Fidelity--Utility Paradox in Surrogate-Based RL}\\[0.5mm]
+  {\small\color{cMut} Role-Separated Hybrid Methodology for HVAC Control}};
+
+% ======================= (a) framework block diagram =======================
+\node[anchor=north west, font=\bfseries\small, text=cInk] at (0,-1.35) {(a)~Framework};
+
+\node[data, anchor=north west, text width=31mm, font=\scriptsize] (f1) at (0,-1.95)
+  {surrogate backend\\[0.3mm] BB hourly $\cdot$ matched-BB 15\,min\\ GB calibrated $\cdot$ hybrid};
+\node[model, anchor=north west, text width=25mm, font=\scriptsize] (f2) at (4.35,-1.95)
+  {thermostatic PPO\\ training};
+\node[eval, anchor=north west, text width=25mm, font=\scriptsize] (f3) at (8.05,-1.95)
+  {live BOPTEST\\ \texttt{bestest\_air}};
+\node[eval, anchor=north west, text width=32mm, font=\scriptsize] (f4) at (11.75,-1.95)
+  {maintenance score \ms\\ lower is better; $\ms>1$ unusable};
+
+\draw[flow] (f1.east) -- (f2.west);
+\draw[flow] (f2.east) -- (f3.west);
+\draw[flow] (f3.east) -- (f4.west);
+
+% role separation: frozen GB enters the reward only (this is the hybrid)
+\node[physics, anchor=north west, text width=34mm, font=\scriptsize] (f5) at (1.1,-3.55)
+  {frozen GB:\\ model-disagreement censor};
+\draw[flow] (f5.east) -- (f2.south);
+\node[font=\tiny, text=cMut, anchor=west] at (5.95,-3.45) {reward only (defines the hybrid)};
+
+% ======================= (b) one real data plot =======================
+\node[anchor=north west, font=\bfseries\small, text=cInk] at (0,-4.95)
+  {(b)~Predictive fidelity vs.\ live utility};
+
+\begin{axis}[
+  paperaxis, at={(5mm,-57mm)}, anchor=north west,
+  width=9.4cm, height=6.2cm,
+  xmin=0.5, xmax=1.78, ymin=-0.06, ymax=1.36,
+  xlabel={24\,h rollout \RMSET~(\degC)\ \ ($\leftarrow$ more predictive fidelity)},
+  ylabel={live \ms},
+  label style={font=\scriptsize}, tick label style={font=\scriptsize},
+]
+  % engineering thresholds (pre-specified)
+  \fill[cV3, fill opacity=0.10] (axis cs:0.5,-0.06) rectangle (axis cs:1.78,\MSusable);
+  \fill[cAccurate, fill opacity=0.05] (axis cs:0.5,\MScollapse) rectangle (axis cs:1.78,1.36);
+  \addplot[cAccurate, dashed, line width=0.7pt, domain=0.5:1.78, samples=2, forget plot] {\MScollapse};
+  \addplot[cV3, dotted, line width=0.7pt, domain=0.5:1.78, samples=2, forget plot] {\MSusable};
+  \node[font=\scriptsize, text=cAccurate, anchor=east] at (axis cs:1.76,1.10) {$\ms=1$ collapse};
+  \node[font=\scriptsize, text=cV3!55!black, anchor=west] at (axis cs:0.54,0.048) {usable $\ms<0.1$};
+
+  % read the four backends from the committed CSV
+  \getc{\xBB}{0}{rmse_24h_c}\getc{\yBB}{0}{m_s_mean}
+  \getc{\xMB}{1}{rmse_24h_c}\getc{\yMB}{1}{m_s_mean}
+  \getc{\xGB}{2}{rmse_24h_c}\getc{\yGB}{2}{m_s_mean}
+  \getc{\xHY}{3}{rmse_24h_c}\getc{\yHY}{3}{m_s_mean}
+
+  % trend across the three single-model backends (GB -> matched-BB -> BB)
+  \addplot[gray!70, dashed, line width=0.7pt, forget plot]
+    coordinates {(\xGB,\yGB) (\xMB,\yMB) (\xBB,\yBB)};
+
+  \addplot[cAccurate, only marks, mark=*, mark size=2.4pt, forget plot] coordinates {(\xGB,\yGB)};
+  \addplot[cMatched,  only marks, mark=*, mark size=2.4pt, forget plot] coordinates {(\xMB,\yMB)};
+  \addplot[cV3,       only marks, mark=*, mark size=2.4pt, forget plot] coordinates {(\xBB,\yBB)};
+  \addplot[cHybrid,   only marks, mark=triangle*, mark size=3.2pt, forget plot] coordinates {(\xHY,\yHY)};
+
+  \node[font=\scriptsize, text=cAccurate, anchor=south]      at (axis cs:0.66,1.10) {GB};
+  \node[font=\scriptsize, text=cMatched,  anchor=south west] at (axis cs:0.90,1.19) {matched-BB};
+  \node[font=\scriptsize, text=cV3,       anchor=south east] at (axis cs:1.54,0.10) {BB};
+  \node[font=\scriptsize, text=cHybrid,   anchor=north east] at (axis cs:1.53,0.045) {hybrid};
+\end{axis}
+
+\node[anchor=north west, text width=92mm, align=left, font=\scriptsize, text=cMut] at (0,-11.9)
+  {Lower rollout \RMSET{} does not lower live \ms: the two finer backends cross the collapse
+   threshold, while the hybrid (plotted at BB \RMSET, since BB rolls out) returns to the usable band.};
+
+% ======================= (c) remedy =======================
+\node[anchor=north west, font=\bfseries\small, text=cInk] at (10.6,-4.95)
+  {(c)~Role-separated hybrid backend};
+
+\getc{\hyms}{3}{m_s_typ}
+\node[anchor=north west, draw=cHybrid!55, line width=0.6pt, rounded corners=2pt, fill=white,
+      text width=68mm, align=left, inner sep=2.6mm, font=\scriptsize, text=cInk] (rem) at (10.6,-5.6)
+  {\textbf{BB} $=$ rollout dynamics (smooth, coarse step)\\[0.9mm]
+   \textbf{GB} $=$ frozen disagreement censor, reward only\\[0.9mm]
+   \textit{never the rollout model, never the policy loss}\\[2.0mm]
+   \rule{64mm}{0.3pt}\\[1.2mm]
+   live BOPTEST: \ \ $\ms=\pgfmathprintnumber[fixed,precision=3]{\hyms}$ \quad
+   ${<}5\%$ violation \quad ${\sim}85\times$ throughput};
+
+% mechanism, stated as a measured chain (not a slogan)
+\node[anchor=north west, font=\bfseries\small, text=cInk] at (10.6,-8.55) {(d)~Mechanism};
+\node[anchor=north west, draw=cMut!45, line width=0.6pt, rounded corners=2pt, fill=white,
+      text width=68mm, align=left, inner sep=2.6mm, font=\scriptsize, text=cInk] at (10.6,-9.2)
+  {loss of coarse-step smoothing\\
+   $\rightarrow$ rougher action-response surface\\
+   $\rightarrow$ bang-bang policy saturation\\
+   $\rightarrow$ live collapse ($\ms>1$)};
+
+% ======================= takeaway + boundary =======================
+\draw[cMut!35, line width=0.4pt] (0,-13.05) -- (18.0,-13.05);
+\node[anchor=north west, text width=178mm, align=left, font=\small, text=cInk] at (0,-13.2)
+  {\textbf{Takeaway:} evaluate HVAC surrogates by downstream control utility, not prediction accuracy alone.};
+\node[anchor=north west, text width=178mm, align=left, font=\scriptsize, text=cMut] at (0,-13.75)
+  {Boundary: the censor weight is controller-family specific; the calibration pipeline transfers across three hydronic cases, the frozen policy does not uniformly transfer.};
+
+\end{tikzpicture}
+\end{document}

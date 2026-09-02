@@ -136,7 +136,7 @@ def make_figure(rows: list[dict]) -> None:
     for r in singles:
         _draw_point(axA, r)
     _zones(axA, ymax)
-    axA.set_title("(A) Single-model paradox: more accurate → worse live $m_s$", fontsize=10.5, weight="bold")
+    axA.set_title(r"(A) Single-model paradox: more accurate $\rightarrow$ worse live $m_s$", fontsize=10.5, weight="bold")
     axA.annotate("more accurate twin", (0.62, ymax * 0.5), fontsize=9.5, color="0.4",
                  ha="left", rotation=0)
     axA.annotate("", xy=(0.55, ymax * 0.42), xytext=(0.95, ymax * 0.42),
@@ -158,26 +158,25 @@ def make_figure(rows: list[dict]) -> None:
     for ax in (axA, axB):
         ax.set_xlim(xlo, xhi)
         ax.set_ylim(-0.03, ymax)
-        ax.set_xlabel(r"24-h rollout RMSE$_T$ (°C)   (← lower = more predictive fidelity)")
+        ax.set_xlabel(r"24-h rollout RMSE$_T$ ($^{\circ}$C)   ($\leftarrow$ lower = more predictive fidelity)")
         ax.grid(alpha=0.16)
         for s in ("top", "right"):
             ax.spines[s].set_visible(False)
-    axA.set_ylabel(r"live maintenance score $m_s$   (↑ worse controller)")
+    axA.set_ylabel(r"live maintenance score $m_s$   ($\uparrow$ worse controller)")
 
-    # shared legends: model identity (colour+marker) and window encoding
+    # single shared legend at the bottom: model identity (colour+marker) + window encoding
     mh = fs.legend_handles(["v3", "matched", "v35", "hybrid"], with_role=True, markersize=9)
     wh = [Line2D([0], [0], lw=0, marker="o", color="0.3", mfc="0.3", mec="0.3", ms=9, label="peak window"),
           Line2D([0], [0], lw=0, marker="o", color="0.3", mfc="white", mec="0.3", ms=9, label="typical window")]
-    axA.legend(handles=mh, loc="lower left", fontsize=9, frameon=True, framealpha=0.92)
-    axB.legend(handles=wh, loc="lower left", fontsize=9, frameon=True, framealpha=0.92,
-               title="markers", title_fontsize=9)
+    fig.legend(handles=mh + wh, loc="lower center", ncol=6, fontsize=8.5,
+               frameon=False, bbox_to_anchor=(0.5, 0.045), columnspacing=1.3, handletextpad=0.4)
 
-    fig.suptitle("Fidelity–utility paradox: lower RMSE$_T$ does not imply lower live $m_s$",
+    fig.suptitle(r"Fidelity--utility paradox: lower RMSE$_T$ does not imply lower live $m_s$",
                  fontsize=12.5, weight="bold", y=0.99)
-    fig.text(0.5, 0.005, "Error bars = ±1 s.d. over N=3 seeds (BB, matched-resolution BB, direct GB, hybrid). "
-             "Points are the canonical seed-42 m_s; the N=3 spread is the bar.",
+    fig.text(0.5, 0.005, r"Error bars = $\pm 1$ s.d. over N=3 seeds (BB, matched-resolution BB, direct GB, hybrid). "
+             r"Points are the canonical seed-42 $m_s$; the N=3 spread is the bar.",
              ha="center", fontsize=7.6, color="0.45")
-    fig.tight_layout(rect=(0, 0.03, 1, 0.96))
+    fig.tight_layout(rect=(0, 0.11, 1, 0.96))
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_OUT, bbox_inches="tight")
     fig.savefig(FIG_OUT.with_suffix(".png"), dpi=150, bbox_inches="tight")

@@ -135,8 +135,8 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
     col = [fs.COLOR[KEY[n]] for n in order]
     ms = fs.paper_numbers(ROOT)["m_s"]
 
-    fig, axes = plt.subplots(1, 4, figsize=(13.6, 4.5))
-    fig.subplots_adjust(left=0.06, right=0.99, top=0.87, bottom=0.16, wspace=0.42)
+    fig, axes = plt.subplots(1, 4, figsize=(13.6, 4.7))
+    fig.subplots_adjust(left=0.06, right=0.99, top=0.87, bottom=0.24, wspace=0.42)
     axA, axB, axC, axD = axes
 
     # (A) measured action->next-temperature shape: per-state curves (thin) + median (thick)
@@ -151,9 +151,8 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
                  label=f"{fs.LABEL[k]} ({'1.0' if k == 'v3' else f'{rr[name]/base:.1f}'}$\\times$)")
     axA.axhline(0, color="0.85", lw=0.6, zorder=0)
     axA.set_xlabel(r"supply-temperature action $a_0$", fontsize=10)
-    axA.set_ylabel("normalised response (shape)", fontsize=10)
-    axA.set_title("(A) Action→next-T response shape", fontsize=10, weight="bold")
-    axA.legend(fontsize=9, frameon=False, loc="upper left")
+    axA.set_ylabel("normalized response (shape)", fontsize=10)
+    axA.set_title(r"(A) Action$\rightarrow$next-T response shape", fontsize=10, weight="bold")
     axA.tick_params(labelsize=9); axA.grid(alpha=0.18)
 
     # (B) scale-free relative-roughness DISTRIBUTION over the state grid (box + jittered points)
@@ -177,10 +176,10 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
     sat = [_saturation_pct(TRACE_DIRS[n]) for n in order]
     axC.bar(xs, sat, color=col, edgecolor="0.3", linewidth=0.6, width=0.62)
     for x, s in zip(xs, sat):
-        axC.text(x, s + 1.5, f"{s:.0f}%", ha="center", va="bottom", fontsize=10, weight="bold")
+        axC.text(x, s + 1.5, rf"{s:.0f}\%", ha="center", va="bottom", fontsize=10, weight="bold")
     fs.threshold(axC, 90, "near bang-bang", axis="h", color="0.45", ls=":", pos=0.5, fontsize=9.5)
     axC.set_xticks(xs); axC.set_xticklabels([tick[KEY[n]] for n in order], fontsize=9.5)
-    axC.set_ylabel("action saturation ($|a_0|>0.9$, % steps)", fontsize=9.5)
+    axC.set_ylabel(r"action saturation ($|a_0|>0.9$, \% steps)", fontsize=9.5)
     axC.set_title("(C) Policy saturation (live)", fontsize=10, weight="bold")
     axC.set_ylim(0, 112); axC.grid(axis="y", alpha=0.2)
 
@@ -196,8 +195,13 @@ def make_figure(adapters: list[tuple[str, object]], rows: list[dict]) -> None:
     axD.set_title("(D) Live BOPTEST outcome", fontsize=10, weight="bold")
     axD.set_ylim(0, max(msv) * 1.22); axD.grid(axis="y", alpha=0.2)
 
-    fig.suptitle("Measured roughness mechanism: rougher action surface → policy saturation → live collapse "
-                 "(association, not a proven causal law)", fontsize=12, weight="bold", y=0.99)
+    # shared legend (panel-A response curves) at the figure bottom
+    h, l = axA.get_legend_handles_labels()
+    fig.legend(h, l, loc="lower center", ncol=3, fontsize=9, frameon=False,
+               bbox_to_anchor=(0.5, 0.005), columnspacing=1.6)
+
+    fig.suptitle(r"Measured roughness mechanism: rougher action surface $\rightarrow$ policy saturation $\rightarrow$ live collapse "
+                 r"(association, not a proven causal law)", fontsize=12, weight="bold", y=0.99)
     FIG_OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_OUT, bbox_inches="tight")
     fig.savefig(FIG_OUT.with_suffix(".png"), dpi=150, bbox_inches="tight")

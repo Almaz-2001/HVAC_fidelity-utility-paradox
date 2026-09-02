@@ -1,0 +1,75 @@
+% Fig 7 (main, central) -- fidelity-utility paradox scatter, native pgfplots.
+% Data-driven: reads the committed reports/block2_fidelity_utility_scatter.csv.
+% Row order: 0 BB(hourly), 1 matched-BB(15-min), 2 GB(calibrated), 3 hybrid.
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\input{_pgfstyle}
+
+\pgfplotstableread[col sep=comma]{../../reports/block2_fidelity_utility_scatter.csv}\dsc
+\newcommand{\getc}[3]{\pgfplotstablegetelem{#2}{#3}\of\dsc \pgfmathsetmacro{#1}{\pgfplotsretval}}
+% peak (filled) + typical (open) markers with thin y error bars, for one model row
+\newcommand{\modelpts}[2]{% #1=row #2=colour
+  \getc{\xr}{#1}{rmse_24h_c}%
+  \getc{\yp}{#1}{m_s_peak}\getc{\sp}{#1}{std_peak}%
+  \getc{\yt}{#1}{m_s_typ}\getc{\st}{#1}{std_typ}%
+  \addplot[#2, only marks, mark=*, mark size=3pt, thick, forget plot,
+           error bars/.cd, y dir=both, y explicit, error bar style={line width=0.5pt}]
+    coordinates {(\xr,\yp) +- (0,\sp)};
+  \addplot[#2, only marks, mark=o, mark size=3pt, thick, forget plot,
+           error bars/.cd, y dir=both, y explicit, error bar style={line width=0.5pt}]
+    coordinates {(\xr,\yt) +- (0,\st)};
+}
+% shared per-panel decoration: usable band, collapse band, threshold lines
+\newcommand{\zones}{%
+  \fill[cV3, fill opacity=0.14] (axis cs:0.5,-0.05) rectangle (axis cs:1.75,\MSusable);
+  \fill[cAccurate, fill opacity=0.06] (axis cs:0.5,\MScollapse) rectangle (axis cs:1.75,1.4);
+  \addplot[cAccurate, dashed, line width=1pt, domain=0.5:1.75, samples=2, forget plot] {\MScollapse};
+  \addplot[cV3, dotted, line width=1pt, domain=0.5:1.75, samples=2, forget plot] {\MSusable};
+  \node[font=\footnotesize, text=cAccurate, anchor=east, fill=white, fill opacity=0.7, inner sep=1pt] at (axis cs:1.73,1.18) {$\ms=1$ collapse};
+  \node[font=\scriptsize, text=cV3!55!black, anchor=west] at (axis cs:0.54,0.045) {usable $\ms<0.1$};
+}
+
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={group size=2 by 1, horizontal sep=1.7cm},
+    paperaxis, width=8.2cm, height=7.2cm,
+    xmin=0.5, xmax=1.75, ymin=-0.05, ymax=1.4,
+    xlabel={24\,h rollout \RMSET~(\degC)\quad($\leftarrow$ more predictive fidelity)},
+    ylabel={live maintenance score \ms},
+    title style={font=\bfseries\footnotesize},
+]
+% ---------- panel A: single-model paradox ----------
+\nextgroupplot[title={(A) Single-model paradox: more accurate $\rightarrow$ worse live \ms}]
+  \zones
+  % connecting trend line across the three single models (sorted by RMSE: GB, matched, BB)
+  \getc{\xGB}{2}{rmse_24h_c}\getc{\mGB}{2}{m_s_mean}
+  \getc{\xMB}{1}{rmse_24h_c}\getc{\mMB}{1}{m_s_mean}
+  \getc{\xBB}{0}{rmse_24h_c}\getc{\mBB}{0}{m_s_mean}
+  \addplot[gray, dashed, line width=1pt, forget plot]
+    coordinates {(\xGB,\mGB) (\xMB,\mMB) (\xBB,\mBB)};
+  \modelpts{0}{cV3}\modelpts{1}{cMatched}\modelpts{2}{cAccurate}
+  \node[font=\scriptsize, text=gray, anchor=west] at (axis cs:0.55,0.55) {more accurate twin $\rightarrow$};
+% ---------- panel B: hybrid recovers usable control ----------
+\nextgroupplot[title={(B) Role-separated hybrid recovers usable control}]
+  \zones
+  % ghosted collapsed single-models for context
+  \modelpts{1}{gray!55}\modelpts{2}{gray!55}
+  \modelpts{0}{cV3}\modelpts{3}{cHybrid}
+  \getc{\xh}{3}{rmse_24h_c}\getc{\mh}{3}{m_s_mean}
+  \node[font=\scriptsize, text=cHybrid, align=center, anchor=south] (hybann)
+    at (axis cs:1.30,0.42) {hybrid: plotted at BB \RMSET\\(BB rolls out; frozen GB is\\reward censor only)};
+  \draw[cHybrid, -{Latex[length=1.6mm]}, line width=0.5pt] (hybann.south) -- (axis cs:1.55,0.14);
+\end{groupplot}
+% ---- shared bottom legend centred under both panels (colour bullets) ----
+\path (group c1r1.south west) -- (group c2r1.south east) coordinate[midway] (legmid);
+\node[anchor=north, yshift=-0.95cm, font=\small] at (legmid) {%
+  \textcolor{cV3}{$\bullet$}~BB (hourly)\quad
+  \textcolor{cMatched}{$\bullet$}~matched-BB (15\,min)\quad
+  \textcolor{cAccurate}{$\bullet$}~GB (calibrated)\quad
+  \textcolor{cHybrid}{$\bullet$}~hybrid\qquad
+  $\bullet$~peak\quad $\circ$~typical};
+\end{tikzpicture}
+\end{document}
